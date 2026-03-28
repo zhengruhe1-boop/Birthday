@@ -83,12 +83,56 @@ router.post("/mock-login", async (req, res) => {
     }
 
     const token = generateToken();
-    const inserted = await db.insert(usersTable).values({
-      nickname: body.data.nickname,
-      avatarUrl: body.data.avatarUrl ?? null,
-      sessionToken: token,
-    }).returning();
-    const user = inserted[0];
+
+    // Use deviceId (if provided) as a stable key for mock users,
+    // falling back to nickname lookup so the same person always
+    // gets the same account and their data persists across logins.
+    // We read deviceId from req.body directly since it's optional and not in the schema.
+    const deviceId = (req.body as Record<string, unknown>).deviceId as string | undefined;
+    const nickname = body.data.nickname;
+
+    let user;
+
+    if (deviceId) {
+      // Look up by stable device key stored in openId field for mock users
+      const existing = await db.select().from(usersTable)
+        .where(eq(usersTable.openId, `mock:${deviceId}`))
+        .limit(1);
+      if (existing.length > 0) {
+        const updated = await db.update(usersTable)
+          .set({ sessionToken: token, nickname })
+          .where(eq(usersTable.openId, `mock:${deviceId}`))
+          .returning();
+        user = updated[0];
+      } else {
+        const inserted = await db.insert(usersTable).values({
+          openId: `mock:${deviceId}`,
+          nickname,
+          avatarUrl: body.data.avatarUrl ?? null,
+          sessionToken: token,
+        }).returning();
+        user = inserted[0];
+      }
+    } else {
+      // Fallback: look up by nickname among mock users
+      const existing = await db.select().from(usersTable)
+        .where(eq(usersTable.nickname, nickname))
+        .limit(1);
+      if (existing.length > 0) {
+        const updated = await db.update(usersTable)
+          .set({ sessionToken: token })
+          .where(eq(usersTable.id, existing[0].id))
+          .returning();
+        user = updated[0];
+      } else {
+        const inserted = await db.insert(usersTable).values({
+          nickname,
+          avatarUrl: body.data.avatarUrl ?? null,
+          sessionToken: token,
+        }).returning();
+        user = inserted[0];
+      }
+    }
 
     res.json({
       user: {
