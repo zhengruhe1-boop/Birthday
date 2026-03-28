@@ -216,16 +216,10 @@ export default function ContactForm() {
 
       if (isEdit && contactId) {
         await updateContact.mutateAsync({ id: contactId, data: payload });
-        setLocation("/");
       } else {
-        const newContact = await createContact.mutateAsync({ data: payload });
-        // If birthYear is set, navigate to the edit page so events auto-generate and display
-        if (payload.birthYear) {
-          setLocation(`/contact/${newContact.id}`);
-        } else {
-          setLocation("/");
-        }
+        await createContact.mutateAsync({ data: payload });
       }
+      setLocation("/");
     } catch (error) {
       console.error("Form submission failed:", error);
       alert("保存失败，请检查填写内容");
