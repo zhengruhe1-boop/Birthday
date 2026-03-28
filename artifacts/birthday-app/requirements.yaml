@@ -1,0 +1,23 @@
+packages:
+  "framer-motion": "Smooth page transitions and micro-interactions"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility function to efficiently merge Tailwind CSS classes"
+  "react-hook-form": "Form state management"
+  "@hookform/resolvers": "Zod resolver for react-hook-form validation"
+  "date-fns": "Date formatting and calculations"
+
+images:
+  - path: "artifacts/birthday-app/public/images/hero-bg.png"
+    description: "Warm soft pink and red gradient background with subtle abstract traditional Chinese aesthetic patterns, reminiscent of textured paper or silk, clean mobile friendly"
+    aspect_ratio: "9:16"
+  - path: "artifacts/birthday-app/public/images/logo.png"
+    description: "Minimalist modern app icon for a birthday reminder app, featuring a subtle red gift box or peach in clean flat Chinese style on a transparent background"
+    aspect_ratio: "1:1"
+  - path: "artifacts/birthday-app/public/images/avatar-placeholder.png"
+    description: "Clean minimal illustration of an anonymous user avatar in soft warm pink and peach tones, flat vector style"
+    aspect_ratio: "1:1"
+
+notes:
+  - App requires Bearer token from localStorage for all API requests
+  - Wraps generated @workspace/api-client-react hooks to inject auth headers
+  - UI is constrained to a mobile layout (max-w-md) on desktop to simulate a native app experience

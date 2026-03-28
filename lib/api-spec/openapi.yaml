@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Birthday App API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: contacts
+    description: Birthday contacts operations
+  - name: auth
+    description: Authentication operations
 paths:
   /healthz:
     get:
@@ -24,6 +27,231 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/wechat/login:
+    post:
+      operationId: wechatLogin
+      tags: [auth]
+      summary: WeChat login
+      description: Login with WeChat OAuth code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WechatLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/mock-login:
+    post:
+      operationId: mockLogin
+      tags: [auth]
+      summary: Mock login for testing
+      description: Login without WeChat for development
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MockLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List all contacts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Create a contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactRequest"
+      responses:
+        "201":
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /contacts/{id}:
+    get:
+      operationId: getContact
+      tags: [contacts]
+      summary: Get a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactRequest"
+      responses:
+        "200":
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteContact
+      tags: [contacts]
+      summary: Delete a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /contacts/upcoming:
+    get:
+      operationId: getUpcomingBirthdays
+      tags: [contacts]
+      summary: Get upcoming birthdays
+      responses:
+        "200":
+          description: Upcoming birthdays grouped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpcomingBirthdays"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +262,219 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    WechatLoginRequest:
+      type: object
+      properties:
+        code:
+          type: string
+      required:
+        - code
+
+    MockLoginRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+        avatarUrl:
+          type: string
+      required:
+        - nickname
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        openId:
+          type: string
+          nullable: true
+        nickname:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nickname
+        - createdAt
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, null]
+        birthdayMonth:
+          type: integer
+          description: Month of birthday (1-12)
+        birthdayDay:
+          type: integer
+          description: Day of birthday (1-31)
+        birthdayLunar:
+          type: boolean
+          description: Whether birthday is in lunar calendar
+        birthYear:
+          type: integer
+          nullable: true
+        relation:
+          type: string
+          nullable: true
+        hometown:
+          type: string
+          nullable: true
+        reminderEmail:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        daysUntilBirthday:
+          type: integer
+          description: Days until next birthday
+        age:
+          type: integer
+          nullable: true
+          description: Current age if birth year is known
+        birthdayDisplay:
+          type: string
+          description: Formatted birthday display (e.g. 二月十四)
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - name
+        - birthdayMonth
+        - birthdayDay
+        - birthdayLunar
+        - daysUntilBirthday
+        - birthdayDisplay
+        - createdAt
+
+    CreateContactRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, null]
+        birthdayMonth:
+          type: integer
+        birthdayDay:
+          type: integer
+        birthdayLunar:
+          type: boolean
+        birthYear:
+          type: integer
+          nullable: true
+        relation:
+          type: string
+          nullable: true
+        hometown:
+          type: string
+          nullable: true
+        reminderEmail:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - name
+        - birthdayMonth
+        - birthdayDay
+        - birthdayLunar
+
+    UpdateContactRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, null]
+        birthdayMonth:
+          type: integer
+        birthdayDay:
+          type: integer
+        birthdayLunar:
+          type: boolean
+        birthYear:
+          type: integer
+          nullable: true
+        relation:
+          type: string
+          nullable: true
+        hometown:
+          type: string
+          nullable: true
+        reminderEmail:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+
+    UpcomingBirthdays:
+      type: object
+      properties:
+        imminent:
+          type: array
+          description: Birthdays within 7 days
+          items:
+            $ref: "#/components/schemas/Contact"
+        soon:
+          type: array
+          description: Birthdays within 7-30 days
+          items:
+            $ref: "#/components/schemas/Contact"
+        monthly:
+          type: array
+          description: Birthdays within 30-180 days
+          items:
+            $ref: "#/components/schemas/Contact"
+      required:
+        - imminent
+        - soon
+        - monthly
