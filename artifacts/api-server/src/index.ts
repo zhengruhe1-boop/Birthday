@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { scheduleDailyReminders } from "./lib/reminder.js";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Start the daily birthday reminder scheduler (runs every day at 08:00)
+  scheduleDailyReminders();
 });

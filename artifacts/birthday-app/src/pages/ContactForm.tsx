@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Camera, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, Trash2, X, Mail, CheckCircle } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,6 +42,9 @@ export default function ContactForm() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [testEmailStatus, setTestEmailStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [testEmailMsg, setTestEmailMsg] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(contactSchema),
@@ -121,6 +124,27 @@ export default function ContactForm() {
   const handleRemoveAvatar = () => {
     setAvatarUrl(null);
     setAvatarError(null);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!contactId) return;
+    setTestEmailStatus("sending");
+    setTestEmailMsg("");
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/reminders/test/${contactId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "发送失败");
+      setTestEmailStatus("success");
+      setTestEmailMsg(data.message || "邮件已发送");
+      setTimeout(() => setTestEmailStatus("idle"), 4000);
+    } catch (err: unknown) {
+      setTestEmailStatus("error");
+      setTestEmailMsg(err instanceof Error ? err.message : "发送失败");
+      setTimeout(() => setTestEmailStatus("idle"), 4000);
+    }
   };
 
   const onSubmit = async (data: FormValues) => {
@@ -391,7 +415,40 @@ export default function ContactForm() {
                 placeholder="输入邮箱，提前1天发送提醒"
                 className={cn(form.formState.errors.reminderEmail && "border-destructive")}
               />
-              {form.formState.errors.reminderEmail && <p className="text-xs text-destructive mt-1">{form.formState.errors.reminderEmail.message}</p>}
+              {form.formState.errors.reminderEmail && (
+                <p className="text-xs text-destructive mt-1">{form.formState.errors.reminderEmail.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1.5">
+                系统每天早上 8 点自动检查，提前 1 天发送邮件提醒
+              </p>
+
+              {isEdit && contact?.reminderEmail && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleSendTestEmail}
+                    disabled={testEmailStatus === "sending"}
+                    className={cn(
+                      "w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border transition-all",
+                      testEmailStatus === "success"
+                        ? "border-green-300 bg-green-50 text-green-600"
+                        : testEmailStatus === "error"
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                    )}
+                  >
+                    {testEmailStatus === "sending" ? (
+                      <><div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" /> 发送中...</>
+                    ) : testEmailStatus === "success" ? (
+                      <><CheckCircle className="w-4 h-4" /> {testEmailMsg}</>
+                    ) : testEmailStatus === "error" ? (
+                      <><Mail className="w-4 h-4" /> {testEmailMsg}</>
+                    ) : (
+                      <><Mail className="w-4 h-4" /> 发送一封测试提醒邮件</>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </form>
