@@ -174,16 +174,27 @@ router.post("/:id/birthday-events", async (req: AuthRequest, res) => {
 
     const contact = contacts[0];
 
-    if (!contact.birthYear) {
+    // Allow override params from query string (for refresh-before-save scenario)
+    const overrideYear = req.query.year ? parseInt(req.query.year as string) : null;
+    const overrideMonth = req.query.month ? parseInt(req.query.month as string) : null;
+    const overrideDay = req.query.day ? parseInt(req.query.day as string) : null;
+    const overrideLunar = req.query.lunar !== undefined ? req.query.lunar === "true" : null;
+
+    const birthYear = overrideYear || contact.birthYear;
+    const birthdayMonth = overrideMonth || contact.birthdayMonth;
+    const birthdayDay = overrideDay || contact.birthdayDay;
+    const birthdayLunar = overrideLunar !== null ? overrideLunar : contact.birthdayLunar;
+
+    if (!birthYear) {
       res.status(422).json({ error: "需要填写出生年份才能生成历史大事", missingYear: true });
       return;
     }
 
     const events = await generateBirthdayEvents(
-      contact.birthYear,
-      contact.birthdayMonth,
-      contact.birthdayDay,
-      contact.birthdayLunar
+      birthYear,
+      birthdayMonth,
+      birthdayDay,
+      birthdayLunar
     );
 
     await db.update(contactsTable)
@@ -221,17 +232,10 @@ router.put("/:id", async (req: AuthRequest, res) => {
       return;
     }
 
-    // If birthday changed, clear cached events so they regenerate
-    const prev = existing[0];
-    const birthdayChanged =
-      (body.data.birthdayMonth !== undefined && body.data.birthdayMonth !== prev.birthdayMonth) ||
-      (body.data.birthdayDay !== undefined && body.data.birthdayDay !== prev.birthdayDay) ||
-      (body.data.birthdayLunar !== undefined && body.data.birthdayLunar !== prev.birthdayLunar);
-
     const updatePayload: Record<string, unknown> = { ...body.data };
-    if (birthdayChanged) {
-      updatePayload.birthdayEvents = null;
-    }
+    // Never touch birthdayEvents on save — events are managed exclusively via the
+    // dedicated birthday-events endpoint (refresh button). This preserves any
+    // events the user already generated before clicking save.
 
     const updated = await db.update(contactsTable)
       .set(updatePayload)
@@ -240,19 +244,6 @@ router.put("/:id", async (req: AuthRequest, res) => {
 
     const contact = updated[0];
     res.json(formatContact(contact));
-
-    // Re-generate events in background if birthday changed and birthYear is present
-    if (birthdayChanged && contact.birthYear) {
-      generateBirthdayEvents(contact.birthYear, contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
-        .then(async (events) => {
-          if (events.length > 0) {
-            await db.update(contactsTable)
-              .set({ birthdayEvents: JSON.stringify(events) })
-              .where(eq(contactsTable.id, id));
-          }
-        })
-        .catch(() => {/* silently ignore */});
-    }
   } catch (err) {
     req.log.error({ err }, "Update contact error");
     res.status(500).json({ error: "Internal server error" });

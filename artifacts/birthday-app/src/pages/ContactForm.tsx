@@ -167,12 +167,29 @@ export default function ContactForm() {
 
   const handleGenerateEvents = useCallback(async () => {
     if (!contactId) return;
+    // Read current form values so refresh uses what the user has typed,
+    // even if they haven't saved yet
+    const formValues = form.getValues();
+    const year = formValues.birthYear ? Number(formValues.birthYear) : null;
+    const month = formValues.birthdayMonth;
+    const day = formValues.birthdayDay;
+    const lunar = formValues.birthdayLunar;
+
+    if (!year) return; // no birthYear in form — nothing to generate
+
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+      day: String(day),
+      lunar: String(lunar),
+    });
+
     setEventsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/contacts/${contactId}/birthday-events`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/contacts/${contactId}/birthday-events?${params}`,
+        { method: "POST", headers: getAuthHeaders() }
+      );
       const data = await res.json();
       if (data.events) setEvents(data.events);
     } catch {
@@ -180,7 +197,7 @@ export default function ContactForm() {
     } finally {
       setEventsLoading(false);
     }
-  }, [contactId]);
+  }, [contactId, form]);
 
   const handleSendTestEmail = async () => {
     if (!contactId) return;
@@ -245,6 +262,8 @@ export default function ContactForm() {
   const isPending = createContact.isPending || updateContact.isPending;
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+  // Watch form fields for live reactivity in the events card
+  const formBirthYear = form.watch("birthYear");
 
   const displayAvatar = avatarUrl;
 
@@ -454,20 +473,20 @@ export default function ContactForm() {
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">生日那天的历史</h2>
-                {contact?.birthYear && (
+                {formBirthYear && (
                   <button
                     type="button"
                     onClick={handleGenerateEvents}
                     disabled={eventsLoading}
                     className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                    title="重新生成"
+                    title="重新生成（根据当前填写的年月日）"
                   >
                     <RefreshCw className={cn("w-4 h-4", eventsLoading && "animate-spin")} />
                   </button>
                 )}
               </div>
 
-              {!contact?.birthYear ? (
+              {!formBirthYear ? (
                 // No birth year — prompt user to fill it in
                 <div className="flex flex-col items-center gap-2 py-5">
                   <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 text-lg">
