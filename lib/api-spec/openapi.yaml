@@ -365,6 +365,11 @@ components:
         avatarUrl:
           type: string
           nullable: true
+        birthdayEvents:
+          type: array
+          description: Historical events that happened on this birthday
+          items:
+            $ref: '#/components/schemas/BirthdayEvent'
         daysUntilBirthday:
           type: integer
           description: Days until next birthday
@@ -385,9 +390,32 @@ components:
         - birthdayMonth
         - birthdayDay
         - birthdayLunar
+        - birthdayEvents
         - daysUntilBirthday
         - birthdayDisplay
         - createdAt
+
+    BirthdayEvent:
+      type: object
+      properties:
+        year:
+          type: string
+          description: Year the event happened (e.g. "1949年")
+        category:
+          type: string
+          enum: [中国, 世界]
+          description: Whether the event is Chinese or world history
+        title:
+          type: string
+          description: Short title of the event
+        description:
+          type: string
+          description: Brief description of the event
+      required:
+        - year
+        - category
+        - title
+        - description
 
     CreateContactRequest:
       type: object

@@ -7,6 +7,8 @@
  */
 
 export * from "./authResponse";
+export * from "./birthdayEvent";
+export * from "./birthdayEventCategory";
 export * from "./contact";
 export * from "./contactGender";
 export * from "./createContactRequest";

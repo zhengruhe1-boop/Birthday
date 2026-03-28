@@ -48,6 +48,28 @@ export const ContactGender = {
   female: "female",
 } as const;
 
+/**
+ * Whether the event is Chinese or world history
+ */
+export type BirthdayEventCategory =
+  (typeof BirthdayEventCategory)[keyof typeof BirthdayEventCategory];
+
+export const BirthdayEventCategory = {
+  中国: "中国",
+  世界: "世界",
+} as const;
+
+export interface BirthdayEvent {
+  /** Year the event happened (e.g. "1949年") */
+  year: string;
+  /** Whether the event is Chinese or world history */
+  category: BirthdayEventCategory;
+  /** Short title of the event */
+  title: string;
+  /** Brief description of the event */
+  description: string;
+}
+
 export interface Contact {
   id: number;
   userId: number;
@@ -64,6 +86,8 @@ export interface Contact {
   hometown?: string | null;
   reminderEmail?: string | null;
   avatarUrl?: string | null;
+  /** Historical events that happened on this birthday */
+  birthdayEvents: BirthdayEvent[];
   /** Days until next birthday */
   daysUntilBirthday: number;
   /** Current age if birth year is known */

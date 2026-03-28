@@ -16,6 +16,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + TailwindCSS + shadcn/ui
+- **AI**: OpenAI via Replit AI Integrations (gpt-4o-mini), env vars: `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`
 
 ## Applications
 
@@ -25,8 +26,12 @@ H5 mobile birthday reminder app. Features:
 - WeChat OAuth login + mock login for testing
 - Contact list grouped by birthday proximity (即将过生日/近期过生日/一个月后生日)
 - Chinese lunar/solar calendar support
-- Add/Edit contacts with fields: name, gender, birthday, relation, hometown, reminder email
-- Email notification (remind 1 day before birthday via email)
+- Add/Edit contacts with fields: name, gender, birthday, relation, hometown, reminder email, avatar (local upload)
+- Local avatar upload (POST /api/upload, 5MB limit, served at /api/uploads/)
+- Email notification (remind 1 day before birthday via QQ SMTP, 991067346@qq.com)
+- Daily scheduler at 08:00 to send birthday reminders
+- Test reminder email button in contact edit form
+- AI-generated historical events for each contact's birthday date (3 events from China/world)
 - Search contacts by name
 - Floating action button to add new contact
 
@@ -64,30 +69,43 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 
 Express 5 API server. Routes:
 - `GET /api/healthz` — health check
-- `POST /api/auth/mock-login` — test login
+- `POST /api/auth/mock-login` — test login (body: nickname, deviceId)
 - `POST /api/auth/wechat/login` — WeChat OAuth login (requires WECHAT_APPID, WECHAT_APP_SECRET env vars)
 - `GET /api/auth/me` — get current user
 - `POST /api/auth/logout` — logout
 - `GET /api/contacts` — list contacts (with optional search)
-- `POST /api/contacts` — create contact
+- `POST /api/contacts` — create contact (auto-generates birthday events in background)
 - `GET /api/contacts/upcoming` — get upcoming birthdays (grouped)
 - `GET /api/contacts/:id` — get contact
-- `PUT /api/contacts/:id` — update contact
+- `PUT /api/contacts/:id` — update contact (re-generates events if birthday changed)
 - `DELETE /api/contacts/:id` — delete contact
+- `POST /api/contacts/:id/birthday-events` — regenerate AI birthday events
+- `POST /api/upload` — upload avatar image (multer, 5MB limit)
+- `GET /api/reminders/verify-email` — verify QQ email config
+- `POST /api/reminders/test/:contactId` — send test birthday email
+- `POST /api/reminders/run` — manually trigger birthday reminder check
+
+Key lib files:
+- `src/lib/birthday-events.ts` — OpenAI-powered historical events generator
+- `src/lib/email.ts` — QQ SMTP email sender (nodemailer)
+- `src/lib/reminder.ts` — Daily scheduler + birthday reminder logic
+- `src/lib/birthday.ts` — Birthday calculation helpers
 
 ### `artifacts/birthday-app` (`@workspace/birthday-app`)
 
 React + Vite mobile-first H5 app. Pages:
 - `/` — Login page (WeChat + mock login)
 - `/home` — Main birthday list (grouped by proximity)
-- `/contacts/new` — Add contact form
-- `/contacts/:id/edit` — Edit contact form
+- `/contact/new` — Add contact form
+- `/contact/:id` — Edit contact form (shows AI-generated historical events)
 
 ### `lib/db` (`@workspace/db`)
 
 Database schema:
 - `users` — user accounts (id, openId, nickname, avatarUrl, sessionToken)
-- `contacts` — birthday contacts (id, userId, name, gender, birthdayMonth, birthdayDay, birthdayLunar, birthYear, relation, hometown, reminderEmail, avatarUrl)
+- `contacts` — birthday contacts (id, userId, name, gender, birthdayMonth, birthdayDay, birthdayLunar, birthYear, relation, hometown, reminderEmail, avatarUrl, birthdayEvents)
+
+`birthdayEvents` stores JSON array of `{year, category, title, description}` objects.
 
 ### WeChat Integration
 

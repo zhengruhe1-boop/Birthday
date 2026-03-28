@@ -16,6 +16,7 @@ export const contactsTable = pgTable("contacts", {
   hometown: text("hometown"),
   reminderEmail: text("reminder_email"),
   avatarUrl: text("avatar_url"),
+  birthdayEvents: text("birthday_events"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

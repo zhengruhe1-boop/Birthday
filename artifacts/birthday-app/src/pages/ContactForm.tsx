@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Camera, Trash2, X, Mail, CheckCircle } from "lucide-react";
+import { ArrowLeft, Camera, Trash2, X, Mail, CheckCircle, RefreshCw, Globe, Landmark } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { SelectNative } from "@/components/ui/select-native";
 import { useCreateContact, useUpdateContact, useContact, useDeleteContact } from "@/hooks/use-contacts";
 import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import type { BirthdayEvent } from "@workspace/api-client-react";
 
 const contactSchema = z.object({
   name: z.string().min(1, "请输入姓名"),
@@ -45,6 +46,10 @@ export default function ContactForm() {
 
   const [testEmailStatus, setTestEmailStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [testEmailMsg, setTestEmailMsg] = useState("");
+
+  const [events, setEvents] = useState<BirthdayEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const eventsPollerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(contactSchema),
@@ -125,6 +130,54 @@ export default function ContactForm() {
     setAvatarUrl(null);
     setAvatarError(null);
   };
+
+  // Populate events from contact data
+  useEffect(() => {
+    if (contact?.birthdayEvents && contact.birthdayEvents.length > 0) {
+      setEvents(contact.birthdayEvents as BirthdayEvent[]);
+      if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
+    } else if (isEdit && contact && contact.birthdayEvents?.length === 0) {
+      // Events not yet generated — poll every 5s until they appear
+      const poll = () => {
+        eventsPollerRef.current = setTimeout(async () => {
+          try {
+            const res = await fetch(`${import.meta.env.BASE_URL}api/contacts/${contactId}`, {
+              headers: getAuthHeaders(),
+            });
+            const data = await res.json();
+            if (data.birthdayEvents && data.birthdayEvents.length > 0) {
+              setEvents(data.birthdayEvents);
+            } else {
+              poll();
+            }
+          } catch {
+            // stop polling on error
+          }
+        }, 5000);
+      };
+      poll();
+    }
+    return () => {
+      if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
+    };
+  }, [contact?.birthdayEvents?.length, isEdit, contactId]);
+
+  const handleGenerateEvents = useCallback(async () => {
+    if (!contactId) return;
+    setEventsLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/contacts/${contactId}/birthday-events`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.events) setEvents(data.events);
+    } catch {
+      // ignore
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [contactId]);
 
   const handleSendTestEmail = async () => {
     if (!contactId) return;
@@ -392,6 +445,68 @@ export default function ContactForm() {
               />
             </div>
           </div>
+
+          {/* Birthday Events Card — only shown when editing */}
+          {isEdit && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">生日那天的历史</h2>
+                <button
+                  type="button"
+                  onClick={handleGenerateEvents}
+                  disabled={eventsLoading}
+                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                  title="重新生成"
+                >
+                  <RefreshCw className={cn("w-4 h-4", eventsLoading && "animate-spin")} />
+                </button>
+              </div>
+
+              {events.length > 0 ? (
+                <div className="space-y-3">
+                  {events.map((ev, i) => (
+                    <div key={i} className="flex gap-3 items-start">
+                      <div className={cn(
+                        "mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold",
+                        ev.category === "中国" ? "bg-rose-500" : "bg-blue-500"
+                      )}>
+                        {ev.category === "中国" ? <Landmark className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={cn(
+                            "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                            ev.category === "中国" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
+                          )}>
+                            {ev.category}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{ev.year}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground leading-tight">{ev.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ev.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : eventsLoading ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-muted-foreground">
+                  <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <p className="text-sm">AI 正在查阅历史档案…</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
+                  <p className="text-sm">AI 正在生成历史大事，稍候刷新…</p>
+                  <button
+                    type="button"
+                    onClick={handleGenerateEvents}
+                    className="text-xs text-primary underline underline-offset-2"
+                  >
+                    立即生成
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Extra Info Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">

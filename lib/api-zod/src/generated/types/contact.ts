@@ -5,6 +5,7 @@
  * Birthday App API
  * OpenAPI spec version: 0.1.0
  */
+import type { BirthdayEvent } from "./birthdayEvent";
 import type { ContactGender } from "./contactGender";
 
 export interface Contact {
@@ -23,6 +24,8 @@ export interface Contact {
   hometown?: string | null;
   reminderEmail?: string | null;
   avatarUrl?: string | null;
+  /** Historical events that happened on this birthday */
+  birthdayEvents: BirthdayEvent[];
   /** Days until next birthday */
   daysUntilBirthday: number;
   /** Current age if birth year is known */

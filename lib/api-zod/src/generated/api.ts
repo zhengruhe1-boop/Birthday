@@ -96,6 +96,20 @@ export const ListContactsResponseItem = zod.object({
   hometown: zod.string().nullish(),
   reminderEmail: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
+  birthdayEvents: zod
+    .array(
+      zod.object({
+        year: zod
+          .string()
+          .describe('Year the event happened (e.g. \"1949年\")'),
+        category: zod
+          .enum(["中国", "世界"])
+          .describe("Whether the event is Chinese or world history"),
+        title: zod.string().describe("Short title of the event"),
+        description: zod.string().describe("Brief description of the event"),
+      }),
+    )
+    .describe("Historical events that happened on this birthday"),
   daysUntilBirthday: zod.number().describe("Days until next birthday"),
   age: zod.number().nullish().describe("Current age if birth year is known"),
   birthdayDisplay: zod
@@ -147,6 +161,20 @@ export const GetContactResponse = zod.object({
   hometown: zod.string().nullish(),
   reminderEmail: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
+  birthdayEvents: zod
+    .array(
+      zod.object({
+        year: zod
+          .string()
+          .describe('Year the event happened (e.g. \"1949年\")'),
+        category: zod
+          .enum(["中国", "世界"])
+          .describe("Whether the event is Chinese or world history"),
+        title: zod.string().describe("Short title of the event"),
+        description: zod.string().describe("Brief description of the event"),
+      }),
+    )
+    .describe("Historical events that happened on this birthday"),
   daysUntilBirthday: zod.number().describe("Days until next birthday"),
   age: zod.number().nullish().describe("Current age if birth year is known"),
   birthdayDisplay: zod
@@ -194,6 +222,20 @@ export const UpdateContactResponse = zod.object({
   hometown: zod.string().nullish(),
   reminderEmail: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
+  birthdayEvents: zod
+    .array(
+      zod.object({
+        year: zod
+          .string()
+          .describe('Year the event happened (e.g. \"1949年\")'),
+        category: zod
+          .enum(["中国", "世界"])
+          .describe("Whether the event is Chinese or world history"),
+        title: zod.string().describe("Short title of the event"),
+        description: zod.string().describe("Brief description of the event"),
+      }),
+    )
+    .describe("Historical events that happened on this birthday"),
   daysUntilBirthday: zod.number().describe("Days until next birthday"),
   age: zod.number().nullish().describe("Current age if birth year is known"),
   birthdayDisplay: zod
@@ -240,6 +282,22 @@ export const GetUpcomingBirthdaysResponse = zod.object({
         hometown: zod.string().nullish(),
         reminderEmail: zod.string().nullish(),
         avatarUrl: zod.string().nullish(),
+        birthdayEvents: zod
+          .array(
+            zod.object({
+              year: zod
+                .string()
+                .describe('Year the event happened (e.g. \"1949年\")'),
+              category: zod
+                .enum(["中国", "世界"])
+                .describe("Whether the event is Chinese or world history"),
+              title: zod.string().describe("Short title of the event"),
+              description: zod
+                .string()
+                .describe("Brief description of the event"),
+            }),
+          )
+          .describe("Historical events that happened on this birthday"),
         daysUntilBirthday: zod.number().describe("Days until next birthday"),
         age: zod
           .number()
@@ -275,6 +333,22 @@ export const GetUpcomingBirthdaysResponse = zod.object({
         hometown: zod.string().nullish(),
         reminderEmail: zod.string().nullish(),
         avatarUrl: zod.string().nullish(),
+        birthdayEvents: zod
+          .array(
+            zod.object({
+              year: zod
+                .string()
+                .describe('Year the event happened (e.g. \"1949年\")'),
+              category: zod
+                .enum(["中国", "世界"])
+                .describe("Whether the event is Chinese or world history"),
+              title: zod.string().describe("Short title of the event"),
+              description: zod
+                .string()
+                .describe("Brief description of the event"),
+            }),
+          )
+          .describe("Historical events that happened on this birthday"),
         daysUntilBirthday: zod.number().describe("Days until next birthday"),
         age: zod
           .number()
@@ -310,6 +384,22 @@ export const GetUpcomingBirthdaysResponse = zod.object({
         hometown: zod.string().nullish(),
         reminderEmail: zod.string().nullish(),
         avatarUrl: zod.string().nullish(),
+        birthdayEvents: zod
+          .array(
+            zod.object({
+              year: zod
+                .string()
+                .describe('Year the event happened (e.g. \"1949年\")'),
+              category: zod
+                .enum(["中国", "世界"])
+                .describe("Whether the event is Chinese or world history"),
+              title: zod.string().describe("Short title of the event"),
+              description: zod
+                .string()
+                .describe("Brief description of the event"),
+            }),
+          )
+          .describe("Historical events that happened on this birthday"),
         daysUntilBirthday: zod.number().describe("Days until next birthday"),
         age: zod
           .number()
