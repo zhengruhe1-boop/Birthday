@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, UserPlus, Image as ImageIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, Trash2, X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select-native";
 import { useCreateContact, useUpdateContact, useContact, useDeleteContact } from "@/hooks/use-contacts";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const contactSchema = z.object({
@@ -32,11 +32,16 @@ export default function ContactForm() {
   const contactId = isEdit ? parseInt(params.id!, 10) : null;
 
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  
+
   const { data: contact, isLoading: isContactLoading } = useContact(contactId);
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(contactSchema),
@@ -66,15 +71,57 @@ export default function ContactForm() {
         hometown: contact.hometown || "",
         reminderEmail: contact.reminderEmail || "",
       });
+      setAvatarUrl(contact.avatarUrl ?? null);
     }
   }, [contact, isEdit, form]);
 
-  // Auth guard
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       setLocation("/login");
     }
   }, [isAuthenticated, isAuthLoading, setLocation]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch(`${import.meta.env.BASE_URL}api/upload`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "上传失败" }));
+        throw new Error(err.error || "上传失败");
+      }
+
+      const { url } = await res.json();
+      setAvatarUrl(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "上传失败，请重试";
+      setAvatarError(msg);
+    } finally {
+      setAvatarUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl(null);
+    setAvatarError(null);
+  };
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -84,6 +131,7 @@ export default function ContactForm() {
         reminderEmail: data.reminderEmail || null,
         relation: data.relation || null,
         hometown: data.hometown || null,
+        avatarUrl: avatarUrl ?? null,
       };
 
       if (isEdit && contactId) {
@@ -108,19 +156,23 @@ export default function ContactForm() {
   };
 
   if (isAuthLoading) return null;
-  if (isEdit && isContactLoading) return <div className="app-container flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div></div>;
+  if (isEdit && isContactLoading) return (
+    <div className="app-container flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+    </div>
+  );
 
   const isPending = createContact.isPending || updateContact.isPending;
-
-  // Month/Day options
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const displayAvatar = avatarUrl;
 
   return (
     <div className="app-container flex flex-col bg-slate-50/30">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4 flex items-center justify-between">
-        <button 
+        <button
           onClick={() => setLocation("/")}
           className="p-2 -ml-2 text-foreground hover:bg-gray-100 rounded-full transition-colors"
         >
@@ -131,7 +183,7 @@ export default function ContactForm() {
         </h1>
         <div className="w-10">
           {isEdit && (
-            <button 
+            <button
               onClick={handleDelete}
               className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
             >
@@ -143,32 +195,73 @@ export default function ContactForm() {
 
       <main className="flex-1 px-4 py-6 overflow-y-auto pb-24">
         <form id="contact-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          
-          {/* Avatar Profile */}
+
+          {/* Avatar Upload */}
           <div className="flex flex-col items-center mb-8">
-            <div className="relative w-24 h-24">
-              <div className="w-full h-full rounded-full bg-gradient-to-tr from-rose-100 to-red-50 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden">
-                {contact?.avatarUrl ? (
-                  <img src={contact.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            <div className="relative w-24 h-24 group">
+              <button
+                type="button"
+                onClick={handleAvatarClick}
+                disabled={avatarUploading}
+                className="w-full h-full rounded-full bg-gradient-to-tr from-rose-100 to-red-50 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden focus:outline-none"
+              >
+                {displayAvatar ? (
+                  <img src={displayAvatar} alt="头像" className="w-full h-full object-cover" />
+                ) : avatarUploading ? (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                  </div>
                 ) : (
-                  <img src={`${import.meta.env.BASE_URL}images/avatar-placeholder.png`} alt="Avatar Placeholder" className="w-full h-full object-cover opacity-60" />
+                  <div className="flex flex-col items-center gap-1 text-muted-foreground group-hover:text-primary transition-colors">
+                    <Camera className="w-8 h-8" />
+                    <span className="text-[10px] font-medium">上传头像</span>
+                  </div>
                 )}
-              </div>
-              <button type="button" className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-md border border-border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors">
-                <UserPlus className="w-4 h-4" />
               </button>
+
+              {displayAvatar && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full shadow border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {!displayAvatar && !avatarUploading && (
+                <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full shadow-md flex items-center justify-center text-white pointer-events-none">
+                  <Camera className="w-4 h-4" />
+                </div>
+              )}
             </div>
+
+            {avatarError && (
+              <p className="text-xs text-destructive mt-2 text-center">{avatarError}</p>
+            )}
+
+            <p className="text-xs text-muted-foreground mt-2">
+              {displayAvatar ? "点击头像可重新上传" : "点击上传头像（选填）"}
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
 
           {/* Basic Info Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">基本信息</h2>
-            
+
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">姓名 <span className="text-destructive">*</span></label>
-              <Input 
-                {...form.register("name")} 
-                placeholder="例如: 妈妈" 
+              <Input
+                {...form.register("name")}
+                placeholder="例如: 妈妈"
                 className={cn(form.formState.errors.name && "border-destructive")}
               />
               {form.formState.errors.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.name.message}</p>}
@@ -186,8 +279,8 @@ export default function ContactForm() {
                       onClick={() => field.onChange("male")}
                       className={cn(
                         "flex-1 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2",
-                        field.value === "male" 
-                          ? "border-blue-500 bg-blue-50 text-blue-600" 
+                        field.value === "male"
+                          ? "border-blue-500 bg-blue-50 text-blue-600"
                           : "border-border bg-white text-muted-foreground hover:bg-gray-50"
                       )}
                     >
@@ -198,8 +291,8 @@ export default function ContactForm() {
                       onClick={() => field.onChange("female")}
                       className={cn(
                         "flex-1 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2",
-                        field.value === "female" 
-                          ? "border-pink-500 bg-pink-50 text-pink-600" 
+                        field.value === "female"
+                          ? "border-pink-500 bg-pink-50 text-pink-600"
                           : "border-border bg-white text-muted-foreground hover:bg-gray-50"
                       )}
                     >
@@ -214,7 +307,7 @@ export default function ContactForm() {
           {/* Birthday Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">生日信息</h2>
-            
+
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">历法类型</label>
               <Controller
@@ -268,10 +361,10 @@ export default function ContactForm() {
 
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">出生年份 <span className="text-muted-foreground font-normal">(选填, 用于计算年龄)</span></label>
-              <Input 
-                type="number" 
-                {...form.register("birthYear")} 
-                placeholder="例如: 1990" 
+              <Input
+                type="number"
+                {...form.register("birthYear")}
+                placeholder="例如: 1990"
               />
             </div>
           </div>
@@ -279,7 +372,7 @@ export default function ContactForm() {
           {/* Extra Info Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">其他信息 <span className="text-xs font-normal normal-case">(选填)</span></h2>
-            
+
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">关系</label>
               <Input {...form.register("relation")} placeholder="例如：朋友、同事、家人" />
@@ -292,10 +385,10 @@ export default function ContactForm() {
 
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">邮箱提醒</label>
-              <Input 
-                type="email" 
-                {...form.register("reminderEmail")} 
-                placeholder="输入邮箱，提前1天发送提醒" 
+              <Input
+                type="email"
+                {...form.register("reminderEmail")}
+                placeholder="输入邮箱，提前1天发送提醒"
                 className={cn(form.formState.errors.reminderEmail && "border-destructive")}
               />
               {form.formState.errors.reminderEmail && <p className="text-xs text-destructive mt-1">{form.formState.errors.reminderEmail.message}</p>}
@@ -306,13 +399,13 @@ export default function ContactForm() {
 
       {/* Footer Action */}
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/80 backdrop-blur-md border-t border-border z-40">
-        <Button 
-          type="submit" 
-          form="contact-form" 
+        <Button
+          type="submit"
+          form="contact-form"
           className="w-full h-14 text-lg font-bold rounded-2xl"
-          disabled={isPending}
+          disabled={isPending || avatarUploading}
         >
-          {isPending ? "保存中..." : "保存记录"}
+          {isPending ? "保存中..." : avatarUploading ? "图片上传中..." : "保存记录"}
         </Button>
       </div>
     </div>
