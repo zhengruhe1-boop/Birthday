@@ -137,7 +137,8 @@ export default function ContactForm() {
       setEvents(contact.birthdayEvents as BirthdayEvent[]);
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
     } else if (isEdit && contact && contact.birthYear && contact.birthdayEvents?.length === 0) {
-      // Events not yet generated — poll every 5s until they appear (only if birthYear is set)
+      // Events not yet generated — immediately show loading and poll every 3s until they appear
+      setEventsLoading(true);
       const poll = () => {
         eventsPollerRef.current = setTimeout(async () => {
           try {
@@ -147,13 +148,15 @@ export default function ContactForm() {
             const data = await res.json();
             if (data.birthdayEvents && data.birthdayEvents.length > 0) {
               setEvents(data.birthdayEvents);
+              setEventsLoading(false);
             } else {
               poll();
             }
           } catch {
+            setEventsLoading(false);
             // stop polling on error
           }
-        }, 5000);
+        }, 3000);
       };
       poll();
     }
@@ -213,10 +216,16 @@ export default function ContactForm() {
 
       if (isEdit && contactId) {
         await updateContact.mutateAsync({ id: contactId, data: payload });
+        setLocation("/");
       } else {
-        await createContact.mutateAsync({ data: payload });
+        const newContact = await createContact.mutateAsync({ data: payload });
+        // If birthYear is set, navigate to the edit page so events auto-generate and display
+        if (payload.birthYear) {
+          setLocation(`/contact/${newContact.id}`);
+        } else {
+          setLocation("/");
+        }
       }
-      setLocation("/");
     } catch (error) {
       console.error("Form submission failed:", error);
       alert("保存失败，请检查填写内容");
