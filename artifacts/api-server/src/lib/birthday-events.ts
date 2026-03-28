@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import { logger } from "./logger.js";
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+const deepseek = new OpenAI({
+  baseURL: "https://api.deepseek.com",
+  apiKey: process.env.DEEPSEEK_API_KEY,
 });
 
 export interface BirthdayEvent {
@@ -14,12 +14,10 @@ export interface BirthdayEvent {
 }
 
 function extractJsonArray(text: string): BirthdayEvent[] {
-  // Strip markdown code fences
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   cleaned = cleaned.trim();
 
-  // Try direct parse first
   try {
     const parsed = JSON.parse(cleaned);
     if (Array.isArray(parsed)) return parsed;
@@ -27,7 +25,6 @@ function extractJsonArray(text: string): BirthdayEvent[] {
     // continue
   }
 
-  // Try to extract array from within the string
   const match = cleaned.match(/\[[\s\S]*\]/);
   if (match) {
     try {
@@ -63,8 +60,8 @@ export async function generateBirthdayEvents(
 要求：至少1条中国，至少1条世界，选真实事件，title不超过15字，description不超过50字。`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       max_tokens: 600,
       messages: [
         {
@@ -76,13 +73,13 @@ export async function generateBirthdayEvents(
     });
 
     const content = response.choices[0]?.message?.content ?? "";
-    logger.debug({ content: content.slice(0, 300) }, "AI birthday events raw response");
+    logger.debug({ content: content.slice(0, 300) }, "DeepSeek birthday events raw response");
 
     const events = extractJsonArray(content);
-    logger.info({ month, day, count: events.length }, "Birthday events generated");
+    logger.info({ month, day, count: events.length }, "Birthday events generated via DeepSeek");
     return events.slice(0, 3);
   } catch (err) {
-    logger.error({ err, month, day }, "Failed to generate birthday events");
+    logger.error({ err, month, day }, "Failed to generate birthday events via DeepSeek");
     return [];
   }
 }
