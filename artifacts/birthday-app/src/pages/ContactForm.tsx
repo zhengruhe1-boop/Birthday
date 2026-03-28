@@ -131,21 +131,31 @@ export default function ContactForm() {
     setAvatarError(null);
   };
 
-  // Populate events from contact data
+  // Populate events from contact data; poll while background generation is in progress
   useEffect(() => {
+    let isMounted = true;
+
     if (contact?.birthdayEvents && contact.birthdayEvents.length > 0) {
       setEvents(contact.birthdayEvents as BirthdayEvent[]);
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
     } else if (isEdit && contact && contact.birthYear && contact.birthdayEvents?.length === 0) {
-      // Events not yet generated — immediately show loading and poll every 3s until they appear
+      // Events not yet generated — show loading and poll until they appear
       setEventsLoading(true);
       const poll = () => {
         eventsPollerRef.current = setTimeout(async () => {
+          if (!isMounted) return;
           try {
             const res = await fetch(`${import.meta.env.BASE_URL}api/contacts/${contactId}`, {
               headers: getAuthHeaders(),
             });
+            if (!isMounted) return;
+            if (!res.ok) {
+              // Contact gone or error — stop polling
+              setEventsLoading(false);
+              return;
+            }
             const data = await res.json();
+            if (!isMounted) return;
             if (data.birthdayEvents && data.birthdayEvents.length > 0) {
               setEvents(data.birthdayEvents);
               setEventsLoading(false);
@@ -153,14 +163,15 @@ export default function ContactForm() {
               poll();
             }
           } catch {
-            setEventsLoading(false);
-            // stop polling on error
+            if (isMounted) setEventsLoading(false);
           }
         }, 3000);
       };
       poll();
     }
+
     return () => {
+      isMounted = false;
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
     };
   }, [contact?.birthdayEvents?.length, contact?.birthYear, isEdit, contactId]);
