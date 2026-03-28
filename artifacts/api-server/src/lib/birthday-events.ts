@@ -40,15 +40,16 @@ function extractJsonArray(text: string): BirthdayEvent[] {
 }
 
 export async function generateBirthdayEvents(
+  year: number,
   month: number,
   day: number,
   isLunar: boolean
 ): Promise<BirthdayEvent[]> {
   const dateLabel = isLunar
-    ? `农历${month}月${day}日`
-    : `公历${month}月${day}日`;
+    ? `农历${year}年${month}月${day}日`
+    : `公历${year}年${month}月${day}日`;
 
-  const prompt = `请列举在${dateLabel}这一天（不限年份）发生的3件有意义的重大历史事件，包含中国和世界的事件。
+  const prompt = `请列举在${dateLabel}这一天（即${month}月${day}日，不限年份）发生的3件有意义的重大历史事件，包含中国和世界的事件。同时，可以特别提及${year}年前后这个时代的重要历史背景。
 
 只返回一个JSON数组，格式：
 [
@@ -76,10 +77,10 @@ export async function generateBirthdayEvents(
     logger.debug({ content: content.slice(0, 300) }, "DeepSeek birthday events raw response");
 
     const events = extractJsonArray(content);
-    logger.info({ month, day, count: events.length }, "Birthday events generated via DeepSeek");
+    logger.info({ year, month, day, count: events.length }, "Birthday events generated via DeepSeek");
     return events.slice(0, 3);
   } catch (err) {
-    logger.error({ err, month, day }, "Failed to generate birthday events via DeepSeek");
+    logger.error({ err, year, month, day }, "Failed to generate birthday events via DeepSeek");
     return [];
   }
 }

@@ -110,16 +110,18 @@ router.post("/", async (req: AuthRequest, res) => {
     const contact = inserted[0];
     res.status(201).json(formatContact(contact));
 
-    // Generate birthday events in the background (non-blocking)
-    generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
-      .then(async (events) => {
-        if (events.length > 0) {
-          await db.update(contactsTable)
-            .set({ birthdayEvents: JSON.stringify(events) })
-            .where(eq(contactsTable.id, contact.id));
-        }
-      })
-      .catch(() => {/* silently ignore */});
+    // Generate birthday events in the background only if birthYear is provided
+    if (contact.birthYear) {
+      generateBirthdayEvents(contact.birthYear, contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
+        .then(async (events) => {
+          if (events.length > 0) {
+            await db.update(contactsTable)
+              .set({ birthdayEvents: JSON.stringify(events) })
+              .where(eq(contactsTable.id, contact.id));
+          }
+        })
+        .catch(() => {/* silently ignore */});
+    }
   } catch (err) {
     req.log.error({ err }, "Create contact error");
     res.status(500).json({ error: "Internal server error" });
@@ -171,7 +173,14 @@ router.post("/:id/birthday-events", async (req: AuthRequest, res) => {
     }
 
     const contact = contacts[0];
+
+    if (!contact.birthYear) {
+      res.status(422).json({ error: "需要填写出生年份才能生成历史大事", missingYear: true });
+      return;
+    }
+
     const events = await generateBirthdayEvents(
+      contact.birthYear,
       contact.birthdayMonth,
       contact.birthdayDay,
       contact.birthdayLunar
@@ -232,9 +241,9 @@ router.put("/:id", async (req: AuthRequest, res) => {
     const contact = updated[0];
     res.json(formatContact(contact));
 
-    // Re-generate events in background if birthday changed
-    if (birthdayChanged) {
-      generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
+    // Re-generate events in background if birthday changed and birthYear is present
+    if (birthdayChanged && contact.birthYear) {
+      generateBirthdayEvents(contact.birthYear, contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
         .then(async (events) => {
           if (events.length > 0) {
             await db.update(contactsTable)

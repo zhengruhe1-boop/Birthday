@@ -136,8 +136,8 @@ export default function ContactForm() {
     if (contact?.birthdayEvents && contact.birthdayEvents.length > 0) {
       setEvents(contact.birthdayEvents as BirthdayEvent[]);
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
-    } else if (isEdit && contact && contact.birthdayEvents?.length === 0) {
-      // Events not yet generated — poll every 5s until they appear
+    } else if (isEdit && contact && contact.birthYear && contact.birthdayEvents?.length === 0) {
+      // Events not yet generated — poll every 5s until they appear (only if birthYear is set)
       const poll = () => {
         eventsPollerRef.current = setTimeout(async () => {
           try {
@@ -160,7 +160,7 @@ export default function ContactForm() {
     return () => {
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
     };
-  }, [contact?.birthdayEvents?.length, isEdit, contactId]);
+  }, [contact?.birthdayEvents?.length, contact?.birthYear, isEdit, contactId]);
 
   const handleGenerateEvents = useCallback(async () => {
     if (!contactId) return;
@@ -451,18 +451,29 @@ export default function ContactForm() {
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">生日那天的历史</h2>
-                <button
-                  type="button"
-                  onClick={handleGenerateEvents}
-                  disabled={eventsLoading}
-                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                  title="重新生成"
-                >
-                  <RefreshCw className={cn("w-4 h-4", eventsLoading && "animate-spin")} />
-                </button>
+                {contact?.birthYear && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateEvents}
+                    disabled={eventsLoading}
+                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                    title="重新生成"
+                  >
+                    <RefreshCw className={cn("w-4 h-4", eventsLoading && "animate-spin")} />
+                  </button>
+                )}
               </div>
 
-              {events.length > 0 ? (
+              {!contact?.birthYear ? (
+                // No birth year — prompt user to fill it in
+                <div className="flex flex-col items-center gap-2 py-5">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 text-lg">
+                    📅
+                  </div>
+                  <p className="text-sm font-medium text-foreground text-center">出生年月日必填才能生成</p>
+                  <p className="text-xs text-muted-foreground text-center">请在上方「出生年份」填写完整年份，AI 将根据出生年月日生成那天的历史大事</p>
+                </div>
+              ) : events.length > 0 ? (
                 <div className="space-y-3">
                   {events.map((ev, i) => (
                     <div key={i} className="flex gap-3 items-start">
