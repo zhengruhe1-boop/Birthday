@@ -527,7 +527,6 @@ export default function ContactForm() {
                           <span className="text-xs text-muted-foreground">{ev.year}</span>
                         </div>
                         <p className="text-sm font-semibold text-foreground leading-tight">{ev.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ev.description}</p>
                       </div>
                     </div>
                   ))}
