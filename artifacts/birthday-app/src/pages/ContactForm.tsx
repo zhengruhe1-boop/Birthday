@@ -275,6 +275,12 @@ export default function ContactForm() {
   const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
   // Watch form fields for live reactivity in the events card
   const formBirthYear = form.watch("birthYear");
+  const formMonth = form.watch("birthdayMonth");
+  const formDay = form.watch("birthdayDay");
+  const formLunar = form.watch("birthdayLunar");
+  const birthDateLabel = formBirthYear
+    ? `${formLunar ? "农历" : ""}${formBirthYear}年${formMonth}月${formDay}日`
+    : null;
 
   const displayAvatar = avatarUrl;
 
@@ -524,7 +530,7 @@ export default function ContactForm() {
                           )}>
                             {ev.category}
                           </span>
-                          <span className="text-xs text-muted-foreground">{ev.year}</span>
+                          <span className="text-xs text-muted-foreground">{birthDateLabel}</span>
                         </div>
                         <p className="text-sm font-semibold text-foreground leading-tight">{ev.title}</p>
                       </div>
