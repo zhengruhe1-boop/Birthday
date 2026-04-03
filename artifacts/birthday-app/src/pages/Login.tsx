@@ -211,25 +211,23 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/60 to-white"></div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col pt-24 px-6 pb-8">
+      <div className="relative z-10 flex-1 flex flex-col pt-14 px-6 pb-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col items-center text-center mt-12 mb-16"
+          className="flex flex-col items-center text-center mt-4 mb-10"
         >
-          <div className="w-24 h-24 rounded-3xl bg-white shadow-xl shadow-primary/20 flex items-center justify-center p-2 mb-6 transform -rotate-3">
+          <div className="w-20 h-20 rounded-3xl bg-white shadow-xl shadow-primary/20 flex items-center justify-center p-2 mb-5 transform -rotate-3">
             <img
               src={`${import.meta.env.BASE_URL}images/logo.png`}
               alt="生日通 Logo"
               className="w-full h-full object-contain rounded-2xl transform rotate-3"
             />
           </div>
-          <h1 className="text-4xl font-display font-bold text-foreground mb-3 tracking-tight">生日通</h1>
-          <p className="text-muted-foreground text-lg">记住每一个重要的日子</p>
+          <h1 className="text-4xl font-display font-bold text-foreground mb-2 tracking-tight">生日通</h1>
+          <p className="text-muted-foreground text-base">记住每一个重要的日子</p>
         </motion.div>
-
-        <div className="flex-1"></div>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -323,7 +321,7 @@ export default function Login() {
           )}
         </motion.div>
 
-        <div className="mt-8 text-center text-xs text-muted-foreground">
+        <div className="mt-6 text-center text-xs text-muted-foreground">
           登录即代表同意{" "}
           <button
             type="button"
