@@ -267,5 +267,89 @@ router.post("/notify-run", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/email-config ───────────────────────────────────────────────
+router.get("/email-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getEmailConfig } = await import("../lib/email.js");
+    res.json(await getEmailConfig());
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/email-config ───────────────────────────────────────────────
+router.put("/email-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { enabled, smtpHost, smtpPort, smtpSecure, senderEmail, authCode, daysBefore, sendHour } = req.body as {
+      enabled?:     boolean;
+      smtpHost?:    string;
+      smtpPort?:    number;
+      smtpSecure?:  boolean;
+      senderEmail?: string;
+      authCode?:    string;
+      daysBefore?:  number[];
+      sendHour?:    number;
+    };
+
+    if (enabled     !== undefined) await setSetting("email_enabled",     String(enabled));
+    if (smtpHost    !== undefined) await setSetting("email_smtp_host",   smtpHost.trim());
+    if (smtpPort    !== undefined) await setSetting("email_smtp_port",   String(smtpPort));
+    if (smtpSecure  !== undefined) await setSetting("email_smtp_secure", String(smtpSecure));
+    if (senderEmail !== undefined) await setSetting("email_sender",      senderEmail.trim());
+    // Only update authCode if a non-empty value is provided (blank = keep existing)
+    if (authCode !== undefined && authCode.trim() !== "") {
+      await setSetting("email_auth_code", authCode.trim());
+    }
+    if (daysBefore !== undefined) await setSetting("email_days_before", daysBefore.map(String).join(","));
+    if (sendHour   !== undefined) await setSetting("email_send_hour",   String(sendHour));
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/email-verify ─────────────────────────────────────────────
+router.post("/email-verify", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { verifyEmailConfig } = await import("../lib/email.js");
+    res.json(await verifyEmailConfig());
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/email-test ────────────────────────────────────────────────
+router.post("/email-test", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { toEmail } = req.body as { toEmail?: string };
+    if (!toEmail || !toEmail.includes("@")) {
+      res.status(400).json({ ok: false, message: "请提供有效的收件邮箱" });
+      return;
+    }
+    const { sendTestEmail } = await import("../lib/email.js");
+    res.json(await sendTestEmail(toEmail));
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/email-run ─────────────────────────────────────────────────
+router.post("/email-run", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { runBirthdayReminders } = await import("../lib/reminder.js");
+    const result = await runBirthdayReminders();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export { getSetting };
 export default router;
+

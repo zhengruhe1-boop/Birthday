@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock, Sparkles, Zap } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock, Sparkles, Zap, Mail, Send, ShieldCheck } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -1304,8 +1304,390 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ─── EmailConfigPanel ─────────────────────────────────────────────────────────
+interface EmailConfig {
+  enabled:       boolean;
+  smtpHost:      string;
+  smtpPort:      number;
+  smtpSecure:    boolean;
+  senderEmail:   string;
+  authCodeSet:   boolean;
+  daysBefore:    number[];
+  sendHour:      number;
+  lastRunAt:     string | null;
+  lastRunResult: { sent: number; errors: number } | null;
+}
+
+function EmailConfigPanel({ adminKey }: { adminKey: string }) {
+  const BASE = import.meta.env.BASE_URL;
+  const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
+
+  const [cfg, setCfg]         = useState<EmailConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Edit state
+  const [enabled,     setEnabled]     = useState(true);
+  const [smtpHost,    setSmtpHost]    = useState("smtp.qq.com");
+  const [smtpPort,    setSmtpPort]    = useState(465);
+  const [smtpSecure,  setSmtpSecure]  = useState(true);
+  const [senderEmail, setSenderEmail] = useState("");
+  const [authCode,    setAuthCode]    = useState("");
+  const [daysBefore,  setDaysBefore]  = useState<number[]>([0, 1]);
+  const [sendHour,    setSendHour]    = useState(8);
+
+  // Test email
+  const [testEmail, setTestEmail]   = useState("");
+  const [testLoading, setTestLoading] = useState(false);
+  const [testMsg, setTestMsg]       = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Manual run
+  const [runLoading, setRunLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${BASE}api/admin/email-config`, { headers });
+      if (!r.ok) throw new Error();
+      const d: EmailConfig = await r.json();
+      setCfg(d);
+      setEnabled(d.enabled);
+      setSmtpHost(d.smtpHost);
+      setSmtpPort(d.smtpPort);
+      setSmtpSecure(d.smtpSecure);
+      setSenderEmail(d.senderEmail);
+      setDaysBefore(d.daysBefore);
+      setSendHour(d.sendHour);
+    } catch {
+      setMsg({ type: "err", text: "加载配置失败" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      const body: Record<string, unknown> = { enabled, smtpHost, smtpPort, smtpSecure, senderEmail, daysBefore, sendHour };
+      if (authCode.trim()) body.authCode = authCode.trim();
+      const r = await fetch(`${BASE}api/admin/email-config`, { method: "PUT", headers, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error();
+      setMsg({ type: "ok", text: "配置已保存" });
+      setAuthCode("");
+      await load();
+    } catch {
+      setMsg({ type: "err", text: "保存失败，请重试" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const verify = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      const r = await fetch(`${BASE}api/admin/email-verify`, { method: "POST", headers });
+      const d = await r.json();
+      setMsg({ type: d.ok ? "ok" : "err", text: d.message });
+    } catch {
+      setMsg({ type: "err", text: "验证请求失败" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    if (!testEmail.includes("@")) { setTestMsg({ type: "err", text: "请输入有效邮箱" }); return; }
+    setTestLoading(true); setTestMsg(null);
+    try {
+      const r = await fetch(`${BASE}api/admin/email-test`, { method: "POST", headers, body: JSON.stringify({ toEmail: testEmail }) });
+      const d = await r.json();
+      setTestMsg({ type: d.ok ? "ok" : "err", text: d.message });
+    } catch {
+      setTestMsg({ type: "err", text: "请求失败" });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const runNow = async () => {
+    setRunLoading(true); setMsg(null);
+    try {
+      const r = await fetch(`${BASE}api/admin/email-run`, { method: "POST", headers });
+      const d = await r.json();
+      setMsg({ type: "ok", text: `执行完成：发送 ${d.sent} 封，失败 ${d.errors} 封` });
+      await load();
+    } catch {
+      setMsg({ type: "err", text: "执行失败" });
+    } finally {
+      setRunLoading(false);
+    }
+  };
+
+  const toggleDay = (d: number) => {
+    setDaysBefore(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => a - b));
+  };
+
+  if (loading) return <div className="text-center py-20 text-gray-400">加载中…</div>;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* 全局消息 */}
+      {msg && (
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
+          msg.type === "ok" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
+        }`}>
+          {msg.type === "ok" ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+          {msg.text}
+        </div>
+      )}
+
+      {/* 开关 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${enabled ? "bg-rose-500" : "bg-gray-200"}`}>
+              <Mail className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">邮件生日提醒</p>
+              <p className="text-sm text-gray-400">{enabled ? "已开启，按计划自动发送提醒邮件" : "已关闭，不会发送任何邮件"}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setEnabled(!enabled)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? "bg-rose-500" : "bg-gray-300"}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${enabled ? "left-7" : "left-1"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* SMTP 配置 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-rose-500" /> SMTP 服务器配置
+        </h3>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs text-gray-500">SMTP 服务器</label>
+            <input
+              value={smtpHost}
+              onChange={e => setSmtpHost(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+              placeholder="smtp.qq.com"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-500">端口</label>
+            <input
+              type="number"
+              value={smtpPort}
+              onChange={e => setSmtpPort(parseInt(e.target.value) || 465)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSmtpSecure(!smtpSecure)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${smtpSecure ? "bg-rose-500" : "bg-gray-300"}`}
+          >
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${smtpSecure ? "left-5" : "left-0.5"}`} />
+          </button>
+          <span className="text-sm text-gray-600">启用 SSL/TLS 加密（推荐 QQ 邮箱保持开启）</span>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-gray-500">发件邮箱地址</label>
+          <input
+            type="email"
+            value={senderEmail}
+            onChange={e => setSenderEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+            placeholder="example@qq.com"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-gray-500">
+            邮箱授权码
+            {cfg?.authCodeSet && <span className="ml-2 text-green-600">（已设置，留空则保持不变）</span>}
+          </label>
+          <input
+            type="password"
+            value={authCode}
+            onChange={e => setAuthCode(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+            placeholder={cfg?.authCodeSet ? "••••••••••••••••" : "QQ 邮箱授权码（非登录密码）"}
+          />
+          <p className="text-xs text-gray-400">QQ 邮箱需在「设置 → 账户 → POP3/SMTP 服务」处生成授权码</p>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+            保存配置
+          </button>
+          <button
+            onClick={verify}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            验证 SMTP 连接
+          </button>
+        </div>
+      </div>
+
+      {/* 发送时机 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-rose-500" /> 发送时机
+        </h3>
+
+        <div className="space-y-2">
+          <label className="text-xs text-gray-500">提前提醒天数（可多选）</label>
+          <div className="flex flex-wrap gap-2">
+            {[0, 1, 3, 7].map(d => (
+              <button
+                key={d}
+                onClick={() => toggleDay(d)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  daysBefore.includes(d)
+                    ? "bg-rose-50 border-rose-300 text-rose-600"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {d === 0 ? "当天" : `提前 ${d} 天`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs text-gray-500">每日发送时间（整点）</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={6} max={22}
+              value={sendHour}
+              onChange={e => setSendHour(parseInt(e.target.value))}
+              className="flex-1 accent-rose-500"
+            />
+            <span className="text-sm font-semibold text-rose-600 w-14 text-right">{sendHour}:00</span>
+          </div>
+          <p className="text-xs text-gray-400">建议设置在早上 8 点，确保用户及时看到提醒</p>
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors"
+        >
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+          保存设置
+        </button>
+      </div>
+
+      {/* 发送测试邮件 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Send className="w-4 h-4 text-rose-500" /> 发送测试邮件
+        </h3>
+
+        {testMsg && (
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+            testMsg.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+          }`}>
+            {testMsg.type === "ok" ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+            {testMsg.text}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <input
+            type="email"
+            value={testEmail}
+            onChange={e => setTestEmail(e.target.value)}
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+            placeholder="收件邮箱地址"
+          />
+          <button
+            onClick={sendTest}
+            disabled={testLoading || !testEmail}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+          >
+            {testLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            发送测试
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">发送前请先保存 SMTP 配置，测试邮件将立即送达，不受「发送时机」限制。</p>
+      </div>
+
+      {/* 手动触发 & 上次运行 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Play className="w-4 h-4 text-rose-500" /> 手动触发 & 运行记录
+        </h3>
+
+        {cfg?.lastRunAt && (
+          <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1">
+            <p className="text-gray-500">上次运行：<span className="text-gray-800 font-medium">{formatDate(cfg.lastRunAt)}</span></p>
+            {cfg.lastRunResult && (
+              <p className="text-gray-500">
+                结果：已发送 <span className="text-green-600 font-medium">{cfg.lastRunResult.sent}</span> 封，
+                失败 <span className={cfg.lastRunResult.errors > 0 ? "text-red-600 font-medium" : "text-gray-400"}>{cfg.lastRunResult.errors}</span> 封
+              </p>
+            )}
+          </div>
+        )}
+
+        <button
+          onClick={runNow}
+          disabled={runLoading}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          {runLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          立即执行一次邮件提醒检查
+        </button>
+        <p className="text-xs text-gray-400">只会向「提前天数」范围内过生日的联系人发送邮件，不会重复发送当天已发的内容。</p>
+      </div>
+
+      {/* 使用说明 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <Mail className="w-4 h-4 text-gray-400" /> 使用说明
+        </h3>
+        <div className="space-y-3 text-sm text-gray-500">
+          {[
+            "在联系人详情页为每位联系人填写「提醒邮箱」，系统将向该邮箱发送生日提醒。",
+            "QQ 邮箱需在「账户 → POP3/SMTP 服务」处开启服务并获取授权码，使用授权码而非登录密码。",
+            "系统每天在设定时间自动检查当日或即将生日的联系人，并按配置发送邮件提醒。",
+            "邮件内容包含联系人姓名、生日、关系、剩余天数等信息，格式精美，支持移动端阅读。",
+            "可使用「发送测试邮件」功能验证 SMTP 配置是否正常，测试邮件不会计入正式提醒记录。",
+          ].map((text, i) => (
+            <div key={i} className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+              <p>{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-type Tab = "users" | "wechat" | "ai" | "notify" | "content";
+type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content";
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("users");
@@ -1315,6 +1697,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
     { id: "wechat",  label: "微信配置", icon: <Settings   className="w-4 h-4" /> },
     { id: "ai",      label: "AI 模型",  icon: <Sparkles   className="w-4 h-4" /> },
     { id: "notify",  label: "消息通知", icon: <Bell       className="w-4 h-4" /> },
+    { id: "email",   label: "邮件配置", icon: <Mail       className="w-4 h-4" /> },
     { id: "content", label: "内容配置", icon: <FileText   className="w-4 h-4" /> },
   ];
 
@@ -1375,6 +1758,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
           {tab === "wechat"  && <WechatConfigPanel  adminKey={adminKey} />}
           {tab === "ai"      && <AiConfigPanel      adminKey={adminKey} />}
           {tab === "notify"  && <NotifyConfigPanel  adminKey={adminKey} />}
+          {tab === "email"   && <EmailConfigPanel   adminKey={adminKey} />}
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
         </div>
       </main>
