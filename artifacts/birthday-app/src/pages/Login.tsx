@@ -248,7 +248,7 @@ export default function Login() {
             <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
               <h3 className="text-lg font-bold text-center mb-1">测试登录</h3>
               <p className="text-xs text-center text-muted-foreground mb-4">
-                同一设备自动匹配同一账号，数据不会丢失
+                用昵称登录：同一昵称始终对应同一账号，换设备或清除缓存数据不丢失
               </p>
 
               <Button

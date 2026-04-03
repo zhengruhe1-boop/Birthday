@@ -187,6 +187,17 @@ router.post("/wechat/login", async (req, res) => {
 });
 
 // ── POST /api/auth/mock-login ─────────────────────────────────────────────────
+//
+// Account matching priority:
+//   1. Nickname provided → match by nickname (nickname = stable account key)
+//      • If found: update sessionToken and re-bind deviceId so "quick login" follows
+//      • If not found: create new user
+//   2. No nickname → match by deviceId only (quick-login flow)
+//
+// This guarantees "same nickname → same account" even after the browser clears
+// localStorage (which destroys the locally-stored deviceId, a common occurrence
+// in WeChat's built-in WebView).
+//
 router.post("/mock-login", async (req, res) => {
   try {
     const body = MockLoginBody.safeParse(req.body);
@@ -195,49 +206,62 @@ router.post("/mock-login", async (req, res) => {
       return;
     }
 
-    const token = generateToken();
+    const token    = generateToken();
     const deviceId = (req.body as Record<string, unknown>).deviceId as string | undefined;
-    const nickname = body.data.nickname;
+    const nickname = body.data.nickname?.trim() ?? "";
 
     let user;
 
-    if (deviceId) {
+    if (nickname) {
+      // ── Nickname-first path ──────────────────────────────────────────────────
+      const existing = await db.select().from(usersTable)
+        .where(eq(usersTable.nickname, nickname))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Found by nickname: update token, re-bind deviceId (so quick-login works)
+        const updated = await db.update(usersTable)
+          .set({
+            sessionToken: token,
+            ...(deviceId ? { openId: `mock:${deviceId}` } : {}),
+          })
+          .where(eq(usersTable.id, existing[0].id))
+          .returning();
+        user = updated[0];
+      } else {
+        // New nickname: create user
+        const inserted = await db.insert(usersTable).values({
+          openId:       deviceId ? `mock:${deviceId}` : null,
+          nickname,
+          avatarUrl:    body.data.avatarUrl ?? null,
+          sessionToken: token,
+        }).returning();
+        user = inserted[0];
+      }
+    } else if (deviceId) {
+      // ── DeviceId-only path (quick login, no nickname) ────────────────────────
       const existing = await db.select().from(usersTable)
         .where(eq(usersTable.openId, `mock:${deviceId}`))
         .limit(1);
+
       if (existing.length > 0) {
         const updated = await db.update(usersTable)
-          .set({ sessionToken: token, nickname })
+          .set({ sessionToken: token })
           .where(eq(usersTable.openId, `mock:${deviceId}`))
           .returning();
         user = updated[0];
       } else {
         const inserted = await db.insert(usersTable).values({
-          openId: `mock:${deviceId}`,
-          nickname,
-          avatarUrl: body.data.avatarUrl ?? null,
+          openId:       `mock:${deviceId}`,
+          nickname:     "匿名用户",
+          avatarUrl:    body.data.avatarUrl ?? null,
           sessionToken: token,
         }).returning();
         user = inserted[0];
       }
     } else {
-      const existing = await db.select().from(usersTable)
-        .where(eq(usersTable.nickname, nickname))
-        .limit(1);
-      if (existing.length > 0) {
-        const updated = await db.update(usersTable)
-          .set({ sessionToken: token })
-          .where(eq(usersTable.id, existing[0].id))
-          .returning();
-        user = updated[0];
-      } else {
-        const inserted = await db.insert(usersTable).values({
-          nickname,
-          avatarUrl: body.data.avatarUrl ?? null,
-          sessionToken: token,
-        }).returning();
-        user = inserted[0];
-      }
+      res.status(400).json({ error: "Either nickname or deviceId is required" });
+      return;
     }
 
     res.json({
