@@ -39,9 +39,16 @@ export function ContactCard({ contact, index }: ContactCardProps) {
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
-              {contact.name}
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                {contact.name}
+              </h3>
+              {zodiac && (
+                <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                  {zodiac.symbol} {zodiac.name}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
               <span className={cn(
                 "inline-flex items-center justify-center px-1.5 py-0.5 rounded text-xs font-medium",
@@ -54,12 +61,6 @@ export function ContactCard({ contact, index }: ContactCardProps) {
               <span className="flex items-center gap-1 text-xs font-medium text-foreground/80 bg-secondary/50 px-2 py-0.5 rounded-full">
                 {contact.birthdayLunar ? "农历" : "公历"} {contact.birthdayDisplay}
               </span>
-
-              {zodiac && (
-                <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {zodiac.symbol} {zodiac.name}
-                </span>
-              )}
 
               {contact.age !== null && contact.age !== undefined && (
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
