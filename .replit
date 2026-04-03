@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [[artifacts]]
 id = "artifacts/api-server"
@@ -30,3 +30,6 @@ timeoutMs = 20000
 [userenv.shared]
 QQ_EMAIL = "991067346@qq.com"
 QQ_EMAIL_AUTH = "btulwdmzrfppbfgi"
+
+[nix]
+channel = "stable-25_05"
