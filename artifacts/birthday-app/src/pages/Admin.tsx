@@ -467,7 +467,7 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                 <p className="text-xs text-gray-400">
-                  第 {(page - 1) * 12 + 1}–{Math.min(page * 12, data.totalUsers)} 条，共 {data.totalUsers} 条
+                  第 {(page - 1) * 10 + 1}–{Math.min(page * 10, data.totalUsers)} 条，共 {data.totalUsers} 条
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -582,23 +582,21 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-gray-100">
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm">退出登录</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex-shrink-0">
+        <header className="bg-white border-b border-gray-200 px-8 py-4 flex-shrink-0 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">
             {navItems.find(n => n.id === tab)?.label}
           </h1>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 text-sm transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            退出登录
+          </button>
         </header>
 
         <div className="flex-1 p-8 overflow-auto">

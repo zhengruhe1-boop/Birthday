@@ -36,7 +36,7 @@ async function setSetting(key: string, value: string): Promise<void> {
 router.get("/stats", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const PAGE_SIZE = 12;
+    const PAGE_SIZE = 10;
     const page     = Math.max(1, parseInt((req.query.page as string) || "1", 10));
     const offset   = (page - 1) * PAGE_SIZE;
 
