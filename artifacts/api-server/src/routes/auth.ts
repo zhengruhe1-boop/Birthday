@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
 import { AuthRequest } from "../middlewares/auth.js";
+import { getSetting } from "./admin.js";
 
 const router: IRouter = Router();
 
@@ -11,6 +12,103 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+// ── GET /api/auth/wechat/public-config ────────────────────────────────────────
+// Returns whether WeChat OAuth is configured (no secrets exposed)
+router.get("/wechat/public-config", async (_req, res) => {
+  try {
+    const appId  = await getSetting("wechat_appid");
+    const secret = await getSetting("wechat_appsecret");
+    const domain = await getSetting("wechat_callback_domain");
+    const configured = !!(appId && secret && domain);
+    res.json({ configured, appId: configured ? appId : null });
+  } catch {
+    res.json({ configured: false, appId: null });
+  }
+});
+
+// ── GET /api/auth/wechat/oauth/callback ───────────────────────────────────────
+// WeChat redirects here after user grants authorization
+router.get("/wechat/oauth/callback", async (req, res) => {
+  const { code, state } = req.query as { code?: string; state?: string };
+
+  const frontendBase = (await getSetting("wechat_callback_domain")) || "";
+
+  if (!code) {
+    return res.redirect(`${frontendBase}/?wechat_error=no_code`);
+  }
+
+  try {
+    const appId     = await getSetting("wechat_appid");
+    const appSecret = await getSetting("wechat_appsecret");
+
+    if (!appId || !appSecret) {
+      return res.redirect(`${frontendBase}/?wechat_error=not_configured`);
+    }
+
+    // 1. Exchange code for access_token
+    const tokenUrl =
+      `https://api.weixin.qq.com/sns/oauth2/access_token` +
+      `?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
+
+    const tokenResp = await fetch(tokenUrl);
+    const tokenData = await tokenResp.json() as {
+      access_token?: string;
+      openid?: string;
+      errcode?: number;
+      errmsg?: string;
+    };
+
+    if (tokenData.errcode || !tokenData.access_token || !tokenData.openid) {
+      return res.redirect(`${frontendBase}/?wechat_error=token_failed`);
+    }
+
+    // 2. Get user info
+    const infoUrl =
+      `https://api.weixin.qq.com/sns/userinfo` +
+      `?access_token=${tokenData.access_token}&openid=${tokenData.openid}&lang=zh_CN`;
+
+    const infoResp = await fetch(infoUrl);
+    const infoData = await infoResp.json() as {
+      openid?: string;
+      nickname?: string;
+      headimgurl?: string;
+      errcode?: number;
+    };
+
+    if (infoData.errcode || !infoData.openid) {
+      return res.redirect(`${frontendBase}/?wechat_error=userinfo_failed`);
+    }
+
+    const openId   = infoData.openid;
+    const nickname = infoData.nickname || "微信用户";
+    const avatar   = infoData.headimgurl || null;
+    const token    = generateToken();
+
+    // 3. Upsert user
+    const existing = await db.select().from(usersTable)
+      .where(eq(usersTable.openId, openId)).limit(1);
+
+    if (existing.length > 0) {
+      await db.update(usersTable)
+        .set({ sessionToken: token, nickname, avatarUrl: avatar })
+        .where(eq(usersTable.openId, openId));
+    } else {
+      await db.insert(usersTable).values({ openId, nickname, avatarUrl: avatar, sessionToken: token });
+    }
+
+    // 4. Redirect to frontend with token in URL
+    const redirectUrl = new URL(frontendBase + "/");
+    redirectUrl.searchParams.set("wechat_token", token);
+    redirectUrl.searchParams.set("wechat_nickname", encodeURIComponent(nickname));
+    if (avatar) redirectUrl.searchParams.set("wechat_avatar", encodeURIComponent(avatar));
+    return res.redirect(redirectUrl.toString());
+
+  } catch (err) {
+    return res.redirect(`${frontendBase}/?wechat_error=server_error`);
+  }
+});
+
+// ── POST /api/auth/wechat/login (Mini Program jscode2session) ─────────────────
 router.post("/wechat/login", async (req, res) => {
   try {
     const body = WechatLoginBody.safeParse(req.body);
@@ -41,7 +139,7 @@ router.post("/wechat/login", async (req, res) => {
     const token = generateToken();
 
     const existingUsers = await db.select().from(usersTable).where(eq(usersTable.openId, openId)).limit(1);
-    
+
     let user;
     if (existingUsers.length > 0) {
       const updated = await db.update(usersTable)
@@ -59,13 +157,7 @@ router.post("/wechat/login", async (req, res) => {
     }
 
     res.json({
-      user: {
-        id: user.id,
-        openId: user.openId,
-        nickname: user.nickname,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-      },
+      user: { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
       token,
     });
   } catch (err) {
@@ -74,6 +166,7 @@ router.post("/wechat/login", async (req, res) => {
   }
 });
 
+// ── POST /api/auth/mock-login ─────────────────────────────────────────────────
 router.post("/mock-login", async (req, res) => {
   try {
     const body = MockLoginBody.safeParse(req.body);
@@ -83,18 +176,12 @@ router.post("/mock-login", async (req, res) => {
     }
 
     const token = generateToken();
-
-    // Use deviceId (if provided) as a stable key for mock users,
-    // falling back to nickname lookup so the same person always
-    // gets the same account and their data persists across logins.
-    // We read deviceId from req.body directly since it's optional and not in the schema.
     const deviceId = (req.body as Record<string, unknown>).deviceId as string | undefined;
     const nickname = body.data.nickname;
 
     let user;
 
     if (deviceId) {
-      // Look up by stable device key stored in openId field for mock users
       const existing = await db.select().from(usersTable)
         .where(eq(usersTable.openId, `mock:${deviceId}`))
         .limit(1);
@@ -114,7 +201,6 @@ router.post("/mock-login", async (req, res) => {
         user = inserted[0];
       }
     } else {
-      // Fallback: look up by nickname among mock users
       const existing = await db.select().from(usersTable)
         .where(eq(usersTable.nickname, nickname))
         .limit(1);
@@ -135,13 +221,7 @@ router.post("/mock-login", async (req, res) => {
     }
 
     res.json({
-      user: {
-        id: user.id,
-        openId: user.openId,
-        nickname: user.nickname,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-      },
+      user: { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
       token,
     });
   } catch (err) {
@@ -150,6 +230,7 @@ router.post("/mock-login", async (req, res) => {
   }
 });
 
+// ── POST /api/auth/logout ─────────────────────────────────────────────────────
 router.post("/logout", async (req: AuthRequest, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -166,6 +247,7 @@ router.post("/logout", async (req: AuthRequest, res) => {
   }
 });
 
+// ── GET /api/auth/me ──────────────────────────────────────────────────────────
 router.get("/me", async (req: AuthRequest, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -180,13 +262,7 @@ router.get("/me", async (req: AuthRequest, res) => {
       return;
     }
     const user = users[0];
-    res.json({
-      id: user.id,
-      openId: user.openId,
-      nickname: user.nickname,
-      avatarUrl: user.avatarUrl,
-      createdAt: user.createdAt,
-    });
+    res.json({ id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
   } catch (err) {
     req.log.error({ err }, "Get me error");
     res.status(500).json({ error: "Internal server error" });

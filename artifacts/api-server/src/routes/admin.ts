@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, contactsTable } from "@workspace/db";
+import { db, usersTable, contactsTable, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -14,7 +14,24 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
-// GET /api/admin/stats — all users with their contact counts and contact list
+// ── helpers ──────────────────────────────────────────────────────────────────
+async function getSetting(key: string): Promise<string | null> {
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+async function setSetting(key: string, value: string): Promise<void> {
+  const existing = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  if (existing.length > 0) {
+    await db.update(settingsTable)
+      .set({ value, updatedAt: new Date() })
+      .where(eq(settingsTable.key, key));
+  } else {
+    await db.insert(settingsTable).values({ key, value });
+  }
+}
+
+// ── GET /api/admin/stats ──────────────────────────────────────────────────────
 router.get("/stats", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
@@ -53,4 +70,46 @@ router.get("/stats", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/wechat-config ──────────────────────────────────────────────
+router.get("/wechat-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const appId      = await getSetting("wechat_appid");
+    const appSecret  = await getSetting("wechat_appsecret");
+    const domain     = await getSetting("wechat_callback_domain");
+    res.json({
+      appId:    appId    ?? "",
+      appSecret: appSecret ? "••••••••" : "",   // mask secret for display
+      appSecretSet: !!appSecret,
+      domain:   domain   ?? "",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/wechat-config ──────────────────────────────────────────────
+router.put("/wechat-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { appId, appSecret, domain } = req.body as {
+      appId?: string;
+      appSecret?: string;
+      domain?: string;
+    };
+
+    if (appId !== undefined)    await setSetting("wechat_appid",           appId.trim());
+    // Only overwrite secret if a real value (not placeholder) is provided
+    if (appSecret && !appSecret.startsWith("•")) {
+      await setSetting("wechat_appsecret", appSecret.trim());
+    }
+    if (domain !== undefined)   await setSetting("wechat_callback_domain", domain.trim());
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+export { getSetting };
 export default router;

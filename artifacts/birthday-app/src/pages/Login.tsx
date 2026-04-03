@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { MessageCircle, User } from "lucide-react";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 
 const DEVICE_ID_KEY = "birthday_app_device_id";
+const TOKEN_KEY = "birthday_app_token";
 
 function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -17,17 +18,83 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
+interface WechatPublicConfig {
+  configured: boolean;
+  appId: string | null;
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { mockLogin, isAuthenticated } = useAuth();
   const [nickname, setNickname] = useState("");
   const [isDevMode, setIsDevMode] = useState(false);
+  const [wechatConfig, setWechatConfig] = useState<WechatPublicConfig | null>(null);
+  const [wechatError, setWechatError] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (isAuthenticated) {
+  // ── On mount: handle WeChat OAuth callback token in URL params ───────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("wechat_token");
+    const err   = params.get("wechat_error");
+
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+      // Clean URL and navigate home
+      window.history.replaceState({}, "", window.location.pathname);
       setLocation("/");
+      return;
     }
+
+    if (err) {
+      const messages: Record<string, string> = {
+        no_code:          "微信授权未完成，请重试",
+        not_configured:   "微信登录尚未配置",
+        token_failed:     "微信授权码无效，请重试",
+        userinfo_failed:  "获取微信用户信息失败，请重试",
+        server_error:     "服务器错误，请稍后重试",
+      };
+      setWechatError(messages[err] ?? "微信登录失败，请重试");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [setLocation]);
+
+  // ── Fetch whether WeChat is configured ───────────────────────────────────────
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/auth/wechat/public-config`)
+      .then(r => r.json())
+      .then((data: WechatPublicConfig) => setWechatConfig(data))
+      .catch(() => setWechatConfig({ configured: false, appId: null }));
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) setLocation("/");
   }, [isAuthenticated, setLocation]);
+
+  // ── WeChat OAuth redirect ─────────────────────────────────────────────────────
+  const handleWechatLogin = () => {
+    if (!wechatConfig?.configured || !wechatConfig.appId) {
+      // Fall through to dev mode if not configured
+      setIsDevMode(true);
+      return;
+    }
+
+    // Build callback URL: the domain stored in settings + /api/auth/wechat/oauth/callback
+    // We redirect to WeChat's authorize page; WeChat will call our backend callback
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const callbackUrl = encodeURIComponent(
+      `${window.location.origin}${base}/api/auth/wechat/oauth/callback`
+    );
+    const oauthUrl =
+      `https://open.weixin.qq.com/connect/oauth2/authorize` +
+      `?appid=${wechatConfig.appId}` +
+      `&redirect_uri=${callbackUrl}` +
+      `&response_type=code` +
+      `&scope=snsapi_userinfo` +
+      `&state=login` +
+      `#wechat_redirect`;
+
+    window.location.href = oauthUrl;
+  };
 
   const handleMockLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,16 +108,12 @@ export default function Login() {
     mockLogin.mutate({ data: { nickname: "测试用户", deviceId } } as Parameters<typeof mockLogin.mutate>[0]);
   };
 
-  const handleWechatLogin = () => {
-    setIsDevMode(true);
-  };
-
   return (
     <div className="app-container flex flex-col relative overflow-hidden bg-white">
       <div className="absolute inset-0 z-0">
         <img
           src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-          alt="Warm elegant background"
+          alt="background"
           className="w-full h-full object-cover opacity-80"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/60 to-white"></div>
@@ -82,15 +145,26 @@ export default function Login() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="w-full max-w-sm mx-auto space-y-4"
         >
+          {wechatError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl px-4 py-3 text-center">
+              {wechatError}
+            </div>
+          )}
+
           {!isDevMode ? (
             <>
               <Button
                 size="lg"
                 className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
                 onClick={handleWechatLogin}
+                disabled={wechatConfig === null}
               >
                 <MessageCircle className="w-5 h-5" />
-                微信一键登录
+                {wechatConfig === null
+                  ? "加载中..."
+                  : wechatConfig.configured
+                    ? "微信一键登录"
+                    : "微信一键登录"}
               </Button>
 
               <div className="text-center mt-6">
@@ -109,7 +183,6 @@ export default function Login() {
                 同一设备自动匹配同一账号，数据不会丢失
               </p>
 
-              {/* Quick login - same device, same account */}
               <Button
                 className="w-full"
                 onClick={handleQuickLogin}
