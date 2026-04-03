@@ -167,5 +167,56 @@ router.put("/content-config", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/notify-config ──────────────────────────────────────────────
+router.get("/notify-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getNotifyConfig } = await import("../lib/wechat-notify.js");
+    res.json(await getNotifyConfig());
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/notify-config ──────────────────────────────────────────────
+router.put("/notify-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { enabled, daysBefore, sendHour, templateId, varName, varDate, varDays } = req.body as {
+      enabled?:    boolean;
+      daysBefore?: number[];
+      sendHour?:   number;
+      templateId?: string;
+      varName?:    string;
+      varDate?:    string;
+      varDays?:    string;
+    };
+
+    if (enabled !== undefined) await setSetting("notify_enabled", String(enabled));
+    if (daysBefore !== undefined) await setSetting("notify_days_before", daysBefore.map(String).join(","));
+    if (sendHour !== undefined)   await setSetting("notify_send_hour",   String(sendHour));
+    if (templateId !== undefined) await setSetting("notify_template_id", templateId.trim());
+    if (varName !== undefined)    await setSetting("notify_var_name",    varName.trim());
+    if (varDate !== undefined)    await setSetting("notify_var_date",    varDate.trim());
+    if (varDays !== undefined)    await setSetting("notify_var_days",    varDays.trim());
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/notify-run ────────────────────────────────────────────────
+router.post("/notify-run", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { runWechatBirthdayNotifications } = await import("../lib/wechat-notify.js");
+    const result = await runWechatBirthdayNotifications();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export { getSetting };
 export default router;

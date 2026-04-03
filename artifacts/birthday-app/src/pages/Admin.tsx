@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -722,8 +722,313 @@ function ContentConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ─── NotifyConfigPanel ────────────────────────────────────────────────────────
+interface NotifyConfig {
+  enabled:       boolean;
+  daysBefore:    number[];
+  sendHour:      number;
+  templateId:    string;
+  varName:       string;
+  varDate:       string;
+  varDays:       string;
+  lastRunAt:     string | null;
+  lastRunResult: { sent: number; skipped: number; errors: number } | null;
+}
+
+function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
+  const [cfg, setCfg] = useState<NotifyConfig>({
+    enabled: false, daysBefore: [1], sendHour: 8,
+    templateId: "", varName: "keyword1", varDate: "keyword2", varDays: "keyword3",
+    lastRunAt: null, lastRunResult: null,
+  });
+  const [loading, setLoading]   = useState(true);
+  const [saving,  setSaving]    = useState(false);
+  const [running, setRunning]   = useState(false);
+  const [saveMsg, setSaveMsg]   = useState<{ ok: boolean; text: string } | null>(null);
+  const [runMsg,  setRunMsg]    = useState<{ ok: boolean; text: string } | null>(null);
+
+  const DAY_OPTIONS = [
+    { value: 0, label: "生日当天" },
+    { value: 1, label: "提前 1 天" },
+    { value: 3, label: "提前 3 天" },
+    { value: 7, label: "提前 7 天" },
+  ];
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/notify-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then(r => r.json())
+      .then((d: NotifyConfig) => { setCfg(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [adminKey]);
+
+  const toggleDay = (day: number) => {
+    setCfg(c => ({
+      ...c,
+      daysBefore: c.daysBefore.includes(day)
+        ? c.daysBefore.filter(d => d !== day)
+        : [...c.daysBefore, day].sort((a, b) => a - b),
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setSaveMsg(null);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/notify-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          enabled:    cfg.enabled,
+          daysBefore: cfg.daysBefore,
+          sendHour:   cfg.sendHour,
+          templateId: cfg.templateId,
+          varName:    cfg.varName,
+          varDate:    cfg.varDate,
+          varDays:    cfg.varDays,
+        }),
+      });
+      setSaveMsg(res.ok ? { ok: true, text: "保存成功" } : { ok: false, text: "保存失败" });
+    } catch {
+      setSaveMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRun = async () => {
+    setRunning(true); setRunMsg(null);
+    try {
+      const res  = await fetch(`${import.meta.env.BASE_URL}api/admin/notify-run`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json() as { sent?: number; skipped?: number; errors?: number; error?: string };
+      if (res.ok && data.error === undefined) {
+        setRunMsg({ ok: true, text: `完成：发送 ${data.sent} 条，跳过 ${data.skipped} 条，失败 ${data.errors} 条` });
+        setCfg(c => ({ ...c, lastRunAt: new Date().toISOString(), lastRunResult: { sent: data.sent ?? 0, skipped: data.skipped ?? 0, errors: data.errors ?? 0 } }));
+      } else {
+        setRunMsg({ ok: false, text: data.error ?? "执行失败" });
+      }
+    } catch {
+      setRunMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
+      <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* ── 开关 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">公众号生日消息通知</h2>
+            <p className="text-xs text-gray-400 mt-0.5">通过微信公众号模板消息，在生日前提醒用户</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCfg(c => ({ ...c, enabled: !c.enabled }))}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${cfg.enabled ? "bg-rose-500" : "bg-gray-200"}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${cfg.enabled ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+        <div className="px-6 py-4">
+          <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${cfg.enabled ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-400"}`}>
+            <Bell className="w-3.5 h-3.5 flex-shrink-0" />
+            {cfg.enabled ? "通知已启用，将按以下配置每天自动发送" : "通知已关闭，不会向用户发送任何消息"}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 发送时机 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">发送时机</h2>
+          <p className="text-xs text-gray-400 mt-0.5">选择在生日哪几天发送提醒（可多选）</p>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            {DAY_OPTIONS.map(opt => {
+              const checked = cfg.daysBefore.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleDay(opt.value)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${
+                    checked
+                      ? "border-rose-400 bg-rose-50 text-rose-700"
+                      : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border-2 ${checked ? "border-rose-500 bg-rose-500" : "border-gray-300"}`}>
+                    {checked && <CheckCircle className="w-3 h-3 text-white" />}
+                  </div>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span>每天发送时间</span>
+            </div>
+            <select
+              value={cfg.sendHour}
+              onChange={e => setCfg(c => ({ ...c, sendHour: parseInt(e.target.value) }))}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+            >
+              {Array.from({ length: 24 }, (_, i) => (
+                <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 模板消息配置 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">模板消息配置</h2>
+          <p className="text-xs text-gray-400 mt-0.5">在公众号后台「功能 → 模板消息」中创建模板后，将 ID 和变量名填入此处</p>
+        </div>
+        <div className="p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">模板 ID</label>
+            <input
+              type="text"
+              value={cfg.templateId}
+              onChange={e => setCfg(c => ({ ...c, templateId: e.target.value }))}
+              placeholder="例：T1234567890abcdef"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 font-mono"
+            />
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-700 space-y-1.5">
+            <p className="font-semibold">模板变量说明</p>
+            <p>系统会在发送时将以下三个字段填入对应变量：</p>
+            <ul className="space-y-0.5 list-disc list-inside">
+              <li>联系人姓名（如「张伟」）</li>
+              <li>生日日期（如「10月10日」或「农历九月初九」）</li>
+              <li>天数提示（如「还有 3 天就是Ta的生日」）</li>
+            </ul>
+            <p>请将你在公众号后台看到的变量名称填入下方（如 keyword1、keyword2…）</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "姓名变量名", key: "varName" as const, placeholder: "keyword1" },
+              { label: "日期变量名", key: "varDate" as const, placeholder: "keyword2" },
+              { label: "天数变量名", key: "varDays" as const, placeholder: "keyword3" },
+            ].map(({ label, key, placeholder }) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                <input
+                  type="text"
+                  value={cfg[key]}
+                  onChange={e => setCfg(c => ({ ...c, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </div>
+            ))}
+          </div>
+
+          {saveMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${saveMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {saveMsg.text}
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {saving ? "保存中..." : "保存配置"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 上次运行状态 & 手动触发 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">运行记录</h2>
+          <p className="text-xs text-gray-400 mt-0.5">可立即触发一次发送以测试配置是否正确</p>
+        </div>
+        <div className="p-6 space-y-4">
+          {cfg.lastRunAt ? (
+            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1.5">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span>上次运行：{new Date(cfg.lastRunAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+              {cfg.lastRunResult && (
+                <div className="flex gap-4 text-xs text-gray-500 pl-6">
+                  <span className="text-green-600">✓ 发送 {cfg.lastRunResult.sent} 条</span>
+                  <span>跳过 {cfg.lastRunResult.skipped} 条</span>
+                  {cfg.lastRunResult.errors > 0 && <span className="text-red-500">✗ 失败 {cfg.lastRunResult.errors} 条</span>}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">暂无运行记录</p>
+          )}
+
+          {runMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${runMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {runMsg.text}
+            </div>
+          )}
+
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {running ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            {running ? "执行中..." : "立即执行一次"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 说明 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">配置说明</h2>
+        </div>
+        <div className="p-6 space-y-4 text-sm text-gray-600">
+          {[
+            "确保「微信配置」页面中已正确填写 AppID 和 AppSecret（公众号必须是服务号才支持模板消息）。",
+            "在公众号后台进入「功能 → 模板消息 → 添加模板」，选择或自定义生日提醒模板，获取模板 ID。",
+            "模板内容中的变量名（如 {{keyword1.DATA}}）需与上方「变量名配置」对应填写。",
+            "系统将在每天设定时间自动扫描数据库，向当天或指定天数内过生日的联系人所属用户发送通知。",
+            "只有通过微信登录的用户才会收到通知，测试账号用户不会收到。",
+          ].map((text, i) => (
+            <div key={i} className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+              <p>{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-type Tab = "users" | "wechat" | "content";
+type Tab = "users" | "wechat" | "content" | "notify";
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("users");
@@ -731,6 +1036,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "users",   label: "用户管理", icon: <Users    className="w-4 h-4" /> },
     { id: "wechat",  label: "微信配置", icon: <Settings className="w-4 h-4" /> },
+    { id: "notify",  label: "消息通知", icon: <Bell     className="w-4 h-4" /> },
     { id: "content", label: "内容配置", icon: <FileText className="w-4 h-4" /> },
   ];
 
@@ -789,6 +1095,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
         <div className="flex-1 p-8 overflow-auto">
           {tab === "users"   && <UsersPanel         adminKey={adminKey} />}
           {tab === "wechat"  && <WechatConfigPanel  adminKey={adminKey} />}
+          {tab === "notify"  && <NotifyConfigPanel  adminKey={adminKey} />}
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
         </div>
       </main>
