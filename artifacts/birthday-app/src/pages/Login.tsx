@@ -111,7 +111,6 @@ export default function Login() {
 
   // Derive whether we're in mock-first mode from the server config
   const loginMode = wechatConfig?.loginMode ?? "mock";
-  const [showMockPanel, setShowMockPanel] = useState(false);
 
   // ── Legal content ────────────────────────────────────────────────────────────
   const [legalContent, setLegalContent] = useState<LegalContent>({ termsOfService: "", privacyPolicy: "" });
@@ -165,8 +164,7 @@ export default function Login() {
   // ── WeChat OAuth redirect ─────────────────────────────────────────────────────
   const handleWechatLogin = () => {
     if (!wechatConfig?.configured || !wechatConfig.appId) {
-      // Fall through to dev mode if not configured
-      setShowMockPanel(true);
+      setWechatError("微信登录尚未配置，请联系管理员");
       return;
     }
 
@@ -241,8 +239,8 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── 测试登录面板（loginMode=mock 或用户手动切换时显示）── */}
-          {(loginMode === "mock" || showMockPanel) ? (
+          {/* ── 测试登录（loginMode=mock）── */}
+          {loginMode === "mock" && (
             <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
               <h3 className="text-lg font-bold text-center mb-1">测试登录</h3>
               <p className="text-xs text-center text-muted-foreground mb-4">
@@ -282,42 +280,20 @@ export default function Login() {
                   {mockLogin.isPending ? "登录中..." : "用此昵称登录"}
                 </Button>
               </form>
-
-              {/* 如果是微信模式手动进入测试面板，提供返回入口 */}
-              {loginMode === "wechat" && showMockPanel && (
-                <div className="text-center mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMockPanel(false)}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    返回微信登录
-                  </button>
-                </div>
-              )}
             </div>
-          ) : (
-            /* ── 微信登录按钮（loginMode=wechat 且未手动切换）── */
-            <>
-              <Button
-                size="lg"
-                className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
-                onClick={handleWechatLogin}
-                disabled={wechatConfig === null}
-              >
-                <MessageCircle className="w-5 h-5" />
-                {wechatConfig === null ? "加载中..." : "微信一键登录"}
-              </Button>
+          )}
 
-              <div className="text-center mt-6">
-                <button
-                  onClick={() => setShowMockPanel(true)}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-                >
-                  使用测试账号登录 (Dev Mode)
-                </button>
-              </div>
-            </>
+          {/* ── 微信登录（loginMode=wechat）── */}
+          {loginMode === "wechat" && (
+            <Button
+              size="lg"
+              className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
+              onClick={handleWechatLogin}
+              disabled={wechatConfig === null}
+            >
+              <MessageCircle className="w-5 h-5" />
+              {wechatConfig === null ? "加载中..." : "微信一键登录"}
+            </Button>
           )}
         </motion.div>
 
