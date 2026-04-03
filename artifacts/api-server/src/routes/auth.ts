@@ -12,6 +12,21 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+// ── GET /api/auth/legal ───────────────────────────────────────────────────────
+// Public: returns terms of service and privacy policy text
+router.get("/legal", async (_req, res) => {
+  try {
+    const terms   = await getSetting("terms_of_service");
+    const privacy = await getSetting("privacy_policy");
+    res.json({
+      termsOfService: terms   ?? "",
+      privacyPolicy:  privacy ?? "",
+    });
+  } catch {
+    res.json({ termsOfService: "", privacyPolicy: "" });
+  }
+});
+
 // ── GET /api/auth/wechat/public-config ────────────────────────────────────────
 // Returns whether WeChat OAuth is configured (no secrets exposed) and login mode
 router.get("/wechat/public-config", async (_req, res) => {

@@ -136,5 +136,36 @@ router.put("/wechat-config", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/content-config ─────────────────────────────────────────────
+router.get("/content-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const terms   = await getSetting("terms_of_service");
+    const privacy = await getSetting("privacy_policy");
+    res.json({
+      termsOfService: terms   ?? "",
+      privacyPolicy:  privacy ?? "",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/content-config ─────────────────────────────────────────────
+router.put("/content-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { termsOfService, privacyPolicy } = req.body as {
+      termsOfService?: string;
+      privacyPolicy?: string;
+    };
+    if (termsOfService !== undefined) await setSetting("terms_of_service", termsOfService);
+    if (privacyPolicy  !== undefined) await setSetting("privacy_policy",   privacyPolicy);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export { getSetting };
 export default router;

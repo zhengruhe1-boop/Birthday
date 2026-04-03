@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -611,15 +611,127 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ─── ContentConfigPanel ───────────────────────────────────────────────────────
+function ContentConfigPanel({ adminKey }: { adminKey: string }) {
+  const [terms,   setTerms]   = useState("");
+  const [privacy, setPrivacy] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/content-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then(r => r.json())
+      .then(d => { setTerms(d.termsOfService ?? ""); setPrivacy(d.privacyPolicy ?? ""); })
+      .catch(() => setError("加载失败，请刷新重试"))
+      .finally(() => setLoading(false));
+  }, [adminKey]);
+
+  const handleSave = async () => {
+    setSaving(true); setError(null); setSaved(false);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/content-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ termsOfService: terms, privacyPolicy: privacy }),
+      });
+      if (!res.ok) throw new Error("保存失败");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-40 text-gray-400 text-sm">加载中…</div>
+  );
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      {/* Header info card */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 text-sm text-blue-700">
+        在此编辑用户协议和隐私政策的正文内容。支持换行，用户点击登录页底部链接时将弹窗展示对应内容。
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Terms of Service */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">用户协议</h3>
+        </div>
+        <div className="p-6">
+          <textarea
+            value={terms}
+            onChange={e => setTerms(e.target.value)}
+            rows={12}
+            placeholder={"请输入用户协议内容…\n\n例如：\n第一条 服务说明\n本应用仅供个人使用…"}
+            className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-4 py-3 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent placeholder:text-gray-300"
+          />
+          <p className="mt-2 text-xs text-gray-400 text-right">{terms.length} 字</p>
+        </div>
+      </div>
+
+      {/* Privacy Policy */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">隐私政策</h3>
+        </div>
+        <div className="p-6">
+          <textarea
+            value={privacy}
+            onChange={e => setPrivacy(e.target.value)}
+            rows={12}
+            placeholder={"请输入隐私政策内容…\n\n例如：\n一、信息收集\n本应用会收集您的生日联系人信息…"}
+            className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-4 py-3 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent placeholder:text-gray-300"
+          />
+          <p className="mt-2 text-xs text-gray-400 text-right">{privacy.length} 字</p>
+        </div>
+      </div>
+
+      {/* Save button */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {saving ? "保存中…" : "保存内容"}
+        </button>
+        {saved && (
+          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+            <CheckCircle className="w-4 h-4" />
+            已保存
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-type Tab = "users" | "wechat";
+type Tab = "users" | "wechat" | "content";
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("users");
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "users",  label: "用户管理", icon: <Users className="w-4 h-4" /> },
-    { id: "wechat", label: "微信配置", icon: <Settings className="w-4 h-4" /> },
+    { id: "users",   label: "用户管理", icon: <Users    className="w-4 h-4" /> },
+    { id: "wechat",  label: "微信配置", icon: <Settings className="w-4 h-4" /> },
+    { id: "content", label: "内容配置", icon: <FileText className="w-4 h-4" /> },
   ];
 
   return (
@@ -675,8 +787,9 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
         </header>
 
         <div className="flex-1 p-8 overflow-auto">
-          {tab === "users"  && <UsersPanel  adminKey={adminKey} />}
-          {tab === "wechat" && <WechatConfigPanel adminKey={adminKey} />}
+          {tab === "users"   && <UsersPanel         adminKey={adminKey} />}
+          {tab === "wechat"  && <WechatConfigPanel  adminKey={adminKey} />}
+          {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
         </div>
       </main>
     </div>
