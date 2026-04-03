@@ -13,16 +13,21 @@ function generateToken(): string {
 }
 
 // ── GET /api/auth/wechat/public-config ────────────────────────────────────────
-// Returns whether WeChat OAuth is configured (no secrets exposed)
+// Returns whether WeChat OAuth is configured (no secrets exposed) and login mode
 router.get("/wechat/public-config", async (_req, res) => {
   try {
-    const appId  = await getSetting("wechat_appid");
-    const secret = await getSetting("wechat_appsecret");
-    const domain = await getSetting("wechat_callback_domain");
+    const appId     = await getSetting("wechat_appid");
+    const secret    = await getSetting("wechat_appsecret");
+    const domain    = await getSetting("wechat_callback_domain");
+    const loginMode = await getSetting("login_mode") ?? "mock";
     const configured = !!(appId && secret && domain);
-    res.json({ configured, appId: configured ? appId : null });
+    res.json({
+      configured,
+      appId: configured ? appId : null,
+      loginMode,  // "wechat" | "mock"
+    });
   } catch {
-    res.json({ configured: false, appId: null });
+    res.json({ configured: false, appId: null, loginMode: "mock" });
   }
 });
 

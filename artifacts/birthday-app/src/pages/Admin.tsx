@@ -39,6 +39,7 @@ interface WechatConfig {
   appSecret: string;
   appSecretSet: boolean;
   domain: string;
+  loginMode: "wechat" | "mock";
 }
 
 function formatBirthday(c: ContactRecord) {
@@ -119,7 +120,7 @@ function LoginPage({ onLogin }: { onLogin: (key: string) => void }) {
 
 // ─── WeChat Config Panel ──────────────────────────────────────────────────────
 function WechatConfigPanel({ adminKey }: { adminKey: string }) {
-  const [config, setConfig] = useState<WechatConfig>({ appId: "", appSecret: "", appSecretSet: false, domain: "" });
+  const [config, setConfig] = useState<WechatConfig>({ appId: "", appSecret: "", appSecretSet: false, domain: "", loginMode: "mock" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -144,6 +145,7 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           appId: config.appId,
           appSecret: config.appSecret,
           domain: config.domain,
+          loginMode: config.loginMode,
         }),
       });
       setSaveMsg(res.ok ? { ok: true, text: "保存成功" } : { ok: false, text: "保存失败" });
@@ -164,24 +166,97 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
     </div>
   );
 
-  const isConfigured = !!(config.appId && config.appSecretSet && config.domain);
+  const isWechatConfigured = !!(config.appId && config.appSecretSet && config.domain);
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Status badge */}
-      <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium ${
-        isConfigured ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-      }`}>
-        {isConfigured
-          ? <><CheckCircle className="w-4 h-4" /> 微信 OAuth 已配置，前端将使用真实微信登录</>
-          : <><AlertCircle className="w-4 h-4" /> 尚未完整配置，前端仍使用测试模式登录</>}
-      </div>
 
-      {/* Form */}
+      {/* ── 登录方式选择 ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">微信公众号配置</h2>
-          <p className="text-xs text-gray-400 mt-0.5">需要微信服务号，在公众号后台 → 开发 → 基本配置中获取</p>
+          <h2 className="text-sm font-semibold text-gray-700">登录方式</h2>
+          <p className="text-xs text-gray-400 mt-0.5">选择前端登录页向用户展示的登录方式</p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-2 gap-3">
+            {/* 微信登录 */}
+            <button
+              type="button"
+              onClick={() => setConfig(c => ({ ...c, loginMode: "wechat" }))}
+              className={`relative flex flex-col items-center gap-3 px-4 py-5 rounded-xl border-2 transition-all ${
+                config.loginMode === "wechat"
+                  ? "border-[#07C160] bg-green-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.loginMode === "wechat" && (
+                <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-[#07C160]" />
+              )}
+              <div className="w-10 h-10 rounded-full bg-[#07C160] flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">微信登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">使用微信 OAuth 授权</p>
+              </div>
+              {!isWechatConfigured && config.loginMode === "wechat" && (
+                <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-0.5">需完成微信配置</p>
+              )}
+            </button>
+
+            {/* 测试登录 */}
+            <button
+              type="button"
+              onClick={() => setConfig(c => ({ ...c, loginMode: "mock" }))}
+              className={`relative flex flex-col items-center gap-3 px-4 py-5 rounded-xl border-2 transition-all ${
+                config.loginMode === "mock"
+                  ? "border-rose-400 bg-rose-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.loginMode === "mock" && (
+                <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-rose-500" />
+              )}
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">测试登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">昵称登录，无需微信</p>
+              </div>
+            </button>
+          </div>
+
+          <div className={`mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs ${
+            config.loginMode === "wechat"
+              ? "bg-green-50 text-green-700"
+              : "bg-rose-50 text-rose-700"
+          }`}>
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            {config.loginMode === "wechat"
+              ? "前端登录页将显示「微信一键登录」按钮，用户通过微信授权登录"
+              : "前端登录页将直接显示测试登录面板，用户无需微信即可使用"}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 微信 OAuth 配置 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">微信公众号配置</h2>
+            <p className="text-xs text-gray-400 mt-0.5">需要微信服务号，在公众号后台 → 开发 → 基本配置中获取</p>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+            isWechatConfigured ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-600"
+          }`}>
+            {isWechatConfigured ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+            {isWechatConfigured ? "已配置" : "未配置"}
+          </span>
         </div>
         <div className="p-6 space-y-5">
           <div>
@@ -234,7 +309,7 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
             disabled={saving}
             className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
           >
-            {saving ? "保存中..." : "保存配置"}
+            {saving ? "保存中..." : "保存所有配置"}
           </button>
         </div>
       </div>

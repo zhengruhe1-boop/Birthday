@@ -21,15 +21,19 @@ function getOrCreateDeviceId(): string {
 interface WechatPublicConfig {
   configured: boolean;
   appId: string | null;
+  loginMode: "wechat" | "mock";
 }
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { mockLogin, isAuthenticated } = useAuth();
   const [nickname, setNickname] = useState("");
-  const [isDevMode, setIsDevMode] = useState(false);
   const [wechatConfig, setWechatConfig] = useState<WechatPublicConfig | null>(null);
   const [wechatError, setWechatError] = useState<string | null>(null);
+
+  // Derive whether we're in mock-first mode from the server config
+  const loginMode = wechatConfig?.loginMode ?? "mock";
+  const [showMockPanel, setShowMockPanel] = useState(false);
 
   // ── On mount: handle WeChat OAuth callback token in URL params ───────────────
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function Login() {
   const handleWechatLogin = () => {
     if (!wechatConfig?.configured || !wechatConfig.appId) {
       // Fall through to dev mode if not configured
-      setIsDevMode(true);
+      setShowMockPanel(true);
       return;
     }
 
@@ -151,32 +155,8 @@ export default function Login() {
             </div>
           )}
 
-          {!isDevMode ? (
-            <>
-              <Button
-                size="lg"
-                className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
-                onClick={handleWechatLogin}
-                disabled={wechatConfig === null}
-              >
-                <MessageCircle className="w-5 h-5" />
-                {wechatConfig === null
-                  ? "加载中..."
-                  : wechatConfig.configured
-                    ? "微信一键登录"
-                    : "微信一键登录"}
-              </Button>
-
-              <div className="text-center mt-6">
-                <button
-                  onClick={() => setIsDevMode(true)}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-                >
-                  使用测试账号登录 (Dev Mode)
-                </button>
-              </div>
-            </>
-          ) : (
+          {/* ── 测试登录面板（loginMode=mock 或用户手动切换时显示）── */}
+          {(loginMode === "mock" || showMockPanel) ? (
             <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
               <h3 className="text-lg font-bold text-center mb-1">测试登录</h3>
               <p className="text-xs text-center text-muted-foreground mb-4">
@@ -217,16 +197,41 @@ export default function Login() {
                 </Button>
               </form>
 
-              <div className="text-center mt-2">
+              {/* 如果是微信模式手动进入测试面板，提供返回入口 */}
+              {loginMode === "wechat" && showMockPanel && (
+                <div className="text-center mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMockPanel(false)}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    返回微信登录
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── 微信登录按钮（loginMode=wechat 且未手动切换）── */
+            <>
+              <Button
+                size="lg"
+                className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
+                onClick={handleWechatLogin}
+                disabled={wechatConfig === null}
+              >
+                <MessageCircle className="w-5 h-5" />
+                {wechatConfig === null ? "加载中..." : "微信一键登录"}
+              </Button>
+
+              <div className="text-center mt-6">
                 <button
-                  type="button"
-                  onClick={() => setIsDevMode(false)}
-                  className="text-sm text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowMockPanel(true)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
                 >
-                  返回微信登录
+                  使用测试账号登录 (Dev Mode)
                 </button>
               </div>
-            </div>
+            </>
           )}
         </motion.div>
 

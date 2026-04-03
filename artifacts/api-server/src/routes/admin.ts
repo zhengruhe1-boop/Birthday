@@ -97,11 +97,13 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
     const appId      = await getSetting("wechat_appid");
     const appSecret  = await getSetting("wechat_appsecret");
     const domain     = await getSetting("wechat_callback_domain");
+    const loginMode  = await getSetting("login_mode") ?? "mock";
     res.json({
-      appId:    appId    ?? "",
-      appSecret: appSecret ? "••••••••" : "",   // mask secret for display
+      appId:       appId    ?? "",
+      appSecret:   appSecret ? "••••••••" : "",
       appSecretSet: !!appSecret,
-      domain:   domain   ?? "",
+      domain:      domain   ?? "",
+      loginMode,   // "wechat" | "mock"
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -112,18 +114,21 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
 router.put("/wechat-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { appId, appSecret, domain } = req.body as {
+    const { appId, appSecret, domain, loginMode } = req.body as {
       appId?: string;
       appSecret?: string;
       domain?: string;
+      loginMode?: string;
     };
 
     if (appId !== undefined)    await setSetting("wechat_appid",           appId.trim());
-    // Only overwrite secret if a real value (not placeholder) is provided
     if (appSecret && !appSecret.startsWith("•")) {
       await setSetting("wechat_appsecret", appSecret.trim());
     }
     if (domain !== undefined)   await setSetting("wechat_callback_domain", domain.trim());
+    if (loginMode === "wechat" || loginMode === "mock") {
+      await setSetting("login_mode", loginMode);
+    }
 
     res.json({ success: true });
   } catch (err) {
