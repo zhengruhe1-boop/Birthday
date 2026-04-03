@@ -219,7 +219,19 @@ router.post("/mock-login", async (req, res) => {
         .limit(1);
 
       if (existing.length > 0) {
-        // Found by nickname: update token, re-bind deviceId (so quick-login works)
+        // Found by nickname.
+        // If we also have a deviceId, re-bind it — but first release it from any
+        // other user that currently holds it, to avoid a unique-constraint error.
+        if (deviceId) {
+          const newOpenId = `mock:${deviceId}`;
+          if (existing[0].openId !== newOpenId) {
+            // Clear the old holder (if any) of this deviceId
+            await db.update(usersTable)
+              .set({ openId: null })
+              .where(eq(usersTable.openId, newOpenId));
+          }
+        }
+
         const updated = await db.update(usersTable)
           .set({
             sessionToken: token,
@@ -229,7 +241,13 @@ router.post("/mock-login", async (req, res) => {
           .returning();
         user = updated[0];
       } else {
-        // New nickname: create user
+        // New nickname: create user.
+        // Release the deviceId from any existing user first to avoid unique conflict.
+        if (deviceId) {
+          await db.update(usersTable)
+            .set({ openId: null })
+            .where(eq(usersTable.openId, `mock:${deviceId}`));
+        }
         const inserted = await db.insert(usersTable).values({
           openId:       deviceId ? `mock:${deviceId}` : null,
           nickname,
