@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, CalendarDays, Shield, ChevronDown, ChevronRight, RefreshCw, LogOut } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -75,9 +75,11 @@ function LoginPage({ onLogin }: { onLogin: (key: string) => void }) {
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-100">
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-sm">
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center">
-            <Shield className="w-7 h-7 text-rose-500" />
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}images/logo.png`}
+            alt="生日通"
+            className="w-16 h-16 object-contain rounded-2xl"
+          />
           <h1 className="text-2xl font-bold text-gray-900">生日通管理后台</h1>
           <p className="text-sm text-gray-400">Birthday Tracker · Admin</p>
         </div>
@@ -140,9 +142,11 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
       <aside className="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
         <div className="px-6 py-6 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-rose-500" />
-            </div>
+            <img
+              src={`${import.meta.env.BASE_URL}images/logo.png`}
+              alt="生日通"
+              className="w-8 h-8 object-contain rounded-lg"
+            />
             <div>
               <p className="text-sm font-bold text-gray-900">生日通</p>
               <p className="text-[10px] text-gray-400">管理后台</p>
