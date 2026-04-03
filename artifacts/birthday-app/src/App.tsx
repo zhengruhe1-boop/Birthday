@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import ContactForm from "./pages/ContactForm";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/contact/:id" component={ContactForm} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );
