@@ -1,98 +1,166 @@
 import OpenAI from "openai";
+import { db, settingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger.js";
 
-const deepseek = new OpenAI({
-  baseURL: "https://api.deepseek.com",
-  apiKey: process.env.DEEPSEEK_API_KEY,
-});
+// ── Local settings helper (avoids circular import with admin.ts) ──────────────
+async function getSettingLocal(key: string): Promise<string | null> {
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
 
 export interface BirthdayEvent {
-  year: string;
-  category: "中国" | "世界";
-  title: string;
+  year:        string;
+  category:    "中国" | "世界";
+  title:       string;
   description: string;
 }
 
 function extractJsonArray(text: string): BirthdayEvent[] {
-  let cleaned = text.trim();
-  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-  cleaned = cleaned.trim();
+  let cleaned = text.trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim();
 
   try {
     const parsed = JSON.parse(cleaned);
     if (Array.isArray(parsed)) return parsed;
-  } catch {
-    // continue
-  }
+  } catch { /* ignore */ }
 
   const match = cleaned.match(/\[[\s\S]*\]/);
   if (match) {
     try {
       const parsed = JSON.parse(match[0]);
       if (Array.isArray(parsed)) return parsed;
-    } catch {
-      // continue
-    }
+    } catch { /* ignore */ }
   }
 
   logger.warn({ raw: text.slice(0, 200) }, "Could not parse birthday events JSON");
   return [];
 }
 
+// ── AI client factory (reads config from DB, falls back to env var) ───────────
+export interface AiConfig {
+  enabled:     boolean;
+  provider:    string;
+  model:       string;
+  apiKeySet:   boolean;
+  temperature: number;
+}
+
+export async function getAiConfig(): Promise<AiConfig> {
+  const [enabled, provider, model, customKey, temperature] = await Promise.all([
+    getSettingLocal("ai_enabled"),
+    getSettingLocal("ai_provider"),
+    getSettingLocal("ai_model"),
+    getSettingLocal("ai_api_key_custom"),
+    getSettingLocal("ai_temperature"),
+  ]);
+
+  const apiKeySet = !!(customKey || process.env.DEEPSEEK_API_KEY);
+  return {
+    enabled:     enabled !== "false",
+    provider:    provider    ?? "deepseek",
+    model:       model       ?? "deepseek-chat",
+    apiKeySet,
+    temperature: parseFloat(temperature ?? "0.3") || 0.3,
+  };
+}
+
+async function buildAiClient(): Promise<{ client: OpenAI; model: string; temperature: number } | null> {
+  const cfg = await getAiConfig();
+  if (!cfg.enabled) return null;
+
+  const customKey = await getSettingLocal("ai_api_key_custom");
+  const apiKey    = customKey || process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+
+  // Extensible: add more providers here as needed
+  const baseURLMap: Record<string, string> = {
+    deepseek: "https://api.deepseek.com",
+  };
+  const baseURL = baseURLMap[cfg.provider] ?? "https://api.deepseek.com";
+
+  return {
+    client:      new OpenAI({ baseURL, apiKey }),
+    model:       cfg.model,
+    temperature: cfg.temperature,
+  };
+}
+
+// ── Main generator: historical events on a specific month/day ─────────────────
 export async function generateBirthdayEvents(
-  year: number,
   month: number,
-  day: number,
-  isLunar: boolean
+  day:   number,
 ): Promise<BirthdayEvent[]> {
-  const calType = isLunar ? "农历" : "公历";
-  const dateLabel = `${calType}${year}年${month}月${day}日`;
+  const ai = await buildAiClient();
+  if (!ai) {
+    logger.warn("AI not configured or disabled, skipping birthday events generation");
+    return [];
+  }
 
-  const prompt = `出生日期：${dateLabel}
+  const dateLabel = `${month}月${day}日`;
 
-任务：找出历史上在 ${year}年${month}月（即这个月份前后2周内）真实发生的3件重大历史事件。
+  const prompt = `历史上的${dateLabel}：请从古代到现代中，找出不同年代真实发生在${month}月${day}日（允许±1天）的5件重大历史事件。
 
-硬性规定（违反则答案无效）：
-1. year字段只能填"${year}年"，禁止填写任何其他年份
-2. 事件日期必须在 ${year}年${month}月 前后2周范围内（${month-1 > 0 ? month-1 : 12}月中旬 ~ ${month+1 <= 12 ? month+1 : 1}月初）
-3. 必须是真实发生的历史事件，不能编造
-4. 至少1条中国事件，至少1条世界事件
-5. title不超过15字，description不超过50字
+要求：
+1. 事件必须真实，不能编造
+2. 年代尽量跨度大（包含古代、近代、现代）
+3. 至少2件中国历史事件，至少2件世界历史事件
+4. year字段填写具体年份（如"1949年"），title不超过20字，description不超过60字（须含具体月日）
 
 只返回JSON数组，不加任何说明：
 [
-  {"year":"${year}年","category":"中国","title":"事件标题","description":"事件简介，含具体月日"},
-  {"year":"${year}年","category":"世界","title":"事件标题","description":"事件简介，含具体月日"},
-  {"year":"${year}年","category":"中国","title":"事件标题","description":"事件简介，含具体月日"}
+  {"year":"XXXX年","category":"中国","title":"事件标题","description":"具体描述含月日"},
+  {"year":"XXXX年","category":"世界","title":"事件标题","description":"具体描述含月日"}
 ]`;
 
   try {
-    const response = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
-      max_tokens: 700,
-      temperature: 0.3,
+    const response = await ai.client.chat.completions.create({
+      model:       ai.model,
+      max_tokens:  900,
+      temperature: ai.temperature,
       messages: [
         {
-          role: "system",
-          content: `你是严谨的历史学家。只返回JSON数组，绝不返回其他内容。
-规则：所有事件year字段必须且只能是"${year}年"，事件必须发生在${year}年${month}月附近。`,
+          role:    "system",
+          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。",
         },
         { role: "user", content: prompt },
       ],
     });
 
     const content = response.choices[0]?.message?.content ?? "";
-    logger.debug({ content: content.slice(0, 400) }, "DeepSeek birthday events raw response");
+    logger.debug({ content: content.slice(0, 400) }, "AI birthday events raw response");
 
     const events = extractJsonArray(content);
-
-    // Filter out any events with wrong years
-    const filtered = events.filter(e => e.year && e.year.includes(String(year)));
-    logger.info({ year, month, day, count: filtered.length, raw: events.length }, "Birthday events generated via DeepSeek");
-
-    return filtered.slice(0, 3);
+    logger.info({ month, day, count: events.length }, "Birthday events generated via AI");
+    return events.slice(0, 5);
   } catch (err) {
-    logger.error({ err, year, month, day }, "Failed to generate birthday events via DeepSeek");
+    logger.error({ err, month, day }, "Failed to generate birthday events via AI");
     return [];
+  }
+}
+
+// ── Quick connectivity test ────────────────────────────────────────────────────
+export async function testAiConnection(): Promise<{ ok: boolean; model: string; message: string }> {
+  const ai = await buildAiClient();
+  if (!ai) {
+    const cfg = await getAiConfig();
+    if (!cfg.enabled)  return { ok: false, model: cfg.model, message: "AI 功能已关闭" };
+    return { ok: false, model: cfg.model, message: "API Key 未配置" };
+  }
+
+  try {
+    const res = await ai.client.chat.completions.create({
+      model:       ai.model,
+      max_tokens:  10,
+      temperature: 0,
+      messages: [{ role: "user", content: "reply: ok" }],
+    });
+    const reply = res.choices[0]?.message?.content ?? "(空)";
+    return { ok: true, model: ai.model, message: `连接成功，模型响应：${reply.slice(0, 40)}` };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, model: ai.model, message: `连接失败：${msg.slice(0, 80)}` };
   }
 }

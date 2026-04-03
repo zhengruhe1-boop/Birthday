@@ -110,18 +110,16 @@ router.post("/", async (req: AuthRequest, res) => {
     const contact = inserted[0];
     res.status(201).json(formatContact(contact));
 
-    // Generate birthday events in the background only if birthYear is provided
-    if (contact.birthYear) {
-      generateBirthdayEvents(contact.birthYear, contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar)
-        .then(async (events) => {
-          if (events.length > 0) {
-            await db.update(contactsTable)
-              .set({ birthdayEvents: JSON.stringify(events) })
-              .where(eq(contactsTable.id, contact.id));
-          }
-        })
-        .catch(() => {/* silently ignore */});
-    }
+    // Generate birthday events in the background (uses birth month+day only now)
+    generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay)
+      .then(async (events) => {
+        if (events.length > 0) {
+          await db.update(contactsTable)
+            .set({ birthdayEvents: JSON.stringify(events) })
+            .where(eq(contactsTable.id, contact.id));
+        }
+      })
+      .catch(() => {/* silently ignore */});
   } catch (err) {
     req.log.error({ err }, "Create contact error");
     res.status(500).json({ error: "Internal server error" });
@@ -174,28 +172,11 @@ router.post("/:id/birthday-events", async (req: AuthRequest, res) => {
 
     const contact = contacts[0];
 
-    // Allow override params from query string (for refresh-before-save scenario)
-    const overrideYear = req.query.year ? parseInt(req.query.year as string) : null;
-    const overrideMonth = req.query.month ? parseInt(req.query.month as string) : null;
-    const overrideDay = req.query.day ? parseInt(req.query.day as string) : null;
-    const overrideLunar = req.query.lunar !== undefined ? req.query.lunar === "true" : null;
+    // Allow override month/day from query string (for refresh-before-save scenario)
+    const birthdayMonth = req.query.month ? parseInt(req.query.month as string) : contact.birthdayMonth;
+    const birthdayDay   = req.query.day   ? parseInt(req.query.day   as string) : contact.birthdayDay;
 
-    const birthYear = overrideYear || contact.birthYear;
-    const birthdayMonth = overrideMonth || contact.birthdayMonth;
-    const birthdayDay = overrideDay || contact.birthdayDay;
-    const birthdayLunar = overrideLunar !== null ? overrideLunar : contact.birthdayLunar;
-
-    if (!birthYear) {
-      res.status(422).json({ error: "需要填写出生年份才能生成历史大事", missingYear: true });
-      return;
-    }
-
-    const events = await generateBirthdayEvents(
-      birthYear,
-      birthdayMonth,
-      birthdayDay,
-      birthdayLunar
-    );
+    const events = await generateBirthdayEvents(birthdayMonth, birthdayDay);
 
     await db.update(contactsTable)
       .set({ birthdayEvents: JSON.stringify(events) })

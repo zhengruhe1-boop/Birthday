@@ -167,6 +167,55 @@ router.put("/content-config", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/ai-config ──────────────────────────────────────────────────
+router.get("/ai-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getAiConfig } = await import("../lib/birthday-events.js");
+    res.json(await getAiConfig());
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/ai-config ──────────────────────────────────────────────────
+router.put("/ai-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { enabled, provider, model, apiKeyCustom, temperature } = req.body as {
+      enabled?:      boolean;
+      provider?:     string;
+      model?:        string;
+      apiKeyCustom?: string;
+      temperature?:  number;
+    };
+
+    if (enabled    !== undefined) await setSetting("ai_enabled",        String(enabled));
+    if (provider   !== undefined) await setSetting("ai_provider",       provider.trim());
+    if (model      !== undefined) await setSetting("ai_model",          model.trim());
+    if (apiKeyCustom !== undefined && !apiKeyCustom.startsWith("•")) {
+      await setSetting("ai_api_key_custom", apiKeyCustom.trim());
+    }
+    if (temperature !== undefined) await setSetting("ai_temperature",   String(temperature));
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/ai-test ────────────────────────────────────────────────────
+router.post("/ai-test", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { testAiConnection } = await import("../lib/birthday-events.js");
+    const result = await testAiConnection();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/admin/notify-config ──────────────────────────────────────────────
 router.get("/notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock, Sparkles, Zap } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -722,6 +722,283 @@ function ContentConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ─── AiConfigPanel ────────────────────────────────────────────────────────────
+interface AiConfig {
+  enabled:     boolean;
+  provider:    string;
+  model:       string;
+  apiKeySet:   boolean;
+  temperature: number;
+}
+
+const PROVIDERS = [
+  {
+    id:      "deepseek",
+    name:    "DeepSeek",
+    models:  ["deepseek-chat", "deepseek-reasoner"],
+    docsUrl: "https://platform.deepseek.com",
+    color:   "bg-blue-500",
+  },
+];
+
+function AiConfigPanel({ adminKey }: { adminKey: string }) {
+  const [cfg, setCfg]     = useState<AiConfig>({ enabled: true, provider: "deepseek", model: "deepseek-chat", apiKeySet: false, temperature: 0.3 });
+  const [apiKey, setApiKey] = useState("");
+  const [loading, setLoading]   = useState(true);
+  const [saving,  setSaving]    = useState(false);
+  const [testing, setTesting]   = useState(false);
+  const [saveMsg, setSaveMsg]   = useState<{ ok: boolean; text: string } | null>(null);
+  const [testMsg, setTestMsg]   = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/ai-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then(r => r.json())
+      .then((d: AiConfig) => { setCfg(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [adminKey]);
+
+  const currentProvider = PROVIDERS.find(p => p.id === cfg.provider) ?? PROVIDERS[0];
+
+  const handleSave = async () => {
+    setSaving(true); setSaveMsg(null);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/ai-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          enabled:      cfg.enabled,
+          provider:     cfg.provider,
+          model:        cfg.model,
+          apiKeyCustom: apiKey,
+          temperature:  cfg.temperature,
+        }),
+      });
+      if (res.ok) {
+        setSaveMsg({ ok: true, text: "保存成功" });
+        if (apiKey) setCfg(c => ({ ...c, apiKeySet: true }));
+        setApiKey("");
+      } else {
+        setSaveMsg({ ok: false, text: "保存失败" });
+      }
+    } catch {
+      setSaveMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true); setTestMsg(null);
+    try {
+      const res  = await fetch(`${import.meta.env.BASE_URL}api/admin/ai-test`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (res.ok && data.ok !== false) {
+        setTestMsg({ ok: true,  text: data.message ?? "连接成功" });
+      } else {
+        setTestMsg({ ok: false, text: data.message ?? data.error ?? "连接失败" });
+      }
+    } catch {
+      setTestMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
+      <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* ── 开关 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">AI 历史事件生成</h2>
+              <p className="text-xs text-gray-400 mt-0.5">为每位联系人的生日日期生成当天历史大事</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCfg(c => ({ ...c, enabled: !c.enabled }))}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${cfg.enabled ? "bg-violet-500" : "bg-gray-200"}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${cfg.enabled ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── AI 模型选择 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">AI 模型供应商</h2>
+          <p className="text-xs text-gray-400 mt-0.5">选择用于生成历史事件的 AI 服务商</p>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="grid gap-3">
+            {PROVIDERS.map(provider => (
+              <button
+                key={provider.id}
+                type="button"
+                onClick={() => setCfg(c => ({ ...c, provider: provider.id, model: provider.models[0] }))}
+                className={`relative flex items-center gap-4 px-4 py-4 rounded-xl border-2 text-left transition-all ${
+                  cfg.provider === provider.id
+                    ? "border-violet-400 bg-violet-50"
+                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                }`}
+              >
+                {cfg.provider === provider.id && (
+                  <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-violet-500" />
+                )}
+                <div className={`w-10 h-10 rounded-xl ${provider.color} flex items-center justify-center flex-shrink-0`}>
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{provider.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{provider.docsUrl}</p>
+                </div>
+              </button>
+            ))}
+
+            {/* Future providers hint */}
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm">
+              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">+</div>
+              更多模型敬请期待（ChatGPT、Claude…）
+            </div>
+          </div>
+
+          {/* Model selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">模型版本</label>
+            <select
+              value={cfg.model}
+              onChange={e => setCfg(c => ({ ...c, model: e.target.value }))}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 font-mono"
+            >
+              {currentProvider.models.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── API Key ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">API Key</h2>
+            <p className="text-xs text-gray-400 mt-0.5">留空则使用系统环境变量中配置的默认 Key</p>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.apiKeySet ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-600"}`}>
+            {cfg.apiKeySet ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+            {cfg.apiKeySet ? "已配置" : "未配置"}
+          </span>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              自定义 API Key
+              {cfg.apiKeySet && <span className="ml-2 text-xs text-green-600 font-normal">（已设置，输入新值可覆盖）</span>}
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder={cfg.apiKeySet ? "••••••••（已设置）" : "sk-xxxxxxxxxxxxxxxx"}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 font-mono"
+            />
+            <p className="mt-1.5 text-xs text-gray-400">
+              在 <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">{currentProvider.docsUrl}</a> 获取 API Key
+            </p>
+          </div>
+
+          {/* Temperature */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              生成温度 <span className="font-mono text-violet-600 ml-1">{cfg.temperature.toFixed(1)}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={cfg.temperature}
+              onChange={e => setCfg(c => ({ ...c, temperature: parseFloat(e.target.value) }))}
+              className="w-full accent-violet-500"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>0.0 保守（更准确）</span>
+              <span>1.0 创意（更多样）</span>
+            </div>
+          </div>
+
+          {saveMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${saveMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {saveMsg.text}
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {saving ? "保存中..." : "保存配置"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 连通性测试 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">连通性测试</h2>
+          <p className="text-xs text-gray-400 mt-0.5">发送一条测试请求，验证 API Key 和模型配置是否正确</p>
+        </div>
+        <div className="p-6 space-y-4">
+          {testMsg && (
+            <div className={`flex items-start gap-2 text-sm px-3 py-2.5 rounded-lg ${testMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {testMsg.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
+              {testMsg.text}
+            </div>
+          )}
+          <button
+            onClick={handleTest}
+            disabled={testing}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            {testing ? "测试中..." : "测试连接"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 说明 ── */}
+      <div className="bg-violet-50 border border-violet-100 rounded-xl p-5 text-sm text-violet-700 space-y-2">
+        <p className="font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4" />功能说明</p>
+        <ul className="space-y-1.5 list-disc list-inside text-violet-600 text-xs">
+          <li>添加联系人时，系统会自动调用 AI 生成该日期（月/日）历史上发生的重大事件</li>
+          <li>生成内容横跨古代到现代，包含中国和世界两类事件，在联系人详情页展示</li>
+          <li>用户也可以在联系人详情页手动点击刷新，重新生成历史事件</li>
+          <li>当前使用 DeepSeek 模型，系统已内置 API Key，无需额外配置即可使用</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ─── NotifyConfigPanel ────────────────────────────────────────────────────────
 interface NotifyConfig {
   enabled:       boolean;
@@ -1028,16 +1305,17 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-type Tab = "users" | "wechat" | "content" | "notify";
+type Tab = "users" | "wechat" | "ai" | "notify" | "content";
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("users");
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "users",   label: "用户管理", icon: <Users    className="w-4 h-4" /> },
-    { id: "wechat",  label: "微信配置", icon: <Settings className="w-4 h-4" /> },
-    { id: "notify",  label: "消息通知", icon: <Bell     className="w-4 h-4" /> },
-    { id: "content", label: "内容配置", icon: <FileText className="w-4 h-4" /> },
+    { id: "users",   label: "用户管理", icon: <Users      className="w-4 h-4" /> },
+    { id: "wechat",  label: "微信配置", icon: <Settings   className="w-4 h-4" /> },
+    { id: "ai",      label: "AI 模型",  icon: <Sparkles   className="w-4 h-4" /> },
+    { id: "notify",  label: "消息通知", icon: <Bell       className="w-4 h-4" /> },
+    { id: "content", label: "内容配置", icon: <FileText   className="w-4 h-4" /> },
   ];
 
   return (
@@ -1095,6 +1373,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
         <div className="flex-1 p-8 overflow-auto">
           {tab === "users"   && <UsersPanel         adminKey={adminKey} />}
           {tab === "wechat"  && <WechatConfigPanel  adminKey={adminKey} />}
+          {tab === "ai"      && <AiConfigPanel      adminKey={adminKey} />}
           {tab === "notify"  && <NotifyConfigPanel  adminKey={adminKey} />}
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
         </div>
