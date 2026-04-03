@@ -31,18 +31,22 @@ router.get("/legal", async (_req, res) => {
 // Returns whether WeChat OAuth is configured (no secrets exposed) and login mode
 router.get("/wechat/public-config", async (_req, res) => {
   try {
-    const appId     = await getSetting("wechat_appid");
-    const secret    = await getSetting("wechat_appsecret");
-    const domain    = await getSetting("wechat_callback_domain");
-    const loginMode = await getSetting("login_mode") ?? "mock";
+    const appId        = await getSetting("wechat_appid");
+    const secret       = await getSetting("wechat_appsecret");
+    const domain       = await getSetting("wechat_callback_domain");
+    const loginMode    = await getSetting("login_mode") ?? "mock";
+    const accountName  = await getSetting("wechat_account_name") ?? "";
+    const notifyEnabled = (await getSetting("notify_enabled")) !== "false";
     const configured = !!(appId && secret && domain);
     res.json({
       configured,
-      appId: configured ? appId : null,
-      loginMode,  // "wechat" | "mock"
+      appId:         configured ? appId : null,
+      loginMode,           // "wechat" | "mock"
+      accountName,         // 公众号显示名称
+      notifyEnabled,       // 是否开启消息通知
     });
   } catch {
-    res.json({ configured: false, appId: null, loginMode: "mock" });
+    res.json({ configured: false, appId: null, loginMode: "mock", accountName: "", notifyEnabled: false });
   }
 });
 

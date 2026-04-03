@@ -40,6 +40,7 @@ interface WechatConfig {
   appSecretSet: boolean;
   domain: string;
   loginMode: "wechat" | "mock";
+  accountName: string;
 }
 
 function formatBirthday(c: ContactRecord) {
@@ -120,7 +121,7 @@ function LoginPage({ onLogin }: { onLogin: (key: string) => void }) {
 
 // ─── WeChat Config Panel ──────────────────────────────────────────────────────
 function WechatConfigPanel({ adminKey }: { adminKey: string }) {
-  const [config, setConfig] = useState<WechatConfig>({ appId: "", appSecret: "", appSecretSet: false, domain: "", loginMode: "mock" });
+  const [config, setConfig] = useState<WechatConfig>({ appId: "", appSecret: "", appSecretSet: false, domain: "", loginMode: "mock", accountName: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -142,10 +143,11 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({
-          appId: config.appId,
-          appSecret: config.appSecret,
-          domain: config.domain,
-          loginMode: config.loginMode,
+          appId:       config.appId,
+          appSecret:   config.appSecret,
+          domain:      config.domain,
+          loginMode:   config.loginMode,
+          accountName: config.accountName,
         }),
       });
       setSaveMsg(res.ok ? { ok: true, text: "保存成功" } : { ok: false, text: "保存失败" });
@@ -296,6 +298,18 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
               className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400"
             />
             <p className="text-xs text-gray-400 mt-1">填写部署后的真实域名，微信会将用户重定向回此地址</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">公众号名称（用于首页关注提示）</label>
+            <input
+              type="text"
+              value={config.accountName}
+              onChange={e => setConfig(c => ({ ...c, accountName: e.target.value }))}
+              placeholder="例如：生日通提醒助手"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400"
+            />
+            <p className="text-xs text-gray-400 mt-1">微信用户登录后，首页会出现「关注公众号」提示横幅，此处填写公众号的名称</p>
           </div>
 
           {saveMsg && (

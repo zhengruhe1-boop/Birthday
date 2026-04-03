@@ -1,16 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, LogOut, CalendarHeart } from "lucide-react";
+import { Plus, Search, LogOut, CalendarHeart, Bell, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUpcomingBirthdays, useContacts } from "@/hooks/use-contacts";
 import { useAuth } from "@/hooks/use-auth";
 import { ContactCard } from "@/components/ContactCard";
 import { Input } from "@/components/ui/input";
 
+const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [search, setSearch] = useState("");
+
+  // ── 关注公众号横幅 ────────────────────────────────────────────────────────
+  const [showBanner, setShowBanner] = useState(false);
+  const [mpName, setMpName]         = useState("");
+
+  useEffect(() => {
+    // Only fetch for real WeChat users (openId not mock)
+    if (!user) return;
+    const isRealWechat = user.openId && !String(user.openId).startsWith("mock:");
+    if (!isRealWechat) return;
+    // Don't show if user already dismissed
+    if (sessionStorage.getItem(BANNER_DISMISS_KEY)) return;
+
+    fetch(`${import.meta.env.BASE_URL}api/auth/wechat/public-config`)
+      .then(r => r.json())
+      .then((cfg: { notifyEnabled?: boolean; accountName?: string }) => {
+        if (cfg.notifyEnabled && !sessionStorage.getItem(BANNER_DISMISS_KEY)) {
+          setMpName(cfg.accountName || "");
+          setShowBanner(true);
+        }
+      })
+      .catch(() => {/* silent */});
+  }, [user]);
+
+  const dismissBanner = () => {
+    sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
+    setShowBanner(false);
+  };
   
   // Queries
   const { data: upcoming, isLoading: isUpcomingLoading } = useUpcomingBirthdays();
@@ -58,6 +88,39 @@ export default function Home() {
           className="bg-gray-100/80 border-transparent shadow-inner focus-visible:bg-white focus-visible:border-primary/30"
         />
       </header>
+
+      {/* 关注公众号横幅 */}
+      <AnimatePresence>
+        {showBanner && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-3 flex items-center gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-white" />
+              </div>
+              <p className="flex-1 text-sm text-white leading-snug">
+                关注
+                {mpName
+                  ? <strong className="font-semibold">「{mpName}」</strong>
+                  : "公众号"
+                }，第一时间收到生日提醒推送通知
+              </p>
+              <button
+                onClick={dismissBanner}
+                className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                aria-label="关闭提示"
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 px-4 py-6 overflow-y-auto pb-28">

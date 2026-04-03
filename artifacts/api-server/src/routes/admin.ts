@@ -94,16 +94,18 @@ router.get("/stats", async (req: Request, res: Response) => {
 router.get("/wechat-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const appId      = await getSetting("wechat_appid");
-    const appSecret  = await getSetting("wechat_appsecret");
-    const domain     = await getSetting("wechat_callback_domain");
-    const loginMode  = await getSetting("login_mode") ?? "mock";
+    const appId       = await getSetting("wechat_appid");
+    const appSecret   = await getSetting("wechat_appsecret");
+    const domain      = await getSetting("wechat_callback_domain");
+    const loginMode   = await getSetting("login_mode") ?? "mock";
+    const accountName = await getSetting("wechat_account_name") ?? "";
     res.json({
-      appId:       appId    ?? "",
-      appSecret:   appSecret ? "••••••••" : "",
+      appId:        appId    ?? "",
+      appSecret:    appSecret ? "••••••••" : "",
       appSecretSet: !!appSecret,
-      domain:      domain   ?? "",
-      loginMode,   // "wechat" | "mock"
+      domain:       domain   ?? "",
+      loginMode,
+      accountName,
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -114,18 +116,20 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
 router.put("/wechat-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { appId, appSecret, domain, loginMode } = req.body as {
+    const { appId, appSecret, domain, loginMode, accountName } = req.body as {
       appId?: string;
       appSecret?: string;
       domain?: string;
       loginMode?: string;
+      accountName?: string;
     };
 
     if (appId !== undefined)    await setSetting("wechat_appid",           appId.trim());
     if (appSecret && !appSecret.startsWith("•")) {
       await setSetting("wechat_appsecret", appSecret.trim());
     }
-    if (domain !== undefined)   await setSetting("wechat_callback_domain", domain.trim());
+    if (domain !== undefined)      await setSetting("wechat_callback_domain", domain.trim());
+    if (accountName !== undefined) await setSetting("wechat_account_name",    accountName.trim());
     if (loginMode === "wechat" || loginMode === "mock") {
       await setSetting("login_mode", loginMode);
     }
