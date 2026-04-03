@@ -10,6 +10,7 @@ import { SelectNative } from "@/components/ui/select-native";
 import { useCreateContact, useUpdateContact, useContact, useDeleteContact } from "@/hooks/use-contacts";
 import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { getZodiacSign } from "@/lib/zodiac";
 import type { BirthdayEvent } from "@workspace/api-client-react";
 
 const contactSchema = z.object({
@@ -282,6 +283,9 @@ export default function ContactForm() {
     ? `${formLunar ? "农历" : ""}${formBirthYear}年${formMonth}月${formDay}日`
     : null;
 
+  // Live zodiac: only for solar calendar birthdays
+  const zodiac = !formLunar ? getZodiacSign(Number(formMonth), Number(formDay)) : null;
+
   const displayAvatar = avatarUrl;
 
   return (
@@ -474,6 +478,22 @@ export default function ContactForm() {
                 </SelectNative>
               </div>
             </div>
+
+            {/* Live zodiac preview */}
+            {zodiac ? (
+              <div className="flex items-center gap-2.5 px-4 py-3 bg-violet-50 rounded-xl border border-violet-100">
+                <span className="text-2xl leading-none">{zodiac.symbol}</span>
+                <div>
+                  <p className="text-sm font-semibold text-violet-700">{zodiac.name}</p>
+                  <p className="text-xs text-violet-400">{Number(formMonth)}月{Number(formDay)}日 · 公历</p>
+                </div>
+              </div>
+            ) : formLunar ? (
+              <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-xl text-gray-300">☆</span>
+                <p className="text-xs text-gray-400">农历日期无法直接对应星座，如需查看星座请切换为公历</p>
+              </div>
+            ) : null}
 
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">出生年份 <span className="text-muted-foreground font-normal">(选填, 用于计算年龄)</span></label>

@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { User, Gift, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getZodiacSign } from "@/lib/zodiac";
 import type { Contact } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 
@@ -13,6 +14,10 @@ interface ContactCardProps {
 export function ContactCard({ contact, index }: ContactCardProps) {
   const isImminent = contact.daysUntilBirthday <= 7;
   const isSoon = contact.daysUntilBirthday > 7 && contact.daysUntilBirthday <= 30;
+  // Only show zodiac for solar calendar birthdays
+  const zodiac = !contact.birthdayLunar
+    ? getZodiacSign(contact.birthdayMonth, contact.birthdayDay)
+    : null;
   
   return (
     <motion.div
@@ -52,7 +57,13 @@ export function ContactCard({ contact, index }: ContactCardProps) {
               <span className="flex items-center gap-1 text-xs font-medium text-foreground/80 bg-secondary/50 px-2 py-0.5 rounded-full">
                 {contact.birthdayLunar ? "农历" : "公历"} {contact.birthdayDisplay}
               </span>
-              
+
+              {zodiac && (
+                <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {zodiac.symbol} {zodiac.name}
+                </span>
+              )}
+
               {contact.age !== null && contact.age !== undefined && (
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   距 {contact.age} 岁
