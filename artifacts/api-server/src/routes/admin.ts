@@ -32,14 +32,30 @@ async function setSetting(key: string, value: string): Promise<void> {
 }
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
+// Query params: page (1-based, default 1), pageSize (default 12)
 router.get("/stats", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
-    const contacts = await db.select().from(contactsTable).orderBy(contactsTable.createdAt);
+    const PAGE_SIZE = 12;
+    const page     = Math.max(1, parseInt((req.query.page as string) || "1", 10));
+    const offset   = (page - 1) * PAGE_SIZE;
+
+    // Total count
+    const allUsers = await db.select().from(usersTable).orderBy(usersTable.createdAt);
+    const totalUsers = allUsers.length;
+
+    // Paginated users
+    const users = allUsers.slice(offset, offset + PAGE_SIZE);
+
+    const allContacts = await db.select().from(contactsTable).orderBy(contactsTable.createdAt);
+    const totalContacts = allContacts.length;
+
+    // Only attach contacts for users on this page
+    const userIds = new Set(users.map(u => u.id));
+    const pageContacts = allContacts.filter(c => userIds.has(c.userId!));
 
     const result = users.map((u) => {
-      const userContacts = contacts.filter((c) => c.userId === u.id).map((c) => ({
+      const userContacts = pageContacts.filter((c) => c.userId === u.id).map((c) => ({
         id: c.id,
         name: c.name,
         birthdayMonth: c.birthdayMonth,
@@ -55,14 +71,18 @@ router.get("/stats", async (req: Request, res: Response) => {
         nickname: u.nickname,
         avatarUrl: u.avatarUrl,
         createdAt: u.createdAt,
+        lastAccessAt: u.lastAccessAt,
         contactCount: userContacts.length,
         contacts: userContacts,
       };
     });
 
     res.json({
-      totalUsers: users.length,
-      totalContacts: contacts.length,
+      totalUsers,
+      totalContacts,
+      page,
+      pageSize: PAGE_SIZE,
+      totalPages: Math.ceil(totalUsers / PAGE_SIZE),
       users: result,
     });
   } catch (err) {

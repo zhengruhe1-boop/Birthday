@@ -262,6 +262,11 @@ router.get("/me", async (req: AuthRequest, res) => {
       return;
     }
     const user = users[0];
+    // Update last access time (fire-and-forget)
+    db.update(usersTable)
+      .set({ lastAccessAt: new Date() })
+      .where(eq(usersTable.id, user.id))
+      .catch(() => {});
     res.json({ id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
   } catch (err) {
     req.log.error({ err }, "Get me error");

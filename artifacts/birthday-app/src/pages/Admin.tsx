@@ -20,6 +20,7 @@ interface UserRecord {
   nickname: string;
   avatarUrl: string | null;
   createdAt: string;
+  lastAccessAt: string | null;
   contactCount: number;
   contacts: ContactRecord[];
 }
@@ -27,6 +28,9 @@ interface UserRecord {
 interface StatsData {
   totalUsers: number;
   totalContacts: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   users: UserRecord[];
 }
 
@@ -281,21 +285,24 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
 function UsersPanel({ adminKey }: { adminKey: string }) {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-  const load = async () => {
+  const load = async (p = page) => {
     setLoading(true);
+    setExpanded(new Set()); // collapse rows on page change
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/stats`, {
-        headers: { "x-admin-key": adminKey },
-      });
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/stats?page=${p}`,
+        { headers: { "x-admin-key": adminKey } },
+      );
       if (res.ok) setData(await res.json());
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(page); }, [page]);
 
   const toggleExpand = (id: number) => {
     setExpanded(prev => {
@@ -304,6 +311,8 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
       return n;
     });
   };
+
+  const totalPages = data?.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
@@ -334,9 +343,16 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">用户列表</h2>
+          <h2 className="text-sm font-semibold text-gray-700">
+            用户列表
+            {data && (
+              <span className="ml-2 text-gray-400 font-normal">
+                共 {data.totalUsers} 名 · 第 {data.page}/{data.totalPages} 页
+              </span>
+            )}
+          </h2>
           <button
-            onClick={load}
+            onClick={() => load(page)}
             disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium transition-colors"
           >
@@ -351,96 +367,169 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
             <span className="text-sm">加载中...</span>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">用户</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">账号类型</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Open ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">生日条数</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">注册时间</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.users.map(user => {
-                const acct = accountLabel(user.openId);
-                const isExpanded = expanded.has(user.id);
-                return (
-                  <>
-                    <tr
-                      key={user.id}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => toggleExpand(user.id)}
-                    >
-                      <td className="px-6 py-4 text-gray-400">
-                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-semibold text-xs flex-shrink-0">
-                            {user.nickname.charAt(0)}
-                          </div>
-                          <span className="font-medium text-gray-900">{user.nickname}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}>
-                          {acct.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-gray-400 font-mono text-xs max-w-48 truncate">{user.openId || "—"}</td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center gap-1.5 text-gray-700 font-medium">
-                          <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
-                          {user.contactCount} 条
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-gray-400 text-xs">{formatDate(user.createdAt)}</td>
-                    </tr>
-
-                    {isExpanded && (
-                      <tr key={`${user.id}-detail`} className="bg-slate-50">
-                        <td colSpan={6} className="px-12 py-4">
-                          {user.contacts.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-2">该用户暂无生日记录</p>
-                          ) : (
-                            <table className="w-full text-sm bg-white rounded-xl overflow-hidden border border-gray-200">
-                              <thead>
-                                <tr className="bg-gray-50 border-b border-gray-200">
-                                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">姓名</th>
-                                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">生日</th>
-                                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">关系</th>
-                                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">添加时间</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                {user.contacts.map(c => (
-                                  <tr key={c.id} className="hover:bg-gray-50">
-                                    <td className="px-5 py-3">
-                                      <div className="flex items-center gap-2.5">
-                                        <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 text-[10px] font-bold">
-                                          {c.name.charAt(0)}
-                                        </div>
-                                        <span className="font-medium text-gray-900">{c.name}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-5 py-3 text-gray-600">{formatBirthday(c)}</td>
-                                    <td className="px-5 py-3 text-gray-400">{c.relation || "—"}</td>
-                                    <td className="px-5 py-3 text-gray-400 text-xs">{formatDate(c.createdAt)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="px-6 py-3 w-8"></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">用户</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">账号类型</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Open ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">生日条数</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">最后访问</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">注册时间</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.users.map(user => {
+                  const acct = accountLabel(user.openId);
+                  const isExpanded = expanded.has(user.id);
+                  return (
+                    <>
+                      <tr
+                        key={user.id}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => toggleExpand(user.id)}
+                      >
+                        <td className="px-6 py-4 text-gray-400">
+                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-semibold text-xs flex-shrink-0">
+                              {user.nickname.charAt(0)}
+                            </div>
+                            <span className="font-medium text-gray-900">{user.nickname}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}>
+                            {acct.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-gray-400 font-mono text-xs max-w-40 truncate">{user.openId || "—"}</td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-1.5 text-gray-700 font-medium">
+                            <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
+                            {user.contactCount} 条
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-gray-400 text-xs">
+                          {user.lastAccessAt ? formatDate(user.lastAccessAt) : <span className="text-gray-300">从未</span>}
+                        </td>
+                        <td className="px-4 py-4 text-gray-400 text-xs">{formatDate(user.createdAt)}</td>
                       </tr>
+
+                      {isExpanded && (
+                        <tr key={`${user.id}-detail`} className="bg-slate-50">
+                          <td colSpan={7} className="px-12 py-4">
+                            {user.contacts.length === 0 ? (
+                              <p className="text-sm text-gray-400 py-2">该用户暂无生日记录</p>
+                            ) : (
+                              <table className="w-full text-sm bg-white rounded-xl overflow-hidden border border-gray-200">
+                                <thead>
+                                  <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">姓名</th>
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">生日</th>
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">关系</th>
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">添加时间</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {user.contacts.map(c => (
+                                    <tr key={c.id} className="hover:bg-gray-50">
+                                      <td className="px-5 py-3">
+                                        <div className="flex items-center gap-2.5">
+                                          <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 text-[10px] font-bold">
+                                            {c.name.charAt(0)}
+                                          </div>
+                                          <span className="font-medium text-gray-900">{c.name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-5 py-3 text-gray-600">{formatBirthday(c)}</td>
+                                      <td className="px-5 py-3 text-gray-400">{c.relation || "—"}</td>
+                                      <td className="px-5 py-3 text-gray-400 text-xs">{formatDate(c.createdAt)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  第 {(page - 1) * 12 + 1}–{Math.min(page * 12, data.totalUsers)} 条，共 {data.totalUsers} 条
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1 || loading}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    «
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    上一页
+                  </button>
+
+                  {/* Page numbers */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                    .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === "..." ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-xs text-gray-400">…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setPage(item as number)}
+                          disabled={loading}
+                          className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                            page === item
+                              ? "bg-rose-500 text-white"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
                     )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
+
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages || loading}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    下一页
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages || loading}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

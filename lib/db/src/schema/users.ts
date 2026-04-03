@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   sessionToken: text("session_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastAccessAt: timestamp("last_access_at"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });
