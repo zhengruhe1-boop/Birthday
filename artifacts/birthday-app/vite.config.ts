@@ -57,6 +57,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    target: "es2015",
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "es2015",
+    },
   },
   server: {
     port,

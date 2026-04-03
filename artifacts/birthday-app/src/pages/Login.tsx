@@ -27,7 +27,7 @@ function LegalModal({
 
         {/* Sheet */}
         <motion.div
-          className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[85dvh]"
+          className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh]"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -76,10 +76,21 @@ function LegalModal({
 const DEVICE_ID_KEY = "birthday_app_device_id";
 const TOKEN_KEY = "birthday_app_token";
 
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = generateUUID();
     localStorage.setItem(DEVICE_ID_KEY, id);
   }
   return id;
