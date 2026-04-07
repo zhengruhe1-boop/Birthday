@@ -6,6 +6,7 @@ import { useUpcomingBirthdays, useContacts } from "@/hooks/use-contacts";
 import { useAuth } from "@/hooks/use-auth";
 import { ContactCard } from "@/components/ContactCard";
 import { Input } from "@/components/ui/input";
+import { detectPlatform, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@/lib/platform";
 
 const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
 const PREF_WECHAT_NOTIFY  = "birthday_pref_wechat_notify";
@@ -309,6 +310,9 @@ export default function Home() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {user.openId && !String(user.openId).startsWith("mock:") ? "微信用户" : "访客账号"}
                   </p>
+                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium mt-1.5 ${PLATFORM_COLOR[detectPlatform()]}`}>
+                    {PLATFORM_ICON[detectPlatform()]} {PLATFORM_LABEL[detectPlatform()]}
+                  </span>
                 </div>
               </div>
 

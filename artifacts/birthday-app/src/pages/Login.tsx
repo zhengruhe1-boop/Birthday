@@ -1,55 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, User, X } from "lucide-react";
+import { MessageCircle, User, X, Globe, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { detectPlatform, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@/lib/platform";
 
-// ── Legal Content Modal ───────────────────────────────────────────────────────
+// ── Legal Content Modal ────────────────────────────────────────────────────────
 interface LegalContent { termsOfService: string; privacyPolicy: string; }
 
-function LegalModal({
-  title,
-  content,
-  onClose,
-}: { title: string; content: string; onClose: () => void }) {
+function LegalModal({ title, content, onClose }: { title: string; content: string; onClose: () => void }) {
   return (
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex flex-col justify-end"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       >
-        {/* Backdrop */}
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-        {/* Sheet */}
         <motion.div
           className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh]"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
+          initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
         >
-          {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
-
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            >
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
               <X className="w-4 h-4 text-gray-500" />
             </button>
           </div>
-
-          {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {content.trim() ? (
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{content}</p>
@@ -57,13 +39,8 @@ function LegalModal({
               <p className="text-sm text-gray-400 text-center py-12">暂无内容，管理员尚未配置。</p>
             )}
           </div>
-
-          {/* Bottom safe area */}
           <div className="h-safe-area-inset-bottom pb-6 pt-3 px-6">
-            <button
-              onClick={onClose}
-              className="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors"
-            >
+            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors">
               我已知晓
             </button>
           </div>
@@ -89,10 +66,7 @@ function generateUUID(): string {
 
 function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
-  if (!id) {
-    id = generateUUID();
-    localStorage.setItem(DEVICE_ID_KEY, id);
-  }
+  if (!id) { id = generateUUID(); localStorage.setItem(DEVICE_ID_KEY, id); }
   return id;
 }
 
@@ -102,55 +76,61 @@ interface WechatPublicConfig {
   loginMode: "wechat" | "mock";
 }
 
+// Platform tab icons as inline SVG components
+function IconH5() {
+  return <Globe className="w-4 h-4" />;
+}
+function IconMP() {
+  return <MessageCircle className="w-4 h-4" />;
+}
+function IconMini() {
+  return <Smartphone className="w-4 h-4" />;
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { mockLogin, isAuthenticated } = useAuth();
   const [nickname, setNickname] = useState("");
   const [wechatConfig, setWechatConfig] = useState<WechatPublicConfig | null>(null);
   const [wechatError, setWechatError] = useState<string | null>(null);
-
-  // Derive whether we're in mock-first mode from the server config
-  const loginMode = wechatConfig?.loginMode ?? "mock";
-
-  // ── Legal content ────────────────────────────────────────────────────────────
   const [legalContent, setLegalContent] = useState<LegalContent>({ termsOfService: "", privacyPolicy: "" });
   const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
 
-  // ── On mount: handle WeChat OAuth callback token in URL params ───────────────
+  // Detected platform (auto)
+  const platform = detectPlatform();
+  const loginMode = wechatConfig?.loginMode ?? "mock";
+
+  // ── On mount: handle OAuth callback / mini-program token in URL ───────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("wechat_token");
-    const err   = params.get("wechat_error");
+    const token   = params.get("wechat_token") || params.get("mp_token");
+    const err     = params.get("wechat_error");
 
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      // Clean URL and navigate home
       window.history.replaceState({}, "", window.location.pathname);
       setLocation("/");
       return;
     }
-
     if (err) {
       const messages: Record<string, string> = {
-        no_code:          "微信授权未完成，请重试",
-        not_configured:   "微信登录尚未配置",
-        token_failed:     "微信授权码无效，请重试",
-        userinfo_failed:  "获取微信用户信息失败，请重试",
-        server_error:     "服务器错误，请稍后重试",
+        no_code: "微信授权未完成，请重试",
+        not_configured: "微信登录尚未配置",
+        token_failed: "微信授权码无效，请重试",
+        userinfo_failed: "获取微信用户信息失败，请重试",
+        server_error: "服务器错误，请稍后重试",
       };
       setWechatError(messages[err] ?? "微信登录失败，请重试");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [setLocation]);
 
-  // ── Fetch public config and legal content ────────────────────────────────────
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
     fetch(`${base}api/auth/wechat/public-config`)
       .then(r => r.json())
       .then((data: WechatPublicConfig) => setWechatConfig(data))
       .catch(() => setWechatConfig({ configured: false, appId: null, loginMode: "mock" }));
-
     fetch(`${base}api/auth/legal`)
       .then(r => r.json())
       .then((data: LegalContent) => setLegalContent(data))
@@ -161,28 +141,18 @@ export default function Login() {
     if (isAuthenticated) setLocation("/");
   }, [isAuthenticated, setLocation]);
 
-  // ── WeChat OAuth redirect ─────────────────────────────────────────────────────
   const handleWechatLogin = () => {
     if (!wechatConfig?.configured || !wechatConfig.appId) {
       setWechatError("微信登录尚未配置，请联系管理员");
       return;
     }
-
-    // Build callback URL: the domain stored in settings + /api/auth/wechat/oauth/callback
-    // We redirect to WeChat's authorize page; WeChat will call our backend callback
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const callbackUrl = encodeURIComponent(
-      `${window.location.origin}${base}/api/auth/wechat/oauth/callback`
-    );
+    const callbackUrl = encodeURIComponent(`${window.location.origin}${base}/api/auth/wechat/oauth/callback`);
     const oauthUrl =
       `https://open.weixin.qq.com/connect/oauth2/authorize` +
       `?appid=${wechatConfig.appId}` +
       `&redirect_uri=${callbackUrl}` +
-      `&response_type=code` +
-      `&scope=snsapi_userinfo` +
-      `&state=login` +
-      `#wechat_redirect`;
-
+      `&response_type=code&scope=snsapi_userinfo&state=login#wechat_redirect`;
     window.location.href = oauthUrl;
   };
 
@@ -200,33 +170,63 @@ export default function Login() {
 
   return (
     <div className="app-container flex flex-col relative overflow-hidden bg-white">
+      {/* Background */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-          alt="background"
-          className="w-full h-full object-cover opacity-80"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/60 to-white"></div>
+        <img src={`${import.meta.env.BASE_URL}images/hero-bg.png`} alt="background"
+          className="w-full h-full object-cover opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/60 to-white" />
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col pt-14 px-6 pb-8">
+      <div className="relative z-10 flex-1 flex flex-col pt-10 px-6 pb-8">
+
+        {/* ── Platform badge ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="flex justify-center mb-6"
+        >
+          <div className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm bg-white/80 backdrop-blur-sm gap-3 divide-x divide-gray-200">
+            {/* H5 */}
+            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "h5" ? "bg-blue-100 text-blue-700" : "text-gray-400"}`}>
+              <IconH5 />
+              H5 网页
+            </span>
+            {/* 公众号 */}
+            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "wechat_mp" ? "bg-green-100 text-green-700" : "text-gray-400"}`}>
+              <IconMP />
+              公众号
+            </span>
+            {/* 小程序 */}
+            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "miniprogram" ? "bg-teal-100 text-teal-700" : "text-gray-400"}`}>
+              <IconMini />
+              小程序
+            </span>
+          </div>
+        </motion.div>
+
+        {/* ── Logo & title ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col items-center text-center mt-4 mb-10"
+          className="flex flex-col items-center text-center mb-8"
         >
           <div className="w-20 h-20 rounded-3xl bg-white shadow-xl shadow-primary/20 flex items-center justify-center p-2 mb-5 transform -rotate-3">
-            <img
-              src={`${import.meta.env.BASE_URL}images/logo.png`}
-              alt="生日通 Logo"
-              className="w-full h-full object-contain rounded-2xl transform rotate-3"
-            />
+            <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="生日通 Logo"
+              className="w-full h-full object-contain rounded-2xl transform rotate-3" />
           </div>
           <h1 className="text-4xl font-display font-bold text-foreground mb-2 tracking-tight">生日通</h1>
           <p className="text-muted-foreground text-base">记住每一个重要的日子</p>
+
+          {/* Current platform indicator */}
+          <div className={`mt-3 inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border font-medium ${PLATFORM_COLOR[platform]}`}>
+            <span>{PLATFORM_ICON[platform]}</span>
+            <span>当前：{PLATFORM_LABEL[platform]}</span>
+          </div>
         </motion.div>
 
+        {/* ── Login area ── */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,25 +239,26 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── 测试登录（loginMode=mock）── */}
-          {loginMode === "mock" && (
-            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
-              <h3 className="text-lg font-bold text-center mb-1">测试登录</h3>
-              <p className="text-xs text-center text-muted-foreground mb-4">
-                用昵称登录：同一昵称始终对应同一账号，换设备或清除缓存数据不丢失
+          {/* ── H5 / 小程序 访客登录 ── */}
+          {(platform === "h5" || platform === "miniprogram") && loginMode === "mock" && (
+            <div className="bg-white/85 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                {platform === "miniprogram" ? <IconMini /> : <IconH5 />}
+                <h3 className="text-base font-bold">
+                  {platform === "miniprogram" ? "小程序访客登录" : "H5 访客登录"}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                同一昵称始终对应同一账号，换设备或清除缓存数据不丢失
               </p>
 
-              <Button
-                className="w-full"
-                onClick={handleQuickLogin}
-                disabled={mockLogin.isPending}
-              >
+              <Button className="w-full" onClick={handleQuickLogin} disabled={mockLogin.isPending}>
                 {mockLogin.isPending ? "登录中..." : "快速进入（本机账号）"}
               </Button>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border/50"></div>
+                  <div className="w-full border-t border-border/50" />
                 </div>
                 <div className="relative flex justify-center text-xs text-muted-foreground">
                   <span className="bg-white px-2">或输入昵称切换账号</span>
@@ -271,67 +272,116 @@ export default function Login() {
                   onChange={(e) => setNickname(e.target.value)}
                   icon={<User className="w-5 h-5" />}
                 />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="w-full"
-                  disabled={mockLogin.isPending}
-                >
+                <Button type="submit" variant="outline" className="w-full" disabled={mockLogin.isPending}>
                   {mockLogin.isPending ? "登录中..." : "用此昵称登录"}
                 </Button>
               </form>
             </div>
           )}
 
-          {/* ── 微信登录（loginMode=wechat）── */}
-          {loginMode === "wechat" && (
-            <Button
-              size="lg"
-              className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
-              onClick={handleWechatLogin}
-              disabled={wechatConfig === null}
-            >
-              <MessageCircle className="w-5 h-5" />
-              {wechatConfig === null ? "加载中..." : "微信一键登录"}
-            </Button>
+          {/* ── 微信公众号 OAuth 登录 ── */}
+          {(platform === "wechat_mp" || loginMode === "wechat") && (
+            <div className="bg-white/85 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <IconMP />
+                <h3 className="text-base font-bold">微信公众号登录</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                使用微信账号授权登录，无需手动输入任何信息
+              </p>
+              <Button
+                size="lg"
+                className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
+                onClick={handleWechatLogin}
+                disabled={wechatConfig === null}
+              >
+                <MessageCircle className="w-5 h-5" />
+                {wechatConfig === null ? "加载中..." : "微信一键登录"}
+              </Button>
+
+              {/* Fallback to mock login in wechat_mp if server is mock mode */}
+              {loginMode === "mock" && platform === "wechat_mp" && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-border/50" />
+                    </div>
+                    <div className="relative flex justify-center text-xs text-muted-foreground">
+                      <span className="bg-white px-2">或以访客身份进入</span>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full" onClick={handleQuickLogin} disabled={mockLogin.isPending}>
+                    {mockLogin.isPending ? "登录中..." : "访客模式进入"}
+                  </Button>
+                </>
+              )}
+            </div>
           )}
+
+          {/* ── 小程序 in wechat mode: show wechat login card ── */}
+          {platform === "miniprogram" && loginMode === "wechat" && (
+            <div className="bg-white/85 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <IconMini />
+                <h3 className="text-base font-bold">小程序授权登录</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                小程序 WebView 内，通过微信授权登录以使用完整功能
+              </p>
+              <Button
+                size="lg"
+                className="w-full bg-[#07C160] hover:bg-[#06ad56] text-white border-none shadow-lg shadow-[#07C160]/20 flex items-center gap-2"
+                onClick={handleWechatLogin}
+                disabled={wechatConfig === null}
+              >
+                <MessageCircle className="w-5 h-5" />
+                {wechatConfig === null ? "加载中..." : "微信一键登录"}
+              </Button>
+            </div>
+          )}
+
+          {/* ── 多端入口说明 ── */}
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-border/40 px-4 py-4 space-y-2.5">
+            <p className="text-xs font-semibold text-muted-foreground">支持多端访问</p>
+            <div className="space-y-2">
+              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "h5" ? "bg-blue-50 border-blue-100" : "bg-gray-50 border-transparent"}`}>
+                <IconH5 />
+                <div>
+                  <span className="font-medium text-blue-700">H5 网页端</span>
+                  <span className="text-muted-foreground ml-1">· 浏览器直接访问，访客模式登录</span>
+                </div>
+                {platform === "h5" && <span className="ml-auto text-[10px] bg-blue-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
+              </div>
+              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "wechat_mp" ? "bg-green-50 border-green-100" : "bg-gray-50 border-transparent"}`}>
+                <IconMP />
+                <div>
+                  <span className="font-medium text-green-700">微信公众号</span>
+                  <span className="text-muted-foreground ml-1">· 微信内打开，OAuth 授权登录</span>
+                </div>
+                {platform === "wechat_mp" && <span className="ml-auto text-[10px] bg-green-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
+              </div>
+              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "miniprogram" ? "bg-teal-50 border-teal-100" : "bg-gray-50 border-transparent"}`}>
+                <IconMini />
+                <div>
+                  <span className="font-medium text-teal-700">微信小程序</span>
+                  <span className="text-muted-foreground ml-1">· WebView 内嵌，自动透传登录</span>
+                </div>
+                {platform === "miniprogram" && <span className="ml-auto text-[10px] bg-teal-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
+              </div>
+            </div>
+          </div>
         </motion.div>
 
-        <div className="mt-6 text-center text-xs text-muted-foreground">
+        <div className="mt-5 text-center text-xs text-muted-foreground">
           登录即代表同意{" "}
-          <button
-            type="button"
-            onClick={() => setLegalModal("terms")}
-            className="text-primary hover:underline"
-          >
-            用户协议
-          </button>
+          <button type="button" onClick={() => setLegalModal("terms")} className="text-primary hover:underline">用户协议</button>
           {" "}和{" "}
-          <button
-            type="button"
-            onClick={() => setLegalModal("privacy")}
-            className="text-primary hover:underline"
-          >
-            隐私政策
-          </button>
+          <button type="button" onClick={() => setLegalModal("privacy")} className="text-primary hover:underline">隐私政策</button>
         </div>
       </div>
 
-      {/* Legal modals */}
-      {legalModal === "terms" && (
-        <LegalModal
-          title="用户协议"
-          content={legalContent.termsOfService}
-          onClose={() => setLegalModal(null)}
-        />
-      )}
-      {legalModal === "privacy" && (
-        <LegalModal
-          title="隐私政策"
-          content={legalContent.privacyPolicy}
-          onClose={() => setLegalModal(null)}
-        />
-      )}
+      {legalModal === "terms" && <LegalModal title="用户协议" content={legalContent.termsOfService} onClose={() => setLegalModal(null)} />}
+      {legalModal === "privacy" && <LegalModal title="隐私政策" content={legalContent.privacyPolicy} onClose={() => setLegalModal(null)} />}
     </div>
   );
 }
