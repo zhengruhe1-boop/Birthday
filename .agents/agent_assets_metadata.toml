@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "sqhk9q4VfdwZ2remeiC2I"
+uri = "file://生日通-本地部署文档.md"
+type = "text"
+title = "生日通 · 本地服务器部署文档"
