@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, LogOut, CalendarHeart, Bell, X } from "lucide-react";
+import { Plus, Search, Settings, CalendarHeart, Bell, X, MessageCircle, Mail, LogOut, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUpcomingBirthdays, useContacts } from "@/hooks/use-contacts";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,23 +8,49 @@ import { ContactCard } from "@/components/ContactCard";
 import { Input } from "@/components/ui/input";
 
 const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
+const PREF_WECHAT_NOTIFY  = "birthday_pref_wechat_notify";
+const PREF_EMAIL_NOTIFY   = "birthday_pref_email_notify";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [search, setSearch] = useState("");
 
+  // ── Settings panel ────────────────────────────────────────────────────────
+  const [showSettings, setShowSettings] = useState(false);
+  const [wechatNotify, setWechatNotifyState] = useState(() =>
+    localStorage.getItem(PREF_WECHAT_NOTIFY) !== "false"
+  );
+  const [emailNotify, setEmailNotifyState] = useState(() =>
+    localStorage.getItem(PREF_EMAIL_NOTIFY) !== "false"
+  );
+
+  const toggleWechat = () => {
+    const next = !wechatNotify;
+    setWechatNotifyState(next);
+    localStorage.setItem(PREF_WECHAT_NOTIFY, String(next));
+    if (!next) {
+      sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
+      setShowBanner(false);
+    }
+  };
+
+  const toggleEmail = () => {
+    const next = !emailNotify;
+    setEmailNotifyState(next);
+    localStorage.setItem(PREF_EMAIL_NOTIFY, String(next));
+  };
+
   // ── 关注公众号横幅 ────────────────────────────────────────────────────────
   const [showBanner, setShowBanner] = useState(false);
   const [mpName, setMpName]         = useState("");
 
   useEffect(() => {
-    // Only fetch for real WeChat users (openId not mock)
     if (!user) return;
     const isRealWechat = user.openId && !String(user.openId).startsWith("mock:");
     if (!isRealWechat) return;
-    // Don't show if user already dismissed
     if (sessionStorage.getItem(BANNER_DISMISS_KEY)) return;
+    if (!wechatNotify) return;
 
     fetch(`${import.meta.env.BASE_URL}api/auth/wechat/public-config`)
       .then(r => r.json())
@@ -34,19 +60,18 @@ export default function Home() {
           setShowBanner(true);
         }
       })
-      .catch(() => {/* silent */});
-  }, [user]);
+      .catch(() => {});
+  }, [user, wechatNotify]);
 
   const dismissBanner = () => {
     sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
     setShowBanner(false);
   };
-  
+
   // Queries
   const { data: upcoming, isLoading: isUpcomingLoading } = useUpcomingBirthdays();
   const { data: searchResults, isLoading: isSearchLoading } = useContacts(search.trim() ? search : undefined);
 
-  // Redirect if not authenticated
   React.useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       setLocation("/login");
@@ -60,6 +85,8 @@ export default function Home() {
   const isSearching = search.trim().length > 0;
   const showLoading = isSearching ? isSearchLoading : isUpcomingLoading;
 
+  const avatarText = user.nickname ? user.nickname[0].toUpperCase() : "U";
+
   return (
     <div className="app-container flex flex-col bg-slate-50/50">
       {/* Header */}
@@ -71,15 +98,16 @@ export default function Home() {
             </div>
             <h1 className="text-xl font-bold font-display tracking-tight">生日通</h1>
           </div>
-          
-          <button 
-            onClick={logout}
-            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
+
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
+            aria-label="设置"
           >
-            <LogOut className="w-5 h-5" />
+            <Settings className="w-5 h-5" />
           </button>
         </div>
-        
+
         <Input
           placeholder="搜索亲友..."
           value={search}
@@ -104,11 +132,7 @@ export default function Home() {
                 <Bell className="w-4 h-4 text-white" />
               </div>
               <p className="flex-1 text-sm text-white leading-snug">
-                关注
-                {mpName
-                  ? <strong className="font-semibold">「{mpName}」</strong>
-                  : "公众号"
-                }，第一时间收到生日提醒推送通知
+                关注{mpName ? <strong className="font-semibold">「{mpName}」</strong> : "公众号"}，第一时间收到生日提醒推送通知
               </p>
               <button
                 onClick={dismissBanner}
@@ -126,7 +150,7 @@ export default function Home() {
       <main className="flex-1 px-4 py-6 overflow-y-auto pb-28">
         <AnimatePresence mode="wait">
           {showLoading ? (
-            <motion.div 
+            <motion.div
               key="loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -144,7 +168,7 @@ export default function Home() {
               ))}
             </motion.div>
           ) : isSearching ? (
-            <motion.div 
+            <motion.div
               key="search"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -161,7 +185,7 @@ export default function Home() {
               )}
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="upcoming"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -226,6 +250,136 @@ export default function Home() {
           </button>
         </Link>
       </div>
+
+      {/* Settings Bottom Sheet */}
+      <AnimatePresence>
+        {showSettings && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+              onClick={() => setShowSettings(false)}
+            />
+
+            {/* Sheet */}
+            <motion.div
+              key="sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 bg-gray-200 rounded-full" />
+              </div>
+
+              {/* Header row */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h2 className="text-base font-bold tracking-tight">设置</h2>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-1.5 rounded-full text-muted-foreground hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Profile section */}
+              <div className="flex items-center gap-4 px-5 py-5 border-b border-gray-100">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl.startsWith("http") ? user.avatarUrl : `${import.meta.env.BASE_URL}${user.avatarUrl.replace(/^\//, "")}`}
+                    alt={user.nickname}
+                    className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white text-xl font-bold">
+                    {avatarText}
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-base leading-tight">{user.nickname || "用户"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {user.openId && !String(user.openId).startsWith("mock:") ? "微信用户" : "访客账号"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Notification settings */}
+              <div className="px-5 py-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">消息提醒</p>
+
+                <div className="bg-gray-50 rounded-2xl overflow-hidden divide-y divide-gray-100">
+                  {/* WeChat notify */}
+                  <div className="flex items-center gap-3 px-4 py-4">
+                    <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <MessageCircle className="w-4.5 h-4.5 text-green-600 w-[18px] h-[18px]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">公众号生日提醒</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">通过微信公众号推送生日通知</p>
+                    </div>
+                    <button
+                      onClick={toggleWechat}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${wechatNotify ? "bg-green-500" : "bg-gray-200"}`}
+                      role="switch"
+                      aria-checked={wechatNotify}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${wechatNotify ? "translate-x-5" : "translate-x-0"}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Email notify */}
+                  <div className="flex items-center gap-3 px-4 py-4">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-[18px] h-[18px] text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">邮件生日通知</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">通过邮件发送生日提醒消息</p>
+                    </div>
+                    <button
+                      onClick={toggleEmail}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${emailNotify ? "bg-blue-500" : "bg-gray-200"}`}
+                      role="switch"
+                      aria-checked={emailNotify}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${emailNotify ? "translate-x-5" : "translate-x-0"}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout */}
+              <div className="px-5 pb-8">
+                <button
+                  onClick={() => { setShowSettings(false); logout(); }}
+                  className="w-full flex items-center justify-between px-4 py-4 bg-gray-50 rounded-2xl text-sm font-medium text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+                      <LogOut className="w-[18px] h-[18px] text-red-500" />
+                    </div>
+                    退出登录
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
