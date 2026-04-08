@@ -179,32 +179,6 @@ export default function Login() {
 
       <div className="relative z-10 flex-1 flex flex-col pt-10 px-6 pb-8">
 
-        {/* ── Platform badge ── */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="flex justify-center mb-6"
-        >
-          <div className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm bg-white/80 backdrop-blur-sm gap-3 divide-x divide-gray-200">
-            {/* H5 */}
-            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "h5" ? "bg-blue-100 text-blue-700" : "text-gray-400"}`}>
-              <IconH5 />
-              H5 网页
-            </span>
-            {/* 公众号 */}
-            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "wechat_mp" ? "bg-green-100 text-green-700" : "text-gray-400"}`}>
-              <IconMP />
-              公众号
-            </span>
-            {/* 小程序 */}
-            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${platform === "miniprogram" ? "bg-teal-100 text-teal-700" : "text-gray-400"}`}>
-              <IconMini />
-              小程序
-            </span>
-          </div>
-        </motion.div>
-
         {/* ── Logo & title ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -218,12 +192,6 @@ export default function Login() {
           </div>
           <h1 className="text-4xl font-display font-bold text-foreground mb-2 tracking-tight">生日通</h1>
           <p className="text-muted-foreground text-base">记住每一个重要的日子</p>
-
-          {/* Current platform indicator */}
-          <div className={`mt-3 inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border font-medium ${PLATFORM_COLOR[platform]}`}>
-            <span>{PLATFORM_ICON[platform]}</span>
-            <span>当前：{PLATFORM_LABEL[platform]}</span>
-          </div>
         </motion.div>
 
         {/* ── Login area ── */}
@@ -340,36 +308,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── 多端入口说明 ── */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-border/40 px-4 py-4 space-y-2.5">
-            <p className="text-xs font-semibold text-muted-foreground">支持多端访问</p>
-            <div className="space-y-2">
-              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "h5" ? "bg-blue-50 border-blue-100" : "bg-gray-50 border-transparent"}`}>
-                <IconH5 />
-                <div>
-                  <span className="font-medium text-blue-700">H5 网页端</span>
-                  <span className="text-muted-foreground ml-1">· 浏览器直接访问，访客模式登录</span>
-                </div>
-                {platform === "h5" && <span className="ml-auto text-[10px] bg-blue-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
-              </div>
-              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "wechat_mp" ? "bg-green-50 border-green-100" : "bg-gray-50 border-transparent"}`}>
-                <IconMP />
-                <div>
-                  <span className="font-medium text-green-700">微信公众号</span>
-                  <span className="text-muted-foreground ml-1">· 微信内打开，OAuth 授权登录</span>
-                </div>
-                {platform === "wechat_mp" && <span className="ml-auto text-[10px] bg-green-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
-              </div>
-              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border text-xs ${platform === "miniprogram" ? "bg-teal-50 border-teal-100" : "bg-gray-50 border-transparent"}`}>
-                <IconMini />
-                <div>
-                  <span className="font-medium text-teal-700">微信小程序</span>
-                  <span className="text-muted-foreground ml-1">· WebView 内嵌，自动透传登录</span>
-                </div>
-                {platform === "miniprogram" && <span className="ml-auto text-[10px] bg-teal-600 text-white rounded-full px-1.5 py-0.5 font-medium">当前</span>}
-              </div>
-            </div>
-          </div>
         </motion.div>
 
         <div className="mt-5 text-center text-xs text-muted-foreground">
