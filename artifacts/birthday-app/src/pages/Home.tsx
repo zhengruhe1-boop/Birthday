@@ -73,6 +73,17 @@ export default function Home() {
   const { data: upcoming, isLoading: isUpcomingLoading } = useUpcomingBirthdays();
   const { data: searchResults, isLoading: isSearchLoading } = useContacts(search.trim() ? search : undefined);
 
+  // Fallback: if a wechat_token somehow lands on the home route, capture it
+  // before the auth redirect fires and route it through /login for proper handling.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wechatToken = params.get("wechat_token") || params.get("mp_token");
+    if (wechatToken) {
+      window.history.replaceState({}, "", window.location.pathname);
+      setLocation(`/login?wechat_token=${encodeURIComponent(wechatToken)}`);
+    }
+  }, [setLocation]);
+
   React.useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       setLocation("/login");

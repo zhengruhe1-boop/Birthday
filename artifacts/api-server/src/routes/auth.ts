@@ -120,8 +120,12 @@ router.get("/wechat/oauth/callback", async (req, res) => {
       await db.insert(usersTable).values({ openId, nickname, avatarUrl: avatar, sessionToken: token });
     }
 
-    // 4. Redirect to frontend with token in URL
-    const redirectUrl = new URL(frontendBase + "/");
+    // 4. Redirect to frontend LOGIN page with token in URL.
+    // Must target /login (not /) because the root route (Home) performs an
+    // immediate unauthenticated redirect to /login before Login.tsx can read
+    // the token from the URL, causing an infinite OAuth loop.
+    const base = frontendBase.replace(/\/+$/, ""); // strip trailing slashes
+    const redirectUrl = new URL(base + "/login");
     redirectUrl.searchParams.set("wechat_token", token);
     redirectUrl.searchParams.set("wechat_nickname", encodeURIComponent(nickname));
     if (avatar) redirectUrl.searchParams.set("wechat_avatar", encodeURIComponent(avatar));
