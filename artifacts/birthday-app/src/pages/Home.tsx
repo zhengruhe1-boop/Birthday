@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
-import { Plus, Search, Settings, CalendarHeart, Bell, X, MessageCircle, Mail, LogOut, ChevronRight } from "lucide-react";
+import { useLocation } from "wouter";
+import { Plus, Search, Settings, CalendarHeart, Bell, X, MessageCircle, Mail, LogOut, ChevronRight, Heart, Timer, Sparkles, CalendarDays } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUpcomingBirthdays, useContacts } from "@/hooks/use-contacts";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { ContactCard } from "@/components/ContactCard";
 import { Input } from "@/components/ui/input";
 import { detectPlatform, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@/lib/platform";
+
+const BASE = import.meta.env.BASE_URL;
+
+interface AppEvent {
+  id: number;
+  type: "anniversary" | "countdown" | "other";
+  name: string;
+  eventDate: string | null;
+  person: string | null;
+  reminderTime: string | null;
+  daysUntil: number | null;
+}
+
+interface UpcomingEvents {
+  anniversaries: AppEvent[];
+  countdowns: AppEvent[];
+  others: AppEvent[];
+}
 
 const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
 const PREF_WECHAT_NOTIFY  = "birthday_pref_wechat_notify";
@@ -68,6 +86,20 @@ export default function Home() {
     sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
     setShowBanner(false);
   };
+
+  // ── FAB menu ───────────────────────────────────────────────────────────────
+  const [showFab, setShowFab] = useState(false);
+
+  // ── Events ─────────────────────────────────────────────────────────────────
+  const [events, setEvents] = useState<UpcomingEvents>({ anniversaries: [], countdowns: [], others: [] });
+  const fetchEvents = () => {
+    if (!user) return;
+    fetch(`${BASE}api/events/upcoming`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setEvents(d))
+      .catch(() => {});
+  };
+  useEffect(() => { fetchEvents(); }, [user]);
 
   // Queries
   const { data: upcoming, isLoading: isUpcomingLoading } = useUpcomingBirthdays();
@@ -252,15 +284,191 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── 纪念日 section ─────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {events.anniversaries.length > 0 && (
+            <motion.section
+              key="anniversaries"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-4"
+            >
+              <h2 className="text-sm font-bold text-rose-500 mb-3 px-2 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-rose-400 rounded-full"></span>
+                纪念日
+              </h2>
+              <div className="space-y-3">
+                {events.anniversaries.map(e => (
+                  <button
+                    key={e.id}
+                    onClick={() => setLocation(`/event/${e.id}`)}
+                    className="w-full text-left bg-white rounded-2xl border border-border/50 px-4 py-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-all active:scale-98"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 flex-shrink-0">
+                      <Heart className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{e.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {e.person ? e.person + " · " : ""}{e.eventDate ?? ""}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      {e.daysUntil === 0 ? (
+                        <span className="text-xs font-bold text-rose-500 bg-rose-50 rounded-full px-2 py-0.5">今天</span>
+                      ) : e.daysUntil !== null ? (
+                        <span className="text-xs text-muted-foreground">{e.daysUntil} 天后</span>
+                      ) : null}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 ml-auto" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* ── 倒数日 section ──────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {events.countdowns.length > 0 && (
+            <motion.section
+              key="countdowns"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-4"
+            >
+              <h2 className="text-sm font-bold text-orange-500 mb-3 px-2 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-orange-400 rounded-full"></span>
+                倒数日
+              </h2>
+              <div className="space-y-3">
+                {events.countdowns.map(e => (
+                  <button
+                    key={e.id}
+                    onClick={() => setLocation(`/event/${e.id}`)}
+                    className="w-full text-left bg-white rounded-2xl border border-border/50 px-4 py-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-all active:scale-98"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+                      <Timer className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{e.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">目标日期：{e.eventDate ?? ""}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      {e.daysUntil !== null && e.daysUntil >= 0 ? (
+                        <span className={`text-sm font-bold ${e.daysUntil === 0 ? "text-orange-500" : "text-orange-400"}`}>
+                          {e.daysUntil === 0 ? "今天" : `还有 ${e.daysUntil} 天`}
+                        </span>
+                      ) : e.daysUntil !== null ? (
+                        <span className="text-xs text-muted-foreground">已过期</span>
+                      ) : null}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 ml-auto" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* ── 其它提醒 section ────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {events.others.length > 0 && (
+            <motion.section
+              key="others"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-4"
+            >
+              <h2 className="text-sm font-bold text-violet-500 mb-3 px-2 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-violet-400 rounded-full"></span>
+                其它提醒
+              </h2>
+              <div className="space-y-3">
+                {events.others.map(e => (
+                  <button
+                    key={e.id}
+                    onClick={() => setLocation(`/event/${e.id}`)}
+                    className="w-full text-left bg-white rounded-2xl border border-border/50 px-4 py-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-all active:scale-98"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-500 flex-shrink-0">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{e.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{e.reminderTime ?? ""}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  </button>
+                ))}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
       </main>
 
-      {/* FAB */}
-      <div className="fixed bottom-6 right-0 left-0 max-w-md mx-auto pointer-events-none px-6 flex justify-end z-50">
-        <Link href="/contact/new" className="pointer-events-auto">
-          <button className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-primary/80 text-white shadow-[0_8px_30px_rgba(225,29,72,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+      {/* FAB – expandable menu */}
+      <AnimatePresence>
+        {showFab && (
+          <motion.div
+            key="fab-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setShowFab(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-6 right-0 left-0 max-w-md mx-auto pointer-events-none px-6 flex flex-col items-end z-50">
+        {/* Sub-buttons */}
+        <AnimatePresence>
+          {showFab && (
+            <motion.div
+              key="fab-items"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="flex flex-col items-end gap-2 mb-3 pointer-events-auto"
+            >
+              {([
+                { type: "anniversary", label: "纪念日", icon: <Heart className="w-4 h-4" />, bg: "bg-rose-500" },
+                { type: "countdown",   label: "倒数日", icon: <Timer className="w-4 h-4" />, bg: "bg-orange-500" },
+                { type: "other",       label: "其它提醒", icon: <Sparkles className="w-4 h-4" />, bg: "bg-violet-500" },
+                { type: "contact",     label: "添加生日", icon: <CalendarDays className="w-4 h-4" />, bg: "bg-primary" },
+              ] as const).reverse().map(item => (
+                <button
+                  key={item.type}
+                  onClick={() => {
+                    setShowFab(false);
+                    setLocation(item.type === "contact" ? "/contact/new" : `/event/new/${item.type}`);
+                  }}
+                  className={`flex items-center gap-2.5 ${item.bg} text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg text-sm font-medium`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main FAB button */}
+        <button
+          className="pointer-events-auto h-14 w-14 rounded-full bg-gradient-to-r from-primary to-primary/80 text-white shadow-[0_8px_30px_rgba(225,29,72,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+          onClick={() => setShowFab(v => !v)}
+          aria-label="添加"
+        >
+          <motion.div animate={{ rotate: showFab ? 45 : 0 }} transition={{ duration: 0.2 }}>
             <Plus className="h-7 w-7" />
-          </button>
-        </Link>
+          </motion.div>
+        </button>
       </div>
 
       {/* Settings Bottom Sheet */}
