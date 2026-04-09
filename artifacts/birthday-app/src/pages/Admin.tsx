@@ -1780,9 +1780,24 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
   );
 }
 
+const ADMIN_SESSION_KEY = "birthday_admin_session";
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function Admin() {
-  const [adminKey, setAdminKey] = useState<string | null>(null);
-  if (!adminKey) return <LoginPage onLogin={setAdminKey} />;
-  return <Dashboard adminKey={adminKey} onLogout={() => setAdminKey(null)} />;
+  const [adminKey, setAdminKey] = useState<string | null>(
+    () => sessionStorage.getItem(ADMIN_SESSION_KEY)
+  );
+
+  const handleLogin = (key: string) => {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, key);
+    setAdminKey(key);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    setAdminKey(null);
+  };
+
+  if (!adminKey) return <LoginPage onLogin={handleLogin} />;
+  return <Dashboard adminKey={adminKey} onLogout={handleLogout} />;
 }
