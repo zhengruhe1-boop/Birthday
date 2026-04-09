@@ -26,6 +26,15 @@ interface UpcomingEvents {
   others: AppEvent[];
 }
 
+function calcAnniversaryYear(eventDate: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const origin = new Date(eventDate + "T00:00:00");
+  const thisYearAnniv = new Date(today.getFullYear(), origin.getMonth(), origin.getDate());
+  const targetYear = thisYearAnniv < today ? today.getFullYear() + 1 : today.getFullYear();
+  return targetYear - origin.getFullYear();
+}
+
 const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
 const PREF_WECHAT_NOTIFY  = "birthday_pref_wechat_notify";
 const PREF_EMAIL_NOTIFY   = "birthday_pref_email_notify";
@@ -315,13 +324,21 @@ export default function Home() {
                         {e.person ? e.person + " · " : ""}{e.eventDate ?? ""}
                       </p>
                     </div>
-                    <div className="flex-shrink-0 text-right">
-                      {e.daysUntil === 0 ? (
-                        <span className="text-xs font-bold text-rose-500 bg-rose-50 rounded-full px-2 py-0.5">今天</span>
-                      ) : e.daysUntil !== null ? (
-                        <span className="text-xs text-muted-foreground">{e.daysUntil} 天后</span>
-                      ) : null}
-                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 ml-auto" />
+                    <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                      {e.eventDate ? (() => {
+                        const yr = calcAnniversaryYear(e.eventDate);
+                        return e.daysUntil === 0 ? (
+                          <span className="text-xs font-bold text-rose-500 bg-rose-50 rounded-full px-2 py-0.5">
+                            今天 · {yr}周年
+                          </span>
+                        ) : e.daysUntil !== null ? (
+                          <>
+                            <span className="text-xs font-semibold text-rose-400">{e.daysUntil} 天后</span>
+                            <span className="text-[10px] text-muted-foreground">{yr} 周年纪念日</span>
+                          </>
+                        ) : null;
+                      })() : null}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5" />
                     </div>
                   </button>
                 ))}
