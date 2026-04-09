@@ -1019,9 +1019,6 @@ interface NotifyConfig {
   daysBefore:    number[];
   sendHour:      number;
   templateId:    string;
-  varName:       string;
-  varDate:       string;
-  varDays:       string;
   lastRunAt:     string | null;
   lastRunResult: { sent: number; skipped: number; errors: number } | null;
 }
@@ -1029,7 +1026,7 @@ interface NotifyConfig {
 function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   const [cfg, setCfg] = useState<NotifyConfig>({
     enabled: false, daysBefore: [1], sendHour: 8,
-    templateId: "", varName: "keyword1", varDate: "keyword2", varDays: "keyword3",
+    templateId: "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w",
     lastRunAt: null, lastRunResult: null,
   });
   const [loading, setLoading]   = useState(true);
@@ -1074,9 +1071,6 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
           daysBefore: cfg.daysBefore,
           sendHour:   cfg.sendHour,
           templateId: cfg.templateId,
-          varName:    cfg.varName,
-          varDate:    cfg.varDate,
-          varDays:    cfg.varDays,
         }),
       });
       setSaveMsg(res.ok ? { ok: true, text: "保存成功" } : { ok: false, text: "保存失败" });
@@ -1208,32 +1202,11 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
 
           <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-700 space-y-1.5">
             <p className="font-semibold">模板变量说明</p>
-            <p>系统会在发送时将以下三个字段填入对应变量：</p>
-            <ul className="space-y-0.5 list-disc list-inside">
-              <li>联系人姓名（如「张伟」）</li>
-              <li>生日日期（如「10月10日」或「农历九月初九」）</li>
-              <li>天数提示（如「还有 3 天就是Ta的生日」）</li>
+            <p>系统使用固定的两个变量，请确保模板中包含以下字段：</p>
+            <ul className="space-y-1 list-disc list-inside font-mono text-xs">
+              <li><span className="bg-gray-100 px-1 rounded">{"{{thing19.DATA}}"}</span> — 姓名 · 事件类型（如「张伟 · 生日」「结婚纪念日 · 纪念日」）</li>
+              <li><span className="bg-gray-100 px-1 rounded">{"{{time24.DATA}}"}</span> — 事件日期时间（如「2026-04-10 08:00」）</li>
             </ul>
-            <p>请将你在公众号后台看到的变量名称填入下方（如 keyword1、keyword2…）</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "姓名变量名", key: "varName" as const, placeholder: "keyword1" },
-              { label: "日期变量名", key: "varDate" as const, placeholder: "keyword2" },
-              { label: "天数变量名", key: "varDays" as const, placeholder: "keyword3" },
-            ].map(({ label, key, placeholder }) => (
-              <div key={key}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-                <input
-                  type="text"
-                  value={cfg[key]}
-                  onChange={e => setCfg(c => ({ ...c, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
-                />
-              </div>
-            ))}
           </div>
 
           {saveMsg && (
@@ -1303,7 +1276,7 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
           {[
             "确保「微信配置」页面中已正确填写 AppID 和 AppSecret（公众号必须是服务号才支持模板消息）。",
             "在公众号后台进入「功能 → 模板消息 → 添加模板」，选择或自定义生日提醒模板，获取模板 ID。",
-            "模板内容中的变量名（如 {{keyword1.DATA}}）需与上方「变量名配置」对应填写。",
+            "模板需包含两个固定变量：{{thing19.DATA}}（姓名·事件类型）和 {{time24.DATA}}（事件时间）。",
             "系统将在每天设定时间自动扫描数据库，向当天或指定天数内过生日的联系人所属用户发送通知。",
             "只有通过微信登录的用户才会收到通知，测试账号用户不会收到。",
           ].map((text, i) => (

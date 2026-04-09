@@ -1,12 +1,19 @@
-import { db, contactsTable, usersTable, settingsTable } from "@workspace/db";
+import { db, contactsTable, usersTable, settingsTable, eventsTable } from "@workspace/db";
 import { isNotNull, eq, and, not, like } from "drizzle-orm";
 import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
 import { logger } from "./logger.js";
 
+// ── Fixed template variable keys (must match the WeChat template) ─────────────
+const TMPL_VAR_NAME = "thing19";   // 姓名 + 事件类型，e.g. "张三 · 生日"
+const TMPL_VAR_TIME = "time24";    // 事件日期时间，e.g. "2026-04-10 08:00"
+
+// ── User's actual template ID (hard-coded as default) ─────────────────────────
+const DEFAULT_TEMPLATE_ID = "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
+
 // ── In-memory access token cache ──────────────────────────────────────────────
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-// ── DB helpers (local copy to avoid circular import with admin.ts) ────────────
+// ── DB helpers ────────────────────────────────────────────────────────────────
 async function getSettingLocal(key: string): Promise<string | null> {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
   return rows[0]?.value ?? null;
@@ -55,27 +62,21 @@ async function getAccessToken(): Promise<string | null> {
 
 // ── Config types ──────────────────────────────────────────────────────────────
 export interface NotifyConfig {
-  enabled:        boolean;
-  daysBefore:     number[];
-  sendHour:       number;
-  templateId:     string;
-  varName:        string;
-  varDate:        string;
-  varDays:        string;
-  lastRunAt:      string | null;
-  lastRunResult:  { sent: number; skipped: number; errors: number } | null;
+  enabled:       boolean;
+  daysBefore:    number[];
+  sendHour:      number;
+  templateId:    string;
+  lastRunAt:     string | null;
+  lastRunResult: { sent: number; skipped: number; errors: number } | null;
 }
 
 export async function getNotifyConfig(): Promise<NotifyConfig> {
-  const [enabled, daysBefore, sendHour, templateId, varName, varDate, varDays, lastRunAt, lastResult] =
+  const [enabled, daysBefore, sendHour, templateId, lastRunAt, lastResult] =
     await Promise.all([
       getSettingLocal("notify_enabled"),
       getSettingLocal("notify_days_before"),
       getSettingLocal("notify_send_hour"),
       getSettingLocal("notify_template_id"),
-      getSettingLocal("notify_var_name"),
-      getSettingLocal("notify_var_date"),
-      getSettingLocal("notify_var_days"),
       getSettingLocal("notify_mp_last_run"),
       getSettingLocal("notify_mp_last_result"),
     ]);
@@ -84,23 +85,163 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
     enabled:       enabled === "true",
     daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [1],
     sendHour:      sendHour ? parseInt(sendHour, 10) : 8,
-    templateId:    templateId ?? "",
-    varName:       varName ?? "keyword1",
-    varDate:       varDate ?? "keyword2",
-    varDays:       varDays ?? "keyword3",
+    templateId:    templateId ?? DEFAULT_TEMPLATE_ID,
     lastRunAt,
     lastRunResult: lastResult ? JSON.parse(lastResult) : null,
   };
 }
 
+// ── Format helpers ────────────────────────────────────────────────────────────
+function toDateTimeStr(dateStr: string, hour = 8): string {
+  // dateStr is YYYY-MM-DD; return "YYYY-MM-DD HH:mm"
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${dateStr} ${pad(hour)}:00`;
+}
+
+function thisYearDate(month: number, day: number): string {
+  const now = new Date();
+  const y   = now.getFullYear();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${y}-${pad(month)}-${pad(day)}`;
+}
+
+function daysUntilDate(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function daysUntilAnniversary(dateStr: string): { days: number; targetDate: string } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d       = new Date(dateStr + "T00:00:00");
+  const thisYr  = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+  if (thisYr < today) thisYr.setFullYear(today.getFullYear() + 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dateOut = `${thisYr.getFullYear()}-${pad(thisYr.getMonth() + 1)}-${pad(thisYr.getDate())}`;
+  return {
+    days:       Math.round((thisYr.getTime() - today.getTime()) / 86400000),
+    targetDate: dateOut,
+  };
+}
+
+// ── Notification item ─────────────────────────────────────────────────────────
+interface NotifyItem {
+  openId:    string;
+  nameField: string;   // thing19 value
+  timeField: string;   // time24 value
+  label:     string;   // for logging
+}
+
+// ── Send single template message ──────────────────────────────────────────────
+async function sendTemplateMsg(
+  token: string,
+  templateId: string,
+  item: NotifyItem,
+): Promise<boolean> {
+  const payload = {
+    touser:      item.openId,
+    template_id: templateId,
+    data: {
+      [TMPL_VAR_NAME]: { value: item.nameField },
+      [TMPL_VAR_TIME]: { value: item.timeField },
+    },
+  };
+
+  const res = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+  );
+  const data = await res.json() as { errcode?: number; errmsg?: string };
+  if (data.errcode === 0 || data.errmsg === "ok") {
+    logger.info({ label: item.label, openId: item.openId }, "WeChat template message sent");
+    return true;
+  }
+  logger.error({ data, label: item.label, openId: item.openId }, "Failed to send WeChat template message");
+  return false;
+}
+
+// ── Build notification items for a user ──────────────────────────────────────
+async function buildItems(
+  userId: number,
+  openId: string,
+  daysBefore: number[],
+): Promise<NotifyItem[]> {
+  const items: NotifyItem[] = [];
+
+  // ── 1. Contacts → 生日 ──────────────────────────────────────────────────────
+  const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
+
+  for (const c of contacts) {
+    const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay);
+    if (!daysBefore.includes(days)) continue;
+    const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
+    items.push({
+      openId,
+      nameField: `${c.name} · 生日`,
+      timeField: toDateTimeStr(dateStr),
+      label:     `contact:${c.id} 生日`,
+    });
+  }
+
+  // ── 2. Events ───────────────────────────────────────────────────────────────
+  const events = await db.select().from(eventsTable).where(eq(eventsTable.userId, userId));
+
+  for (const e of events) {
+    if (e.type === "anniversary" && e.eventDate) {
+      const { days, targetDate } = daysUntilAnniversary(e.eventDate);
+      if (!daysBefore.includes(days)) continue;
+      items.push({
+        openId,
+        nameField: `${e.name}${e.person ? ` (${e.person})` : ""} · 纪念日`,
+        timeField: toDateTimeStr(targetDate),
+        label:     `event:${e.id} 纪念日`,
+      });
+    } else if (e.type === "countdown" && e.eventDate) {
+      const days = daysUntilDate(e.eventDate);
+      if (!daysBefore.includes(days)) continue;
+      items.push({
+        openId,
+        nameField: `${e.name} · 倒数日`,
+        timeField: toDateTimeStr(e.eventDate),
+        label:     `event:${e.id} 倒数日`,
+      });
+    } else if (e.type === "other" && e.reminderTime) {
+      // reminderTime is "YYYY-MM-DD HH:mm" or "YYYY-MM-DDTHH:mm"
+      const dateStr = e.reminderTime.replace("T", " ").slice(0, 10);
+      const days    = daysUntilDate(dateStr);
+      if (!daysBefore.includes(days)) continue;
+      const timeValue = e.reminderTime.replace("T", " ").slice(0, 16);
+      items.push({
+        openId,
+        nameField: `${e.name} · 其它`,
+        timeField: timeValue,
+        label:     `event:${e.id} 其它`,
+      });
+    }
+  }
+
+  return items;
+}
+
 // ── Main notification runner ──────────────────────────────────────────────────
 export async function runWechatBirthdayNotifications(): Promise<{ sent: number; skipped: number; errors: number }> {
-  logger.info("Running WeChat birthday notification check...");
+  logger.info("Running WeChat notification check (birthday + events)...");
   const result = { sent: 0, skipped: 0, errors: 0 };
 
   const config = await getNotifyConfig();
-  if (!config.enabled || !config.templateId) {
-    logger.info("WeChat notifications disabled or no template configured, skipping");
+
+  // Ensure default template ID is persisted if DB has nothing
+  const storedId = await getSettingLocal("notify_template_id");
+  if (!storedId) {
+    await setSettingLocal("notify_template_id", DEFAULT_TEMPLATE_ID);
+  }
+
+  const templateId = config.templateId || DEFAULT_TEMPLATE_ID;
+
+  if (!config.enabled) {
+    logger.info("WeChat notifications disabled, skipping");
     await setSettingLocal("notify_mp_last_run",    new Date().toISOString());
     await setSettingLocal("notify_mp_last_result", JSON.stringify(result));
     return result;
@@ -120,53 +261,33 @@ export async function runWechatBirthdayNotifications(): Promise<{ sent: number; 
     .where(and(isNotNull(usersTable.openId), not(like(usersTable.openId, "mock:%"))));
 
   for (const user of users) {
-    const contacts = await db.select().from(contactsTable)
-      .where(eq(contactsTable.userId, user.id));
+    try {
+      const items = await buildItems(user.id, user.openId!, config.daysBefore);
 
-    for (const contact of contacts) {
-      try {
-        const daysUntil = calcDaysUntilBirthday(contact.birthdayMonth, contact.birthdayDay);
-        if (!config.daysBefore.includes(daysUntil)) {
-          result.skipped++;
-          continue;
-        }
-
-        const dateDisplay = formatBirthdayDisplay(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar);
-        const daysText    = daysUntil === 0 ? "今天就是Ta的生日 🎂" : `还有 ${daysUntil} 天就是Ta的生日`;
-
-        const payload = {
-          touser:      user.openId!,
-          template_id: config.templateId,
-          data: {
-            [config.varName]: { value: contact.name,  color: "#173177" },
-            [config.varDate]: { value: dateDisplay,   color: "#173177" },
-            [config.varDays]: { value: daysText,      color: "#FF5B5B" },
-          },
-        };
-
-        const msgRes = await fetch(
-          `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-        );
-        const msgData = await msgRes.json() as { errcode?: number; errmsg?: string };
-
-        if (msgData.errcode === 0 || msgData.errmsg === "ok") {
-          result.sent++;
-          logger.info({ contactId: contact.id, name: contact.name, userId: user.id, daysUntil }, "WeChat birthday notification sent");
-        } else {
-          result.errors++;
-          logger.error({ msgData, contactId: contact.id, userId: user.id }, "Failed to send WeChat template message");
-        }
-      } catch (err) {
-        result.errors++;
-        logger.error({ err, contactId: contact.id }, "Error sending WeChat notification");
+      if (items.length === 0) {
+        result.skipped++;
+        continue;
       }
+
+      for (const item of items) {
+        try {
+          const ok = await sendTemplateMsg(token, templateId, item);
+          if (ok) result.sent++;
+          else    result.errors++;
+        } catch (err) {
+          result.errors++;
+          logger.error({ err, label: item.label }, "Error sending WeChat notification item");
+        }
+      }
+    } catch (err) {
+      result.errors++;
+      logger.error({ err, userId: user.id }, "Error building notification items for user");
     }
   }
 
   await setSettingLocal("notify_mp_last_run",    new Date().toISOString());
   await setSettingLocal("notify_mp_last_result", JSON.stringify(result));
-  logger.info(result, "WeChat birthday notification check complete");
+  logger.info(result, "WeChat notification check complete");
   return result;
 }
 
