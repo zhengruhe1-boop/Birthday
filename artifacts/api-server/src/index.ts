@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { scheduleDailyReminders } from "./lib/reminder.js";
 import { scheduleWechatNotifications } from "./lib/wechat-notify.js";
+import { runStartupMigrations } from "./lib/migrate.js";
 
 const rawPort = process.env["PORT"];
 
@@ -25,9 +26,12 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 
-  // Start the daily birthday reminder scheduler (runs every day at 08:00)
-  scheduleDailyReminders();
+  // Run startup DB migrations (creates any missing tables safely)
+  runStartupMigrations().then(() => {
+    // Start the daily birthday reminder scheduler (runs every day at 08:00)
+    scheduleDailyReminders();
 
-  // Start the WeChat Official Account birthday notification scheduler
-  scheduleWechatNotifications();
+    // Start the WeChat Official Account birthday notification scheduler
+    scheduleWechatNotifications();
+  });
 });

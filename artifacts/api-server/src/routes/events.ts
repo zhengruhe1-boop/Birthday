@@ -109,8 +109,9 @@ router.post("/", async (req: AuthRequest, res) => {
     }).returning();
     res.status(201).json(formatEvent(row));
   } catch (err) {
-    req.log.error({ err });
-    res.status(500).json({ error: "Internal server error" });
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log.error({ err, msg }, "POST /api/events failed");
+    res.status(500).json({ error: "Internal server error", detail: msg });
   }
 });
 
