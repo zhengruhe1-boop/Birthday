@@ -35,9 +35,9 @@ function calcAnniversaryYear(eventDate: string): number {
   return targetYear - origin.getFullYear();
 }
 
-const BANNER_DISMISS_KEY = "birthday_mp_banner_dismissed";
 const PREF_WECHAT_NOTIFY  = "birthday_pref_wechat_notify";
 const PREF_EMAIL_NOTIFY   = "birthday_pref_email_notify";
+const MP_FOLLOWED_KEY     = "birthday_mp_followed";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -57,10 +57,6 @@ export default function Home() {
     const next = !wechatNotify;
     setWechatNotifyState(next);
     localStorage.setItem(PREF_WECHAT_NOTIFY, String(next));
-    if (!next) {
-      sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
-      setShowBanner(false);
-    }
   };
 
   const toggleEmail = () => {
@@ -70,30 +66,25 @@ export default function Home() {
   };
 
   // ── 关注公众号横幅 ────────────────────────────────────────────────────────
-  const [showBanner, setShowBanner] = useState(false);
-  const [mpName, setMpName]         = useState("");
+  const [mpFollowed, setMpFollowed] = useState(() =>
+    localStorage.getItem(MP_FOLLOWED_KEY) === "1"
+  );
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [mpName, setMpName] = useState("");
 
   useEffect(() => {
-    if (!user) return;
-    const isRealWechat = user.openId && !String(user.openId).startsWith("mock:");
-    if (!isRealWechat) return;
-    if (sessionStorage.getItem(BANNER_DISMISS_KEY)) return;
-    if (!wechatNotify) return;
-
     fetch(`${import.meta.env.BASE_URL}api/auth/wechat/public-config`)
       .then(r => r.json())
-      .then((cfg: { notifyEnabled?: boolean; accountName?: string }) => {
-        if (cfg.notifyEnabled && !sessionStorage.getItem(BANNER_DISMISS_KEY)) {
-          setMpName(cfg.accountName || "");
-          setShowBanner(true);
-        }
+      .then((cfg: { accountName?: string }) => {
+        if (cfg.accountName) setMpName(cfg.accountName);
       })
       .catch(() => {});
-  }, [user, wechatNotify]);
+  }, []);
 
-  const dismissBanner = () => {
-    sessionStorage.setItem(BANNER_DISMISS_KEY, "1");
-    setShowBanner(false);
+  const markFollowed = () => {
+    localStorage.setItem(MP_FOLLOWED_KEY, "1");
+    setMpFollowed(true);
+    setShowQrModal(false);
   };
 
   // ── FAB menu ───────────────────────────────────────────────────────────────
@@ -142,6 +133,88 @@ export default function Home() {
 
   return (
     <div className="app-container flex flex-col bg-slate-50/50">
+
+      {/* ── 关注公众号顶部横幅 (不可关闭) ───────────────────────────────── */}
+      {!mpFollowed && (
+        <button
+          onClick={() => setShowQrModal(true)}
+          className="w-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-3 flex items-center gap-3 text-white flex-shrink-0"
+          style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <Bell className="w-4 h-4 text-white" />
+          </div>
+          <p className="flex-1 text-sm leading-snug text-left">
+            关注{mpName ? <strong className="font-semibold">「{mpName}」</strong> : <strong className="font-semibold">「生日通」</strong>}，第一时间收到生日提醒推送通知
+          </p>
+          <span className="flex-shrink-0 text-xs bg-white/25 rounded-full px-2.5 py-1 font-medium">
+            去关注
+          </span>
+        </button>
+      )}
+
+      {/* ── 二维码弹窗 ────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showQrModal && (
+          <>
+            <motion.div
+              key="qr-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center"
+              onClick={() => setShowQrModal(false)}
+            >
+              <motion.div
+                key="qr-sheet"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                className="w-full max-w-md bg-white rounded-t-3xl px-6 pt-6 pb-10 flex flex-col items-center gap-5"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* 拖动条 */}
+                <div className="w-10 h-1 rounded-full bg-gray-200 mb-1" />
+
+                <div className="flex flex-col items-center gap-1">
+                  <h2 className="text-lg font-bold">关注公众号</h2>
+                  <p className="text-sm text-muted-foreground text-center">
+                    长按识别二维码，关注{mpName ? `「${mpName}」` : "「生日通」"}后<br />即可接收生日提醒推送通知
+                  </p>
+                </div>
+
+                {/* 二维码 */}
+                <div className="p-3 bg-white rounded-2xl shadow-lg border border-gray-100">
+                  <img
+                    src={`${import.meta.env.BASE_URL}mp-qrcode.jpg`}
+                    alt="公众号二维码"
+                    className="w-52 h-52 object-contain"
+                    draggable={false}
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">长按上方二维码 → 识别图中二维码 → 关注</p>
+
+                <button
+                  onClick={markFollowed}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold text-sm"
+                >
+                  我已关注，不再提醒
+                </button>
+
+                <button
+                  onClick={() => setShowQrModal(false)}
+                  className="text-sm text-muted-foreground"
+                >
+                  稍后再说
+                </button>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
@@ -169,35 +242,6 @@ export default function Home() {
           className="bg-gray-100/80 border-transparent shadow-inner focus-visible:bg-white focus-visible:border-primary/30"
         />
       </header>
-
-      {/* 关注公众号横幅 */}
-      <AnimatePresence>
-        {showBanner && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-3 flex items-center gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Bell className="w-4 h-4 text-white" />
-              </div>
-              <p className="flex-1 text-sm text-white leading-snug">
-                关注{mpName ? <strong className="font-semibold">「{mpName}」</strong> : "公众号"}，第一时间收到生日提醒推送通知
-              </p>
-              <button
-                onClick={dismissBanner}
-                className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
-                aria-label="关闭提示"
-              >
-                <X className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 px-4 py-6 overflow-y-auto pb-28">
