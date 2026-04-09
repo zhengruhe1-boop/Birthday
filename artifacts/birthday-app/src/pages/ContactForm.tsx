@@ -11,6 +11,7 @@ import { useCreateContact, useUpdateContact, useContact, useDeleteContact } from
 import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { getZodiacSign } from "@/lib/zodiac";
+import { detectPlatform } from "@/lib/platform";
 import type { BirthdayEvent } from "@workspace/api-client-react";
 
 const contactSchema = z.object({
@@ -34,6 +35,7 @@ export default function ContactForm() {
   const contactId = isEdit ? parseInt(params.id!, 10) : null;
 
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const platform = detectPlatform();
 
   const { data: contact, isLoading: isContactLoading } = useContact(contactId);
   const createContact = useCreateContact();
@@ -587,6 +589,7 @@ export default function ContactForm() {
               <Input {...form.register("hometown")} placeholder="例如：北京" />
             </div>
 
+            {platform !== "wechat_mp" && (
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">邮箱提醒</label>
               <Input
@@ -630,6 +633,7 @@ export default function ContactForm() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </form>
       </main>

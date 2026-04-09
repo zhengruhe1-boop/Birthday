@@ -55,6 +55,10 @@ export default function Home() {
 
   const toggleWechat = () => {
     const next = !wechatNotify;
+    if (next && !mpFollowed) {
+      setShowQrModal(true);
+      return;
+    }
     setWechatNotifyState(next);
     localStorage.setItem(PREF_WECHAT_NOTIFY, String(next));
   };
@@ -85,6 +89,8 @@ export default function Home() {
     localStorage.setItem(MP_FOLLOWED_KEY, "1");
     setMpFollowed(true);
     setShowQrModal(false);
+    setWechatNotifyState(true);
+    localStorage.setItem(PREF_WECHAT_NOTIFY, "true");
   };
 
   // ── FAB menu ───────────────────────────────────────────────────────────────
@@ -622,7 +628,8 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* Email notify */}
+                  {/* Email notify – H5 only */}
+                  {detectPlatform() !== "wechat_mp" && (
                   <div className="flex items-center gap-3 px-4 py-4">
                     <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <Mail className="w-[18px] h-[18px] text-blue-600" />
@@ -642,6 +649,7 @@ export default function Home() {
                       />
                     </button>
                   </div>
+                  )}
                 </div>
               </div>
 
