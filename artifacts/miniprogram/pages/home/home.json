@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "生日通",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}

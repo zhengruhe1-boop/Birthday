@@ -1,0 +1,128 @@
+<view class="form-page" wx:if="{{!loading}}">
+
+  <!-- Header -->
+  <view class="form-header">
+    <view class="back-btn" bindtap="handleBack">
+      <text class="back-arrow">‹</text>
+    </view>
+    <view class="header-center">
+      <view class="type-icon-badge" style="background:{{meta.bg}}">
+        <text style="color:{{meta.color}}">{{meta.icon}}</text>
+      </view>
+      <text class="header-title">{{isEdit ? '编辑' : '添加'}}{{meta.label}}</text>
+    </view>
+    <view style="width:64rpx" />
+  </view>
+
+  <scroll-view class="form-scroll" scroll-y>
+    <view class="form-body">
+
+      <!-- 主卡片：名称 + 类型特有字段 -->
+      <view class="form-card">
+
+        <!-- 名称 -->
+        <view class="field-group">
+          <text class="label">
+            {{eventType === 'anniversary' ? '纪念日名称' : '事件名称'}}
+            <text class="label-required">*</text>
+          </text>
+          <input class="input-field"
+            placeholder="{{eventType === 'anniversary' ? '例如：结婚纪念日' : eventType === 'countdown' ? '例如：高考' : '例如：复查体检'}}"
+            value="{{name}}" bindinput="onNameInput" />
+        </view>
+
+        <!-- 纪念日：日期 + 人物 -->
+        <block wx:if="{{eventType === 'anniversary'}}">
+          <view class="field-group">
+            <text class="label">纪念日日期<text class="label-required">*</text></text>
+            <picker mode="date" value="{{eventDate}}" bindchange="onDateChange">
+              <view class="picker-field">
+                <text>{{eventDate || '请选择日期'}}</text>
+                <text class="picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="field-group">
+            <text class="label">相关人物<text class="label-optional">（选填）</text></text>
+            <input class="input-field" placeholder="例如：小明 & 小红"
+              value="{{person}}" bindinput="onPersonInput" />
+          </view>
+        </block>
+
+        <!-- 倒数日：事件日期 -->
+        <block wx:if="{{eventType === 'countdown'}}">
+          <view class="field-group">
+            <text class="label">事件日期<text class="label-required">*</text></text>
+            <picker mode="date" value="{{eventDate}}" bindchange="onDateChange">
+              <view class="picker-field">
+                <text>{{eventDate || '请选择日期'}}</text>
+                <text class="picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </block>
+
+        <!-- 其它：提醒时间 -->
+        <block wx:if="{{eventType === 'other'}}">
+          <view class="field-group">
+            <text class="label">提醒时间<text class="label-required">*</text></text>
+            <picker mode="time" value="{{reminderTime}}" bindchange="onReminderTimeChange">
+              <view class="picker-field">
+                <text>{{reminderTime || '请选择提醒时间'}}</text>
+                <text class="picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </block>
+      </view>
+
+      <!-- 预览卡 -->
+      <view class="preview-card" style="background:{{meta.bg}}" wx:if="{{name}}">
+        <view class="preview-icon" style="background:#fff">
+          <text style="color:{{meta.color}}">{{meta.icon}}</text>
+        </view>
+        <view class="preview-body">
+          <text class="preview-name">{{name}}</text>
+          <text class="preview-sub">
+            {{eventType === 'anniversary' && eventDate ? eventDate + (person ? ' · ' + person : '') :
+              eventType === 'countdown' && eventDate ? '目标日期：' + eventDate :
+              eventType === 'other' && reminderTime ? '提醒时间：' + reminderTime :
+              '填写完整后预览'}}
+          </text>
+        </view>
+      </view>
+
+      <!-- 邮件提醒 -->
+      <view class="form-card">
+        <view class="field-group">
+          <text class="label">关注"生日通"，和输入"邮箱"都会收到消息提醒</text>
+          <input class="input-field" type="email" placeholder="输入邮箱（选填）"
+            value="{{reminderEmail}}" bindinput="onEmailInput" />
+          <text class="field-hint">系统提前1天和当天8点发送邮件和公众号消息提醒您。</text>
+        </view>
+      </view>
+
+    </view>
+    <view style="height:180rpx" />
+  </scroll-view>
+
+  <!-- Footer -->
+  <view class="form-footer">
+    <view wx:if="{{isEdit}}" class="delete-btn-wrap">
+      <button class="btn btn-danger {{deleting ? 'btn-disabled' : ''}}"
+        bindtap="handleDelete" disabled="{{deleting || saving}}">
+        <text>🗑️</text>
+      </button>
+    </view>
+    <button class="save-btn flex-btn {{(saving || deleting) ? 'btn-disabled' : ''}}"
+      style="background:{{meta.color}}"
+      bindtap="handleSave" disabled="{{saving || deleting}}">
+      {{saving ? '保存中...' : (isEdit ? '保存' : '添加')}}
+    </button>
+  </view>
+
+</view>
+
+<view wx:if="{{loading}}" class="loading-wrap">
+  <text>加载中...</text>
+</view>

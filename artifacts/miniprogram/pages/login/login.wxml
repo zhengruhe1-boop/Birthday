@@ -1,0 +1,88 @@
+<view class="login-page">
+
+  <!-- 背景渐变 -->
+  <view class="login-bg" />
+
+  <!-- Logo 区域 -->
+  <view class="login-hero">
+    <view class="logo-wrap">
+      <text class="logo-emoji">🎂</text>
+    </view>
+    <text class="app-title">生日通</text>
+    <text class="app-subtitle">记住每一个重要的日子</text>
+  </view>
+
+  <!-- 登录卡片 -->
+  <view class="login-cards">
+
+    <!-- Mock 模式：访客登录 -->
+    <block wx:if="{{loginMode === 'mock'}}">
+      <view class="login-card">
+        <view class="card-header">
+          <text class="card-icon">👤</text>
+          <text class="card-title">访客登录</text>
+        </view>
+        <text class="card-desc">同一昵称始终对应同一账号，换设备数据不丢失</text>
+
+        <button class="btn btn-primary btn-full {{loading ? 'btn-disabled' : ''}}"
+          bindtap="handleQuickLogin" disabled="{{loading}}">
+          {{loading ? '登录中...' : '快速进入（本机账号）'}}
+        </button>
+
+        <view class="divider"><text>或输入昵称切换账号</text></view>
+
+        <input class="input-field" placeholder="输入昵称（选填）"
+          value="{{nickname}}" bindinput="onNicknameInput" />
+        <view style="height:16rpx" />
+        <button class="btn btn-outline btn-full {{loading ? 'btn-disabled' : ''}}"
+          bindtap="handleNicknameLogin" disabled="{{loading}}">
+          {{loading ? '登录中...' : '用此昵称登录'}}
+        </button>
+      </view>
+    </block>
+
+    <!-- WeChat 模式：小程序登录 -->
+    <block wx:if="{{loginMode === 'wechat'}}">
+      <view class="login-card">
+        <view class="card-header">
+          <text class="card-icon">💬</text>
+          <text class="card-title">微信登录</text>
+        </view>
+        <text class="card-desc">使用微信账号授权登录，无需手动输入任何信息</text>
+
+        <button class="btn btn-primary-wechat btn-full {{wxLoginLoading ? 'btn-disabled' : ''}}"
+          bindtap="handleWxLogin" disabled="{{wxLoginLoading}}">
+          {{wxLoginLoading ? '授权中...' : '微信一键登录'}}
+        </button>
+      </view>
+    </block>
+
+  </view>
+
+  <!-- 法律协议 -->
+  <view class="legal-footer">
+    <text class="legal-text">登录即代表同意 </text>
+    <text class="legal-link" bindtap="showTerms">用户协议</text>
+    <text class="legal-text"> 和 </text>
+    <text class="legal-link" bindtap="showPrivacy">隐私政策</text>
+  </view>
+
+  <!-- 法律内容弹窗 -->
+  <view class="modal-mask" wx:if="{{showLegal}}" bindtap="closeLegal">
+    <view class="modal-sheet" catchtap="">
+      <view class="modal-handle" />
+      <view class="modal-header">
+        <text class="modal-title">{{legalTitle}}</text>
+        <view class="modal-close" bindtap="closeLegal"><text>✕</text></view>
+      </view>
+      <scroll-view class="modal-body" scroll-y>
+        <text class="modal-text" wx:if="{{legalContent}}">{{legalContent}}</text>
+        <text class="modal-empty" wx:else>暂无内容，管理员尚未配置。</text>
+      </scroll-view>
+      <view class="modal-footer">
+        <button class="btn btn-ghost btn-full" bindtap="closeLegal">我已知晓</button>
+      </view>
+    </view>
+  </view>
+
+</view>

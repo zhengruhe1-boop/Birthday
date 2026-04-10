@@ -1,0 +1,179 @@
+page {
+  background-color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color: #1e293b;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+* { box-sizing: border-box; }
+
+/* ── Common ──────────────────────────────── */
+.page-container {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.card-padding { padding: 32rpx; }
+
+/* ── Buttons ─────────────────────────────── */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+  transition: opacity 0.15s;
+}
+.btn:active { opacity: 0.75; }
+.btn-primary { background: #f43f5e; color: #fff; }
+.btn-primary-wechat { background: #07C160; color: #fff; }
+.btn-outline {
+  background: #fff;
+  color: #1e293b;
+  border: 1rpx solid #e2e8f0;
+}
+.btn-ghost { background: transparent; color: #64748b; }
+.btn-danger { background: #fff0f0; color: #ef4444; border: 1rpx solid #fca5a5; }
+.btn-sm { height: 64rpx; font-size: 26rpx; border-radius: 14rpx; }
+.btn-full { width: 100%; }
+.btn-disabled { opacity: 0.5; }
+
+/* ── Inputs ─────────────────────────────── */
+.input-field {
+  width: 100%;
+  height: 88rpx;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+  background: #fff;
+}
+.input-field:focus { border-color: #f43f5e; }
+
+.label {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #1e293b;
+  margin-bottom: 10rpx;
+  display: block;
+}
+.label-optional {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #94a3b8;
+  margin-left: 8rpx;
+}
+.label-required { color: #ef4444; margin-left: 4rpx; }
+
+.field-group { margin-bottom: 32rpx; }
+
+/* ── Tags/Badges ─────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+.badge-rose { background: #fff1f2; color: #f43f5e; }
+.badge-orange { background: #fff7ed; color: #f97316; }
+.badge-violet { background: #f5f3ff; color: #8b5cf6; }
+.badge-blue { background: #eff6ff; color: #3b82f6; }
+.badge-green { background: #f0fdf4; color: #22c55e; }
+
+/* ── Empty state ─────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 48rpx;
+  text-align: center;
+  color: #94a3b8;
+}
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: #fff1f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 32rpx;
+  font-size: 48rpx;
+}
+.empty-title { font-size: 32rpx; font-weight: 700; color: #1e293b; margin-bottom: 12rpx; }
+.empty-desc { font-size: 26rpx; color: #94a3b8; margin-bottom: 48rpx; }
+
+/* ── Loading ─────────────────────────────── */
+.loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  color: #94a3b8;
+  font-size: 26rpx;
+}
+
+/* ── Section header ──────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+  padding: 0 4rpx;
+}
+.section-bar {
+  width: 6rpx;
+  height: 32rpx;
+  border-radius: 3rpx;
+}
+.section-title { font-size: 26rpx; font-weight: 700; }
+.section-count {
+  font-size: 22rpx;
+  font-weight: 400;
+  padding: 2rpx 14rpx;
+  border-radius: 100rpx;
+}
+
+/* ── Divider ─────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 0;
+  color: #94a3b8;
+  font-size: 24rpx;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1rpx;
+  background: #e2e8f0;
+}
+.divider text { padding: 0 16rpx; }
+
+/* ── Toggle switch ───────────────────────── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info { flex: 1; margin-right: 24rpx; }
+.toggle-label { font-size: 28rpx; font-weight: 500; }
+.toggle-desc { font-size: 22rpx; color: #94a3b8; margin-top: 4rpx; }
