@@ -234,6 +234,22 @@ export default function Home() {
   const isSearching = search.trim().length > 0;
   const showLoading = isSearching ? isSearchLoading : isUpcomingLoading;
 
+  // 本地过滤 events（已加载到内存，无需额外请求）
+  const allEventsList = [
+    ...events.anniversaries,
+    ...events.countdowns,
+    ...events.others,
+  ];
+  const filteredEvents = isSearching
+    ? allEventsList.filter((e) => {
+        const q = search.trim().toLowerCase();
+        return (
+          e.name.toLowerCase().includes(q) ||
+          (e.person ?? "").toLowerCase().includes(q)
+        );
+      })
+    : [];
+
   const avatarText = user.nickname ? user.nickname[0].toUpperCase() : "U";
 
   return (
@@ -380,13 +396,68 @@ export default function Home() {
               exit={{ opacity: 0 }}
               className="space-y-3"
             >
-              <h2 className="text-sm font-semibold text-muted-foreground mb-2 px-2">搜索结果 ({searchResults?.length || 0})</h2>
-              {searchResults?.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">没有找到相关亲友</div>
-              ) : (
-                searchResults?.map((contact, i) => (
-                  <ContactCard key={contact.id} contact={contact} index={i} />
-                ))
+              {/* 搜索结果标题：联系人 + 事件总数 */}
+              <h2 className="text-sm font-semibold text-muted-foreground mb-2 px-2">
+                搜索结果（{(searchResults?.length || 0) + filteredEvents.length} 条）
+              </h2>
+
+              {/* 无结果 */}
+              {(searchResults?.length === 0 && filteredEvents.length === 0) && (
+                <div className="text-center py-12 text-muted-foreground">没有找到相关记录</div>
+              )}
+
+              {/* 联系人结果 */}
+              {(searchResults?.length ?? 0) > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground px-2 flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5" />生日联系人
+                  </p>
+                  {searchResults!.map((contact, i) => (
+                    <ContactCard key={contact.id} contact={contact} index={i} />
+                  ))}
+                </div>
+              )}
+
+              {/* 事件结果 */}
+              {filteredEvents.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground px-2 flex items-center gap-1.5 mt-2">
+                    <CalendarDays className="w-3.5 h-3.5" />纪念日 / 倒数日 / 其它
+                  </p>
+                  {filteredEvents.map((e) => {
+                    const cfg =
+                      e.type === "anniversary"
+                        ? { icon: <Heart className="w-5 h-5" />, bg: "bg-rose-50", color: "text-rose-500", label: "纪念日" }
+                        : e.type === "countdown"
+                        ? { icon: <Timer className="w-5 h-5" />, bg: "bg-orange-50", color: "text-orange-500", label: "倒数日" }
+                        : { icon: <Sparkles className="w-5 h-5" />, bg: "bg-violet-50", color: "text-violet-500", label: "其它提醒" };
+                    const sub =
+                      e.type === "anniversary"
+                        ? `${e.person ? e.person + " · " : ""}${e.eventDate ?? ""}`
+                        : e.type === "countdown"
+                        ? `目标日期：${e.eventDate ?? ""}`
+                        : e.reminderTime ?? "";
+                    return (
+                      <button
+                        key={`evt-${e.id}`}
+                        onClick={() => setLocation(`/event/${e.id}`)}
+                        className="w-full text-left bg-white rounded-2xl border border-border/50 px-4 py-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-all active:scale-98"
+                      >
+                        <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center ${cfg.color} flex-shrink-0`}>
+                          {cfg.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{e.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </motion.div>
           ) : (
