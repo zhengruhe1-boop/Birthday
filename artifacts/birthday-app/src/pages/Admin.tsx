@@ -460,10 +460,8 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="px-6 py-3 w-8"></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">用户</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">账号类型</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Open ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">生日条数</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">最后访问</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">注册时间</th>
@@ -472,81 +470,32 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
               <tbody className="divide-y divide-gray-50">
                 {data.users.map(user => {
                   const acct = accountLabel(user.openId);
-                  const isExpanded = expanded.has(user.id);
                   return (
-                    <>
-                      <tr
-                        key={user.id}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => toggleExpand(user.id)}
-                      >
-                        <td className="px-6 py-4 text-gray-400">
-                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-semibold text-xs flex-shrink-0">
-                              {user.nickname.charAt(0)}
-                            </div>
-                            <span className="font-medium text-gray-900">{user.nickname}</span>
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-semibold text-xs flex-shrink-0">
+                            {user.nickname.charAt(0)}
                           </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}>
-                            {acct.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-gray-400 font-mono text-xs max-w-40 truncate">{user.openId || "—"}</td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-gray-700 font-medium">
-                            <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
-                            {user.contactCount} 条
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-gray-400 text-xs">
-                          {user.lastAccessAt ? formatDate(user.lastAccessAt) : <span className="text-gray-300">从未</span>}
-                        </td>
-                        <td className="px-4 py-4 text-gray-400 text-xs">{formatDate(user.createdAt)}</td>
-                      </tr>
-
-                      {isExpanded && (
-                        <tr key={`${user.id}-detail`} className="bg-slate-50">
-                          <td colSpan={7} className="px-12 py-4">
-                            {user.contacts.length === 0 ? (
-                              <p className="text-sm text-gray-400 py-2">该用户暂无生日记录</p>
-                            ) : (
-                              <table className="w-full text-sm bg-white rounded-xl overflow-hidden border border-gray-200">
-                                <thead>
-                                  <tr className="bg-gray-50 border-b border-gray-200">
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">姓名</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">生日</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">关系</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">添加时间</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                  {user.contacts.map(c => (
-                                    <tr key={c.id} className="hover:bg-gray-50">
-                                      <td className="px-5 py-3">
-                                        <div className="flex items-center gap-2.5">
-                                          <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 text-[10px] font-bold">
-                                            {c.name.charAt(0)}
-                                          </div>
-                                          <span className="font-medium text-gray-900">{c.name}</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-5 py-3 text-gray-600">{formatBirthday(c)}</td>
-                                      <td className="px-5 py-3 text-gray-400">{c.relation || "—"}</td>
-                                      <td className="px-5 py-3 text-gray-400 text-xs">{formatDate(c.createdAt)}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </>
+                          <span className="font-medium text-gray-900">{user.nickname}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}>
+                          {acct.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center gap-1.5 text-gray-700 font-medium">
+                          <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
+                          {user.contactCount} 条
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-gray-400 text-xs">
+                        {user.lastAccessAt ? formatDate(user.lastAccessAt) : <span className="text-gray-300">从未</span>}
+                      </td>
+                      <td className="px-4 py-4 text-gray-400 text-xs">{formatDate(user.createdAt)}</td>
+                    </tr>
                   );
                 })}
               </tbody>
