@@ -348,6 +348,35 @@ router.post("/email-run", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/share-config ───────────────────────────────────────────────
+router.get("/share-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const title   = await getSetting("share_title")   ?? "";
+    const desc    = await getSetting("share_desc")    ?? "";
+    const imgUrl  = await getSetting("share_img_url") ?? "";
+    const link    = await getSetting("share_link")    ?? "";
+    res.json({ title, desc, imgUrl, link });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/share-config ───────────────────────────────────────────────
+router.put("/share-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { title, desc, imgUrl, link } = req.body as Record<string, string>;
+    if (title   !== undefined) await setSetting("share_title",   title.trim());
+    if (desc    !== undefined) await setSetting("share_desc",    desc.trim());
+    if (imgUrl  !== undefined) await setSetting("share_img_url", imgUrl.trim());
+    if (link    !== undefined) await setSetting("share_link",    link.trim());
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export { getSetting };
 export default router;
 

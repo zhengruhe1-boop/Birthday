@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock, Sparkles, Zap, Mail, Send, ShieldCheck } from "lucide-react";
+import { Users, CalendarDays, ChevronDown, ChevronRight, RefreshCw, LogOut, Settings, CheckCircle, AlertCircle, ExternalLink, FileText, Bell, Play, Clock, Sparkles, Zap, Mail, Send, ShieldCheck, Share2 } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
 
@@ -1673,8 +1673,172 @@ function EmailConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
-type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content";
+// ─── ShareConfigPanel ─────────────────────────────────────────────────────────
+interface ShareConfig {
+  title:  string;
+  desc:   string;
+  imgUrl: string;
+  link:   string;
+}
+
+function ShareConfigPanel({ adminKey }: { adminKey: string }) {
+  const [cfg, setCfg]   = useState<ShareConfig>({ title: "", desc: "", imgUrl: "", link: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/share-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: ShareConfig | null) => { if (d) setCfg(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [adminKey]);
+
+  const handleSave = async () => {
+    setSaving(true); setSaved(false);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/share-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(cfg),
+      });
+      if (res.ok) setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="text-sm text-gray-400 py-8 text-center">加载中…</div>;
+
+  const previewTitle  = cfg.title  || "生日通 - 不再错过重要生日";
+  const previewDesc   = cfg.desc   || "智能生日提醒，农历公历都支持";
+  const previewImgUrl = cfg.imgUrl || "";
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* 说明 */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 text-sm text-blue-700 leading-relaxed">
+        <p className="font-semibold mb-1">微信分享配置</p>
+        <p>在微信内打开页面时，点击右上角"分享给朋友"或"分享到朋友圈"，会按照下方配置展示分享卡片。需在微信公众号后台完成 JS-SDK 域名配置后生效。</p>
+      </div>
+
+      {/* 表单 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <Share2 className="w-4 h-4 text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">分享卡片内容</h3>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* 标题 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">分享标题</label>
+            <input
+              type="text"
+              value={cfg.title}
+              onChange={e => setCfg(c => ({ ...c, title: e.target.value }))}
+              placeholder="生日通 - 不再错过重要生日"
+              maxLength={64}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">留空则使用默认标题（最多 64 字）</p>
+          </div>
+
+          {/* 描述 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">分享描述</label>
+            <input
+              type="text"
+              value={cfg.desc}
+              onChange={e => setCfg(c => ({ ...c, desc: e.target.value }))}
+              placeholder="智能生日提醒，农历公历都支持"
+              maxLength={128}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">留空则使用默认描述（最多 128 字）</p>
+          </div>
+
+          {/* 图片 URL */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">分享缩略图 URL</label>
+            <input
+              type="url"
+              value={cfg.imgUrl}
+              onChange={e => setCfg(c => ({ ...c, imgUrl: e.target.value }))}
+              placeholder="https://yourdomain.com/share-thumb.jpg"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">建议 300×300 px 以上的正方形图片，须为可公开访问的 https 链接</p>
+          </div>
+
+          {/* 分享链接 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">分享链接（落地页）</label>
+            <input
+              type="url"
+              value={cfg.link}
+              onChange={e => setCfg(c => ({ ...c, link: e.target.value }))}
+              placeholder="https://yourdomain.com/birthday-app/"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">留空则默认分享当前页面 URL</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 预览 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-800">分享卡片预览</h3>
+          <p className="text-xs text-gray-400 mt-0.5">模拟微信「发送给朋友」卡片样式</p>
+        </div>
+        <div className="p-6">
+          <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-3 max-w-xs bg-gray-50">
+            {previewImgUrl ? (
+              <img src={previewImgUrl} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
+            ) : (
+              <div className="w-14 h-14 rounded-lg bg-rose-100 flex-shrink-0 flex items-center justify-center text-rose-400 text-xl">🎂</div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{previewTitle}</p>
+              <p className="text-xs text-gray-400 mt-1 line-clamp-1">{previewDesc}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 保存 */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {saving ? "保存中…" : "保存配置"}
+        </button>
+        {saved && (
+          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+            <CheckCircle className="w-4 h-4" />
+            已保存
+          </div>
+        )}
+      </div>
+
+      {/* JS-SDK 域名配置说明 */}
+      <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-4 text-sm text-amber-800 space-y-2">
+        <p className="font-semibold">上线前必做：微信 JS-SDK 域名配置</p>
+        <ol className="list-decimal list-inside space-y-1 text-xs leading-relaxed">
+          <li>登录微信公众平台 → <strong>设置与开发 → 公众号设置 → 功能设置</strong></li>
+          <li>找到 <strong>「JS接口安全域名」</strong>，添加你的域名（不含 https://，不含路径）</li>
+          <li>分享功能仅在微信内置浏览器（公众号 H5）中生效，普通浏览器无效</li>
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share";
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("users");
@@ -1686,6 +1850,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
     { id: "notify",  label: "消息通知", icon: <Bell       className="w-4 h-4" /> },
     { id: "email",   label: "邮件配置", icon: <Mail       className="w-4 h-4" /> },
     { id: "content", label: "内容配置", icon: <FileText   className="w-4 h-4" /> },
+    { id: "share",   label: "分享配置", icon: <Share2     className="w-4 h-4" /> },
   ];
 
   return (
@@ -1747,6 +1912,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
           {tab === "notify"  && <NotifyConfigPanel  adminKey={adminKey} />}
           {tab === "email"   && <EmailConfigPanel   adminKey={adminKey} />}
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
+          {tab === "share"   && <ShareConfigPanel   adminKey={adminKey} />}
         </div>
       </main>
     </div>

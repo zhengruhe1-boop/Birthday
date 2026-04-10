@@ -10,6 +10,74 @@ import { detectPlatform, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@
 
 const BASE = import.meta.env.BASE_URL;
 
+// WeChat JS-SDK global type declaration
+declare global {
+  interface Window {
+    wx?: {
+      config(cfg: object): void;
+      ready(cb: () => void): void;
+      error(cb: (res: { errMsg: string }) => void): void;
+      updateAppMessageShareData(opts: object): void;
+      updateTimelineShareData(opts: object): void;
+    };
+  }
+}
+
+/** 动态加载微信 JSSDK 脚本（幂等，加载过则直接 resolve） */
+function loadWechatJsSdk(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.wx) { resolve(); return; }
+    const existing = document.getElementById("wx-jssdk");
+    if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    const script = document.createElement("script");
+    script.id  = "wx-jssdk";
+    script.src = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
+    script.onload = () => resolve();
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/** 调用后台签名接口并初始化分享 */
+async function initWechatShare(base: string): Promise<void> {
+  try {
+    await loadWechatJsSdk();
+
+    // 微信要求 url 不含 hash
+    const pageUrl = location.href.split("#")[0];
+    const resp = await fetch(
+      `${base}api/share/jssdk-config?url=${encodeURIComponent(pageUrl)}`
+    );
+    if (!resp.ok) return;
+    const cfg = await resp.json() as {
+      appId: string; timestamp: number; nonceStr: string; signature: string;
+      shareTitle: string; shareDesc: string; shareImgUrl: string; shareLink: string;
+    };
+
+    window.wx?.config({
+      debug:      false,
+      appId:      cfg.appId,
+      timestamp:  cfg.timestamp,
+      nonceStr:   cfg.nonceStr,
+      signature:  cfg.signature,
+      jsApiList:  ["updateAppMessageShareData", "updateTimelineShareData"],
+    });
+
+    window.wx?.ready(() => {
+      const shareOpts = {
+        title:   cfg.shareTitle,
+        desc:    cfg.shareDesc,
+        link:    cfg.shareLink,
+        imgUrl:  cfg.shareImgUrl,
+      };
+      window.wx?.updateAppMessageShareData(shareOpts);
+      window.wx?.updateTimelineShareData({ title: cfg.shareTitle, link: cfg.shareLink, imgUrl: cfg.shareImgUrl });
+    });
+  } catch {
+    // 静默失败，不影响正常使用
+  }
+}
+
 interface AppEvent {
   id: number;
   type: "anniversary" | "countdown" | "other";
@@ -115,6 +183,14 @@ export default function Home() {
     setWechatNotifyState(true);
     localStorage.setItem(PREF_WECHAT_NOTIFY, "true");
   };
+
+  // 微信 JS-SDK 分享初始化（仅在公众号 H5 环境下）
+  useEffect(() => {
+    if (!isAuthenticated || isAuthLoading) return;
+    const platform = detectPlatform();
+    if (platform !== "wechat_mp") return;
+    initWechatShare(BASE);
+  }, [isAuthenticated, isAuthLoading]);
 
   // ── FAB menu ───────────────────────────────────────────────────────────────
   const [showFab, setShowFab] = useState(false);

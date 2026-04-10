@@ -6,6 +6,7 @@ import uploadRouter from "./upload.js";
 import remindersRouter from "./reminders.js";
 import adminRouter from "./admin.js";
 import eventsRouter from "./events.js";
+import shareRouter from "./share.js";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/upload", uploadRouter);
 router.use("/reminders", remindersRouter);
 router.use("/admin", adminRouter);
 router.use("/events", eventsRouter);
+router.use("/share", shareRouter);
 
 export default router;
