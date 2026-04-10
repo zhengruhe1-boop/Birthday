@@ -15,6 +15,7 @@ interface EventPayload {
   eventDate?: string;
   person?: string;
   reminderTime?: string;
+  reminderEmail?: string;
 }
 
 const TYPE_META: Record<EventType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
@@ -86,6 +87,7 @@ export default function EventForm() {
   const [eventDate, setEventDate] = useState("");
   const [person, setPerson] = useState("");
   const [reminderTime, setReminderTime] = useState("");
+  const [reminderEmail, setReminderEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -101,6 +103,7 @@ export default function EventForm() {
         setEventDate(e.eventDate ?? "");
         setPerson(e.person ?? "");
         setReminderTime(e.reminderTime ?? "");
+        setReminderEmail(e.reminderEmail ?? "");
       })
       .catch(() => toast({ title: "加载失败", variant: "destructive" }))
       .finally(() => setFetching(false));
@@ -125,6 +128,7 @@ export default function EventForm() {
     eventDate: eventDate || undefined,
     person: person.trim() || undefined,
     reminderTime: reminderTime || undefined,
+    reminderEmail: reminderEmail.trim() || undefined,
   });
 
   const handleSave = async () => {
@@ -262,6 +266,22 @@ export default function EventForm() {
                 />
               </div>
             )}
+          </div>
+
+          {/* 邮箱提醒 */}
+          <div className="bg-white rounded-2xl border border-border/50 p-5 space-y-3">
+            <label className="text-sm font-medium block">
+              关注"生日通"，和输入"邮箱"都会收到消息提醒
+            </label>
+            <Input
+              type="email"
+              value={reminderEmail}
+              onChange={e => setReminderEmail(e.target.value)}
+              placeholder="输入邮箱（选填）"
+            />
+            <p className="text-xs text-muted-foreground">
+              系统提前1天和当天8点发送邮件和公众号消息提醒您。
+            </p>
           </div>
 
           {/* 预览卡 */}

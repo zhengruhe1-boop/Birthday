@@ -97,15 +97,16 @@ router.get("/:id", async (req: AuthRequest, res) => {
 // ── POST /api/events ─────────────────────────────────────────────────────────
 router.post("/", async (req: AuthRequest, res) => {
   try {
-    const { type, name, eventDate, person, reminderTime } = req.body as Record<string, string>;
+    const { type, name, eventDate, person, reminderTime, reminderEmail } = req.body as Record<string, string>;
     if (!type || !name) { res.status(400).json({ error: "type and name required" }); return; }
     const [row] = await db.insert(eventsTable).values({
       userId: req.userId!,
       type,
       name,
-      eventDate: eventDate || null,
-      person: person || null,
-      reminderTime: reminderTime || null,
+      eventDate:     eventDate     || null,
+      person:        person        || null,
+      reminderTime:  reminderTime  || null,
+      reminderEmail: reminderEmail || null,
     }).returning();
     res.status(201).json(formatEvent(row));
   } catch (err) {
@@ -119,9 +120,15 @@ router.post("/", async (req: AuthRequest, res) => {
 router.put("/:id", async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, eventDate, person, reminderTime } = req.body as Record<string, string>;
+    const { name, eventDate, person, reminderTime, reminderEmail } = req.body as Record<string, string>;
     const rows = await db.update(eventsTable)
-      .set({ name, eventDate: eventDate || null, person: person || null, reminderTime: reminderTime || null })
+      .set({
+        name,
+        eventDate:     eventDate     || null,
+        person:        person        || null,
+        reminderTime:  reminderTime  || null,
+        reminderEmail: reminderEmail || null,
+      })
       .where(and(eq(eventsTable.id, id), eq(eventsTable.userId, req.userId!)))
       .returning();
     if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }

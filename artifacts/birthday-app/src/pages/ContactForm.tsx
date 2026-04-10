@@ -330,7 +330,7 @@ export default function ContactForm() {
   return (
     <div className="app-container flex flex-col bg-slate-50/30">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pb-4 flex items-center justify-between" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4 flex items-center justify-between">
         <button
           onClick={() => setLocation("/")}
           className="p-2 -ml-2 text-foreground hover:bg-gray-100 rounded-full transition-colors"
@@ -710,12 +710,12 @@ export default function ContactForm() {
             {platform !== "wechat_mp" && (
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  邮箱提醒
+                  关注“生日通”，和输入“邮箱”都会收到消息提醒
                 </label>
                 <Input
                   type="email"
                   {...form.register("reminderEmail")}
-                  placeholder="输入邮箱，提前1天发送提醒"
+                  placeholder="输入邮箱（选填）"
                   className={cn(
                     form.formState.errors.reminderEmail && "border-destructive",
                   )}
@@ -726,7 +726,7 @@ export default function ContactForm() {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  系统每天早上 8 点自动检查，提前 1 天发送邮件提醒
+                  系统提前1天和当天8点发送邮件和公众号消息提醒您。
                 </p>
 
                 {isEdit && contact?.reminderEmail && (

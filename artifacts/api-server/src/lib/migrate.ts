@@ -11,15 +11,20 @@ export async function runStartupMigrations(): Promise<void> {
     // events table (added after initial release — may be missing on older deployments)
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "events" (
-        "id"            serial        PRIMARY KEY,
-        "user_id"       integer       NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-        "type"          text          NOT NULL,
-        "name"          text          NOT NULL,
-        "event_date"    text,
-        "person"        text,
-        "reminder_time" text,
-        "created_at"    timestamp     NOT NULL DEFAULT now()
+        "id"              serial    PRIMARY KEY,
+        "user_id"         integer   NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "type"            text      NOT NULL,
+        "name"            text      NOT NULL,
+        "event_date"      text,
+        "person"          text,
+        "reminder_time"   text,
+        "reminder_email"  text,
+        "created_at"      timestamp NOT NULL DEFAULT now()
       )
+    `);
+    // Add reminder_email column to existing deployments that may not have it
+    await db.execute(sql`
+      ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_email" text
     `);
     logger.info("Startup migrations completed");
   } catch (err) {

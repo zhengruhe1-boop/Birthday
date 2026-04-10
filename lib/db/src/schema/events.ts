@@ -14,6 +14,8 @@ export const eventsTable = pgTable("events", {
   person: text("person"),
   // 其它 提醒时间（"YYYY-MM-DD HH:mm"）
   reminderTime: text("reminder_time"),
+  // 用户邮箱（选填，用于邮件提醒）
+  reminderEmail: text("reminder_email"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
