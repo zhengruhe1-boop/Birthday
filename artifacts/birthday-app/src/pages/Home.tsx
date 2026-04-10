@@ -85,6 +85,29 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // 认证后查询微信服务器，确认用户是否已真实关注公众号
+  useEffect(() => {
+    if (!isAuthenticated || isAuthLoading || mpFollowed) return;
+    const platform = detectPlatform();
+    // 只在公众号 H5 环境下需要查关注状态；mock 登录直接跳过
+    if (platform !== "wechat_mp") return;
+
+    fetch(`${BASE}api/auth/wechat/subscribe-status`, {
+      headers: getAuthHeaders(),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { subscribed?: boolean } | null) => {
+        if (data?.subscribed) {
+          // 已关注：同步本地标记，隐藏横幅
+          localStorage.setItem(MP_FOLLOWED_KEY, "1");
+          setMpFollowed(true);
+          setWechatNotifyState(true);
+          localStorage.setItem(PREF_WECHAT_NOTIFY, "true");
+        }
+      })
+      .catch(() => {});
+  }, [isAuthenticated, isAuthLoading]);
+
   const markFollowed = () => {
     localStorage.setItem(MP_FOLLOWED_KEY, "1");
     setMpFollowed(true);

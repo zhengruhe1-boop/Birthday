@@ -3,8 +3,9 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
-import { AuthRequest } from "../middlewares/auth.js";
+import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { getSetting } from "./admin.js";
+import { getAccessToken } from "../lib/wechat-notify.js";
 
 const router: IRouter = Router();
 
@@ -47,6 +48,54 @@ router.get("/wechat/public-config", async (_req, res) => {
     });
   } catch {
     res.json({ configured: false, appId: null, loginMode: "mock", accountName: "", notifyEnabled: false });
+  }
+});
+
+// ── GET /api/auth/wechat/subscribe-status ────────────────────────────────────
+// Checks whether the authenticated user has followed the Official Account.
+// Returns { subscribed: boolean }.
+// Falls back to false on any error (non-WeChat users, API failures, etc.).
+router.get("/wechat/subscribe-status", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const rows = await db.select().from(usersTable)
+      .where(eq(usersTable.id, req.userId!)).limit(1);
+    if (!rows.length) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const openId = rows[0].openId;
+
+    // Non-WeChat users (mock accounts) are never subscribed
+    if (!openId || openId.startsWith("mock:")) {
+      res.json({ subscribed: false });
+      return;
+    }
+
+    const token = await getAccessToken();
+    if (!token) {
+      req.log.warn("subscribe-status: could not obtain global access token");
+      res.json({ subscribed: false });
+      return;
+    }
+
+    const url =
+      `https://api.weixin.qq.com/cgi-bin/user/info` +
+      `?access_token=${token}&openid=${encodeURIComponent(openId)}&lang=zh_CN`;
+    const resp = await fetch(url);
+    const data = await resp.json() as {
+      subscribe?: number;
+      errcode?: number;
+      errmsg?: string;
+    };
+
+    if (data.errcode) {
+      req.log.warn({ errcode: data.errcode, errmsg: data.errmsg }, "subscribe-status: WeChat API error");
+      res.json({ subscribed: false });
+      return;
+    }
+
+    res.json({ subscribed: data.subscribe === 1 });
+  } catch (err) {
+    req.log.error({ err }, "subscribe-status error");
+    res.json({ subscribed: false });
   }
 });
 

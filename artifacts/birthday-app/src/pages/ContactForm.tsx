@@ -1,13 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Camera, Trash2, X, Mail, CheckCircle, RefreshCw, Globe, Landmark } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  Trash2,
+  X,
+  Mail,
+  CheckCircle,
+  RefreshCw,
+  Globe,
+  Landmark,
+} from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select-native";
-import { useCreateContact, useUpdateContact, useContact, useDeleteContact } from "@/hooks/use-contacts";
+import {
+  useCreateContact,
+  useUpdateContact,
+  useContact,
+  useDeleteContact,
+} from "@/hooks/use-contacts";
 import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { getZodiacSign } from "@/lib/zodiac";
@@ -20,10 +35,19 @@ const contactSchema = z.object({
   birthdayMonth: z.coerce.number().min(1).max(12),
   birthdayDay: z.coerce.number().min(1).max(31),
   birthdayLunar: z.boolean(),
-  birthYear: z.coerce.number().min(1900).max(new Date().getFullYear()).optional().or(z.literal("")),
+  birthYear: z.coerce
+    .number()
+    .min(1900)
+    .max(new Date().getFullYear())
+    .optional()
+    .or(z.literal("")),
   relation: z.string().optional(),
   hometown: z.string().optional(),
-  reminderEmail: z.string().email("邮箱格式不正确").optional().or(z.literal("")),
+  reminderEmail: z
+    .string()
+    .email("邮箱格式不正确")
+    .optional()
+    .or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof contactSchema>;
@@ -47,7 +71,9 @@ export default function ContactForm() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [testEmailStatus, setTestEmailStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [testEmailStatus, setTestEmailStatus] = useState<
+    "idle" | "sending" | "success" | "error"
+  >("idle");
   const [testEmailMsg, setTestEmailMsg] = useState("");
 
   const [events, setEvents] = useState<BirthdayEvent[]>([]);
@@ -66,7 +92,7 @@ export default function ContactForm() {
       relation: "",
       hometown: "",
       reminderEmail: "",
-    }
+    },
   });
 
   useEffect(() => {
@@ -141,16 +167,24 @@ export default function ContactForm() {
     if (contact?.birthdayEvents && contact.birthdayEvents.length > 0) {
       setEvents(contact.birthdayEvents as BirthdayEvent[]);
       if (eventsPollerRef.current) clearTimeout(eventsPollerRef.current);
-    } else if (isEdit && contact && contact.birthYear && contact.birthdayEvents?.length === 0) {
+    } else if (
+      isEdit &&
+      contact &&
+      contact.birthYear &&
+      contact.birthdayEvents?.length === 0
+    ) {
       // Events not yet generated — show loading and poll until they appear
       setEventsLoading(true);
       const poll = () => {
         eventsPollerRef.current = setTimeout(async () => {
           if (!isMounted) return;
           try {
-            const res = await fetch(`${import.meta.env.BASE_URL}api/contacts/${contactId}`, {
-              headers: getAuthHeaders(),
-            });
+            const res = await fetch(
+              `${import.meta.env.BASE_URL}api/contacts/${contactId}`,
+              {
+                headers: getAuthHeaders(),
+              },
+            );
             if (!isMounted) return;
             if (!res.ok) {
               // Contact gone or error — stop polling
@@ -202,7 +236,7 @@ export default function ContactForm() {
     try {
       const res = await fetch(
         `${import.meta.env.BASE_URL}api/contacts/${contactId}/birthday-events?${params}`,
-        { method: "POST", headers: getAuthHeaders() }
+        { method: "POST", headers: getAuthHeaders() },
       );
       const data = await res.json();
       if (data.events) setEvents(data.events);
@@ -218,10 +252,13 @@ export default function ContactForm() {
     setTestEmailStatus("sending");
     setTestEmailMsg("");
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/reminders/test/${contactId}`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/reminders/test/${contactId}`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "发送失败");
       setTestEmailStatus("success");
@@ -267,11 +304,12 @@ export default function ContactForm() {
   };
 
   if (isAuthLoading) return null;
-  if (isEdit && isContactLoading) return (
-    <div className="app-container flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
-    </div>
-  );
+  if (isEdit && isContactLoading)
+    return (
+      <div className="app-container flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
 
   const isPending = createContact.isPending || updateContact.isPending;
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -300,7 +338,7 @@ export default function ContactForm() {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h1 className="text-lg font-bold">
-          {isEdit ? "编辑亲友信息" : "添加亲友"}
+          {isEdit ? "编辑亲友生日信息" : "添加亲友生日"}
         </h1>
         <div className="w-10">
           {isEdit && (
@@ -315,8 +353,11 @@ export default function ContactForm() {
       </header>
 
       <main className="flex-1 px-4 py-6 overflow-y-auto pb-24">
-        <form id="contact-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
+        <form
+          id="contact-form"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           {/* Avatar Upload */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative w-24 h-24 group">
@@ -327,7 +368,11 @@ export default function ContactForm() {
                 className="w-full h-full rounded-full bg-gradient-to-tr from-rose-100 to-red-50 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden focus:outline-none"
               >
                 {displayAvatar ? (
-                  <img src={displayAvatar} alt="头像" className="w-full h-full object-cover" />
+                  <img
+                    src={displayAvatar}
+                    alt="头像"
+                    className="w-full h-full object-cover"
+                  />
                 ) : avatarUploading ? (
                   <div className="flex flex-col items-center gap-1">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
@@ -358,7 +403,9 @@ export default function ContactForm() {
             </div>
 
             {avatarError && (
-              <p className="text-xs text-destructive mt-2 text-center">{avatarError}</p>
+              <p className="text-xs text-destructive mt-2 text-center">
+                {avatarError}
+              </p>
             )}
 
             <p className="text-xs text-muted-foreground mt-2">
@@ -376,20 +423,32 @@ export default function ContactForm() {
 
           {/* Basic Info Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">基本信息</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              基本信息
+            </h2>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">姓名 <span className="text-destructive">*</span></label>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                姓名 <span className="text-destructive">*</span>
+              </label>
               <Input
                 {...form.register("name")}
-                placeholder="例如: 妈妈"
-                className={cn(form.formState.errors.name && "border-destructive")}
+                placeholder="例如: 张三"
+                className={cn(
+                  form.formState.errors.name && "border-destructive",
+                )}
               />
-              {form.formState.errors.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.name.message}</p>}
+              {form.formState.errors.name && (
+                <p className="text-xs text-destructive mt-1">
+                  {form.formState.errors.name.message}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">性别</label>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                性别
+              </label>
               <Controller
                 control={form.control}
                 name="gender"
@@ -402,7 +461,7 @@ export default function ContactForm() {
                         "flex-1 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2",
                         field.value === "male"
                           ? "border-blue-500 bg-blue-50 text-blue-600"
-                          : "border-border bg-white text-muted-foreground hover:bg-gray-50"
+                          : "border-border bg-white text-muted-foreground hover:bg-gray-50",
                       )}
                     >
                       <span>👨</span> 男
@@ -414,7 +473,7 @@ export default function ContactForm() {
                         "flex-1 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2",
                         field.value === "female"
                           ? "border-pink-500 bg-pink-50 text-pink-600"
-                          : "border-border bg-white text-muted-foreground hover:bg-gray-50"
+                          : "border-border bg-white text-muted-foreground hover:bg-gray-50",
                       )}
                     >
                       <span>👩</span> 女
@@ -427,10 +486,14 @@ export default function ContactForm() {
 
           {/* Birthday Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">生日信息</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              生日信息
+            </h2>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">历法类型</label>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                历法类型
+              </label>
               <Controller
                 control={form.control}
                 name="birthdayLunar"
@@ -441,7 +504,9 @@ export default function ContactForm() {
                       onClick={() => field.onChange(false)}
                       className={cn(
                         "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-                        !field.value ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        !field.value
+                          ? "bg-white text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       公历 (阳历)
@@ -451,7 +516,9 @@ export default function ContactForm() {
                       onClick={() => field.onChange(true)}
                       className={cn(
                         "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-                        field.value ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        field.value
+                          ? "bg-white text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       农历 (阴历)
@@ -463,18 +530,26 @@ export default function ContactForm() {
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="text-sm font-medium text-foreground mb-1.5 block">月份</label>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  月份
+                </label>
                 <SelectNative {...form.register("birthdayMonth")}>
-                  {months.map(m => (
-                    <option key={m} value={m}>{m}月</option>
+                  {months.map((m) => (
+                    <option key={m} value={m}>
+                      {m}月
+                    </option>
                   ))}
                 </SelectNative>
               </div>
               <div className="flex-1">
-                <label className="text-sm font-medium text-foreground mb-1.5 block">日期</label>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  日期
+                </label>
                 <SelectNative {...form.register("birthdayDay")}>
-                  {daysInMonth.map(d => (
-                    <option key={d} value={d}>{d}日</option>
+                  {daysInMonth.map((d) => (
+                    <option key={d} value={d}>
+                      {d}日
+                    </option>
                   ))}
                 </SelectNative>
               </div>
@@ -485,16 +560,24 @@ export default function ContactForm() {
               <div className="flex items-center gap-2.5 px-4 py-3 bg-violet-50 rounded-xl border border-violet-100">
                 <span className="text-2xl leading-none">{zodiac.symbol}</span>
                 <div>
-                  <p className="text-sm font-semibold text-violet-700">{zodiac.name}</p>
+                  <p className="text-sm font-semibold text-violet-700">
+                    {zodiac.name}
+                  </p>
                   <p className="text-xs text-violet-400">
-                    {Number(formMonth)}月{Number(formDay)}日 · {formLunar ? "农历" : "公历"}
+                    {Number(formMonth)}月{Number(formDay)}日 ·{" "}
+                    {formLunar ? "农历" : "公历"}
                   </p>
                 </div>
               </div>
             )}
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">出生年份 <span className="text-muted-foreground font-normal">(选填, 用于计算年龄)</span></label>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                出生年份{" "}
+                <span className="text-muted-foreground font-normal">
+                  (选填, 用于计算年龄)
+                </span>
+              </label>
               <Input
                 type="number"
                 {...form.register("birthYear")}
@@ -507,7 +590,9 @@ export default function ContactForm() {
           {isEdit && (
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">生日那天的历史</h2>
+                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                  生日那天的历史大事
+                </h2>
                 {formBirthYear && (
                   <button
                     type="button"
@@ -516,7 +601,9 @@ export default function ContactForm() {
                     className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                     title="重新生成（根据当前填写的年月日）"
                   >
-                    <RefreshCw className={cn("w-4 h-4", eventsLoading && "animate-spin")} />
+                    <RefreshCw
+                      className={cn("w-4 h-4", eventsLoading && "animate-spin")}
+                    />
                   </button>
                 )}
               </div>
@@ -527,30 +614,51 @@ export default function ContactForm() {
                   <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 text-lg">
                     📅
                   </div>
-                  <p className="text-sm font-medium text-foreground text-center">出生年月日必填才能生成</p>
-                  <p className="text-xs text-muted-foreground text-center">请在上方「出生年份」填写完整年份，AI 将根据出生年月日生成那天的历史大事</p>
+                  <p className="text-sm font-medium text-foreground text-center">
+                    出生年月日必填才能生成
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    请在上方「出生年份」填写完整年份，AI
+                    将根据出生年月日生成那天的历史大事
+                  </p>
                 </div>
               ) : events.length > 0 ? (
                 <div className="space-y-3">
                   {events.map((ev, i) => (
                     <div key={i} className="flex gap-3 items-start">
-                      <div className={cn(
-                        "mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold",
-                        ev.category === "中国" ? "bg-rose-500" : "bg-blue-500"
-                      )}>
-                        {ev.category === "中国" ? <Landmark className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                      <div
+                        className={cn(
+                          "mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold",
+                          ev.category === "中国"
+                            ? "bg-rose-500"
+                            : "bg-blue-500",
+                        )}
+                      >
+                        {ev.category === "中国" ? (
+                          <Landmark className="w-3.5 h-3.5" />
+                        ) : (
+                          <Globe className="w-3.5 h-3.5" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className={cn(
-                            "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                            ev.category === "中国" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
-                          )}>
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                              ev.category === "中国"
+                                ? "bg-rose-50 text-rose-600"
+                                : "bg-blue-50 text-blue-600",
+                            )}
+                          >
                             {ev.category}
                           </span>
-                          <span className="text-xs text-muted-foreground">{birthDateLabel}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {birthDateLabel}
+                          </span>
                         </div>
-                        <p className="text-sm font-semibold text-foreground leading-tight">{ev.title}</p>
+                        <p className="text-sm font-semibold text-foreground leading-tight">
+                          {ev.title}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -577,62 +685,87 @@ export default function ContactForm() {
 
           {/* Extra Info Card */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 space-y-4">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">其他信息 <span className="text-xs font-normal normal-case">(选填)</span></h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              其他信息{" "}
+              <span className="text-xs font-normal normal-case">(选填)</span>
+            </h2>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">关系</label>
-              <Input {...form.register("relation")} placeholder="例如：朋友、同事、家人" />
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                关系
+              </label>
+              <Input
+                {...form.register("relation")}
+                placeholder="例如：朋友、同事、家人"
+              />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">家乡</label>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                家乡
+              </label>
               <Input {...form.register("hometown")} placeholder="例如：北京" />
             </div>
 
             {platform !== "wechat_mp" && (
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">邮箱提醒</label>
-              <Input
-                type="email"
-                {...form.register("reminderEmail")}
-                placeholder="输入邮箱，提前1天发送提醒"
-                className={cn(form.formState.errors.reminderEmail && "border-destructive")}
-              />
-              {form.formState.errors.reminderEmail && (
-                <p className="text-xs text-destructive mt-1">{form.formState.errors.reminderEmail.message}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1.5">
-                系统每天早上 8 点自动检查，提前 1 天发送邮件提醒
-              </p>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  邮箱提醒
+                </label>
+                <Input
+                  type="email"
+                  {...form.register("reminderEmail")}
+                  placeholder="输入邮箱，提前1天发送提醒"
+                  className={cn(
+                    form.formState.errors.reminderEmail && "border-destructive",
+                  )}
+                />
+                {form.formState.errors.reminderEmail && (
+                  <p className="text-xs text-destructive mt-1">
+                    {form.formState.errors.reminderEmail.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  系统每天早上 8 点自动检查，提前 1 天发送邮件提醒
+                </p>
 
-              {isEdit && contact?.reminderEmail && (
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={handleSendTestEmail}
-                    disabled={testEmailStatus === "sending"}
-                    className={cn(
-                      "w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border transition-all",
-                      testEmailStatus === "success"
-                        ? "border-green-300 bg-green-50 text-green-600"
-                        : testEmailStatus === "error"
-                          ? "border-destructive/30 bg-destructive/5 text-destructive"
-                          : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
-                    )}
-                  >
-                    {testEmailStatus === "sending" ? (
-                      <><div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" /> 发送中...</>
-                    ) : testEmailStatus === "success" ? (
-                      <><CheckCircle className="w-4 h-4" /> {testEmailMsg}</>
-                    ) : testEmailStatus === "error" ? (
-                      <><Mail className="w-4 h-4" /> {testEmailMsg}</>
-                    ) : (
-                      <><Mail className="w-4 h-4" /> 发送一封测试提醒邮件</>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
+                {isEdit && contact?.reminderEmail && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={handleSendTestEmail}
+                      disabled={testEmailStatus === "sending"}
+                      className={cn(
+                        "w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border transition-all",
+                        testEmailStatus === "success"
+                          ? "border-green-300 bg-green-50 text-green-600"
+                          : testEmailStatus === "error"
+                            ? "border-destructive/30 bg-destructive/5 text-destructive"
+                            : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10",
+                      )}
+                    >
+                      {testEmailStatus === "sending" ? (
+                        <>
+                          <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />{" "}
+                          发送中...
+                        </>
+                      ) : testEmailStatus === "success" ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" /> {testEmailMsg}
+                        </>
+                      ) : testEmailStatus === "error" ? (
+                        <>
+                          <Mail className="w-4 h-4" /> {testEmailMsg}
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" /> 发送一封测试提醒邮件
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </form>
@@ -646,7 +779,11 @@ export default function ContactForm() {
           className="w-full h-14 text-lg font-bold rounded-2xl"
           disabled={isPending || avatarUploading}
         >
-          {isPending ? "保存中..." : avatarUploading ? "图片上传中..." : "保存记录"}
+          {isPending
+            ? "保存中..."
+            : avatarUploading
+              ? "图片上传中..."
+              : "保存记录"}
         </Button>
       </div>
     </div>

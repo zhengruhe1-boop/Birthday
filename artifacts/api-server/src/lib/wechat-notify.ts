@@ -29,7 +29,7 @@ async function setSettingLocal(key: string, value: string): Promise<void> {
 }
 
 // ── WeChat access token ───────────────────────────────────────────────────────
-async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
     return cachedToken.token;
   }
