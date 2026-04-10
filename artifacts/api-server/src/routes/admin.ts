@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, contactsTable, settingsTable } from "@workspace/db";
+import { db, usersTable, contactsTable, settingsTable, eventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -50,9 +50,13 @@ router.get("/stats", async (req: Request, res: Response) => {
     const allContacts = await db.select().from(contactsTable).orderBy(contactsTable.createdAt);
     const totalContacts = allContacts.length;
 
-    // Only attach contacts for users on this page
+    const allEvents = await db.select().from(eventsTable);
+    const totalEvents = allEvents.length;
+
+    // Only attach contacts/events for users on this page
     const userIds = new Set(users.map(u => u.id));
     const pageContacts = allContacts.filter(c => userIds.has(c.userId!));
+    const pageEvents   = allEvents.filter(e => userIds.has(e.userId));
 
     const result = users.map((u) => {
       const userContacts = pageContacts.filter((c) => c.userId === u.id).map((c) => ({
@@ -65,6 +69,7 @@ router.get("/stats", async (req: Request, res: Response) => {
         relation: c.relation,
         createdAt: c.createdAt,
       }));
+      const userEventCount = pageEvents.filter(e => e.userId === u.id).length;
       return {
         id: u.id,
         openId: u.openId,
@@ -73,6 +78,7 @@ router.get("/stats", async (req: Request, res: Response) => {
         createdAt: u.createdAt,
         lastAccessAt: u.lastAccessAt,
         contactCount: userContacts.length,
+        eventCount: userEventCount,
         contacts: userContacts,
       };
     });
@@ -80,6 +86,7 @@ router.get("/stats", async (req: Request, res: Response) => {
     res.json({
       totalUsers,
       totalContacts,
+      totalEvents,
       page,
       pageSize: PAGE_SIZE,
       totalPages: Math.ceil(totalUsers / PAGE_SIZE),
