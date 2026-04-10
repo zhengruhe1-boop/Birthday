@@ -330,7 +330,7 @@ export default function ContactForm() {
   return (
     <div className="app-container flex flex-col bg-slate-50/30">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pb-4 flex items-center justify-between" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
         <button
           onClick={() => setLocation("/")}
           className="p-2 -ml-2 text-foreground hover:bg-gray-100 rounded-full transition-colors"

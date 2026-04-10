@@ -171,7 +171,7 @@ export default function EventForm() {
   return (
     <div className="app-container flex flex-col bg-slate-50/50">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pb-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
         <div className="flex items-center gap-3">
           <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
             <ArrowLeft className="w-5 h-5" />
