@@ -321,7 +321,10 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pt-12 pb-4">
+      <header
+        className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 pb-4"
+        style={{ paddingTop: mpFollowed ? "max(1rem, env(safe-area-inset-top))" : "1rem" }}
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
