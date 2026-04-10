@@ -92,10 +92,9 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
 }
 
 // ── Format helpers ────────────────────────────────────────────────────────────
-function toDateTimeStr(dateStr: string, hour = 8): string {
-  // dateStr is YYYY-MM-DD; return "YYYY-MM-DD HH:mm"
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${dateStr} ${pad(hour)}:00`;
+function toDateTimeStr(dateStr: string): string {
+  // dateStr is YYYY-MM-DD; return only the date portion for time24 template var
+  return dateStr.slice(0, 10);
 }
 
 function thisYearDate(month: number, day: number): string {
@@ -212,11 +211,10 @@ async function buildItems(
       const dateStr = e.reminderTime.replace("T", " ").slice(0, 10);
       const days    = daysUntilDate(dateStr);
       if (!daysBefore.includes(days)) continue;
-      const timeValue = e.reminderTime.replace("T", " ").slice(0, 16);
       items.push({
         openId,
         nameField: `${e.name} · 其它`,
-        timeField: timeValue,
+        timeField: dateStr,
         label:     `event:${e.id} 其它`,
       });
     }
