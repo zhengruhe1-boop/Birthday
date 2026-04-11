@@ -101,18 +101,38 @@ router.get("/stats", async (req: Request, res: Response) => {
 router.get("/wechat-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const appId       = await getSetting("wechat_appid");
-    const appSecret   = await getSetting("wechat_appsecret");
-    const domain      = await getSetting("wechat_callback_domain");
-    const loginMode   = await getSetting("login_mode") ?? "mock";
-    const accountName = await getSetting("wechat_account_name") ?? "";
+    // ── 公众号（H5 OAuth）配置 ───────────────────────────────────────────────
+    const oaAppId       = await getSetting("wechat_appid");
+    const oaAppSecret   = await getSetting("wechat_appsecret");
+    const oaDomain      = await getSetting("wechat_callback_domain");
+    const oaAccountName = await getSetting("wechat_account_name") ?? "";
+
+    // ── 小程序（Mini Program jscode2session）配置 ────────────────────────────
+    const mpAppId     = await getSetting("wechat_mp_appid");
+    const mpAppSecret = await getSetting("wechat_mp_appsecret");
+
+    // ── 登录模式 ─────────────────────────────────────────────────────────────
+    // h5LoginMode:   "wechat_oa" | "mock"
+    // mpLoginMode:   "wechat_mp" | "mock"
+    const rawMode     = await getSetting("login_mode") ?? "mock";
+    // Backward-compat: old "wechat" → "wechat_oa"
+    const h5LoginMode = rawMode === "wechat" ? "wechat_oa" : rawMode as "wechat_oa" | "mock";
+    const mpLoginMode = (await getSetting("login_mode_mp") ?? "mock") as "wechat_mp" | "mock";
+
     res.json({
-      appId:        appId    ?? "",
-      appSecret:    appSecret ? "••••••••" : "",
-      appSecretSet: !!appSecret,
-      domain:       domain   ?? "",
-      loginMode,
-      accountName,
+      // Public Account (OA)
+      oaAppId:        oaAppId      ?? "",
+      oaAppSecret:    oaAppSecret  ? "••••••••" : "",
+      oaAppSecretSet: !!oaAppSecret,
+      oaDomain:       oaDomain     ?? "",
+      oaAccountName,
+      // Mini Program (MP)
+      mpAppId:        mpAppId      ?? "",
+      mpAppSecret:    mpAppSecret  ? "••••••••" : "",
+      mpAppSecretSet: !!mpAppSecret,
+      // Login modes
+      h5LoginMode,
+      mpLoginMode,
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -123,22 +143,44 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
 router.put("/wechat-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { appId, appSecret, domain, loginMode, accountName } = req.body as {
-      appId?: string;
-      appSecret?: string;
-      domain?: string;
-      loginMode?: string;
-      accountName?: string;
+    const {
+      // OA fields
+      oaAppId, oaAppSecret, oaDomain, oaAccountName,
+      // MP fields
+      mpAppId, mpAppSecret,
+      // modes
+      h5LoginMode, mpLoginMode,
+    } = req.body as {
+      oaAppId?:       string;
+      oaAppSecret?:   string;
+      oaDomain?:      string;
+      oaAccountName?: string;
+      mpAppId?:       string;
+      mpAppSecret?:   string;
+      h5LoginMode?:   string;
+      mpLoginMode?:   string;
     };
 
-    if (appId !== undefined)    await setSetting("wechat_appid",           appId.trim());
-    if (appSecret && !appSecret.startsWith("•")) {
-      await setSetting("wechat_appsecret", appSecret.trim());
+    // OA
+    if (oaAppId       !== undefined) await setSetting("wechat_appid",           oaAppId.trim());
+    if (oaAppSecret && !oaAppSecret.startsWith("•")) {
+      await setSetting("wechat_appsecret", oaAppSecret.trim());
     }
-    if (domain !== undefined)      await setSetting("wechat_callback_domain", domain.trim());
-    if (accountName !== undefined) await setSetting("wechat_account_name",    accountName.trim());
-    if (loginMode === "wechat" || loginMode === "mock") {
-      await setSetting("login_mode", loginMode);
+    if (oaDomain      !== undefined) await setSetting("wechat_callback_domain",  oaDomain.trim());
+    if (oaAccountName !== undefined) await setSetting("wechat_account_name",     oaAccountName.trim());
+
+    // MP
+    if (mpAppId !== undefined)  await setSetting("wechat_mp_appid",   mpAppId.trim());
+    if (mpAppSecret && !mpAppSecret.startsWith("•")) {
+      await setSetting("wechat_mp_appsecret", mpAppSecret.trim());
+    }
+
+    // Modes
+    if (h5LoginMode === "wechat_oa" || h5LoginMode === "mock") {
+      await setSetting("login_mode", h5LoginMode);
+    }
+    if (mpLoginMode === "wechat_mp" || mpLoginMode === "mock") {
+      await setSetting("login_mode_mp", mpLoginMode);
     }
 
     res.json({ success: true });

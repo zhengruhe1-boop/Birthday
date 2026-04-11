@@ -35,14 +35,16 @@ router.get("/wechat/public-config", async (_req, res) => {
     const appId        = await getSetting("wechat_appid");
     const secret       = await getSetting("wechat_appsecret");
     const domain       = await getSetting("wechat_callback_domain");
-    const loginMode    = await getSetting("login_mode") ?? "mock";
+    const rawMode      = await getSetting("login_mode") ?? "mock";
+    // Normalize: old "wechat" → "wechat_oa"
+    const loginMode    = rawMode === "wechat" ? "wechat_oa" : rawMode;
     const accountName  = await getSetting("wechat_account_name") ?? "";
     const notifyEnabled = (await getSetting("notify_enabled")) !== "false";
     const configured = !!(appId && secret && domain);
     res.json({
       configured,
       appId:         configured ? appId : null,
-      loginMode,           // "wechat" | "mock"
+      loginMode,           // "wechat_oa" | "mock"
       accountName,         // 公众号显示名称
       notifyEnabled,       // 是否开启消息通知
     });
