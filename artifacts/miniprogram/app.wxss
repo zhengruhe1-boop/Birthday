@@ -6,8 +6,6 @@ page {
   box-sizing: border-box;
 }
 
-* { box-sizing: border-box; }
-
 /* ── Common ──────────────────────────────── */
 .page-container {
   min-height: 100vh;
