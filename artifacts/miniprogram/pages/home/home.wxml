@@ -7,7 +7,7 @@
         <text class="avatar-text">{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
       </view>
       <view>
-        <text class="welcome-text">你好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
+        <text class="welcome-text">您好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
         <text class="welcome-sub">记住每一个重要的日子</text>
       </view>
     </view>

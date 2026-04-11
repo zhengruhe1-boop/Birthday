@@ -5,27 +5,41 @@ import { logger } from "./logger.js";
 
 // ── Local settings helper ─────────────────────────────────────────────────────
 async function getSettingLocal(key: string): Promise<string | null> {
-  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  const rows = await db
+    .select()
+    .from(settingsTable)
+    .where(eq(settingsTable.key, key))
+    .limit(1);
   return rows[0]?.value ?? null;
 }
 
 // ── Config reader ─────────────────────────────────────────────────────────────
 export interface EmailConfig {
-  enabled:       boolean;
-  smtpHost:      string;
-  smtpPort:      number;
-  smtpSecure:    boolean;
-  senderEmail:   string;
-  authCodeSet:   boolean;
-  daysBefore:    number[];
-  sendHour:      number;
-  lastRunAt:     string | null;
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  senderEmail: string;
+  authCodeSet: boolean;
+  daysBefore: number[];
+  sendHour: number;
+  lastRunAt: string | null;
   lastRunResult: { sent: number; errors: number } | null;
 }
 
 export async function getEmailConfig(): Promise<EmailConfig> {
-  const [enabled, smtpHost, smtpPort, smtpSecure, senderEmail, authCode,
-         daysBefore, sendHour, lastRunAt, lastRunResult] = await Promise.all([
+  const [
+    enabled,
+    smtpHost,
+    smtpPort,
+    smtpSecure,
+    senderEmail,
+    authCode,
+    daysBefore,
+    sendHour,
+    lastRunAt,
+    lastRunResult,
+  ] = await Promise.all([
     getSettingLocal("email_enabled"),
     getSettingLocal("email_smtp_host"),
     getSettingLocal("email_smtp_port"),
@@ -39,18 +53,23 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   ]);
 
   // DB value takes precedence; fall back to legacy env vars
-  const effectiveSender   = senderEmail || process.env.QQ_EMAIL   || "";
-  const effectiveAuthCode = authCode    || process.env.QQ_EMAIL_AUTH || "";
+  const effectiveSender = senderEmail || process.env.QQ_EMAIL || "";
+  const effectiveAuthCode = authCode || process.env.QQ_EMAIL_AUTH || "";
 
   return {
-    enabled:       enabled !== "false",
-    smtpHost:      smtpHost  || "smtp.qq.com",
-    smtpPort:      smtpPort  ? parseInt(smtpPort, 10) : 465,
-    smtpSecure:    smtpSecure !== "false",
-    senderEmail:   effectiveSender,
-    authCodeSet:   !!effectiveAuthCode,
-    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],
-    sendHour:      sendHour  ? parseInt(sendHour, 10)  : 8,
+    enabled: enabled !== "false",
+    smtpHost: smtpHost || "smtp.qq.com",
+    smtpPort: smtpPort ? parseInt(smtpPort, 10) : 465,
+    smtpSecure: smtpSecure !== "false",
+    senderEmail: effectiveSender,
+    authCodeSet: !!effectiveAuthCode,
+    daysBefore: daysBefore
+      ? daysBefore
+          .split(",")
+          .map(Number)
+          .filter((n) => !isNaN(n))
+      : [0, 1],
+    sendHour: sendHour ? parseInt(sendHour, 10) : 8,
     lastRunAt,
     lastRunResult: lastRunResult ? JSON.parse(lastRunResult) : null,
   };
@@ -58,41 +77,54 @@ export async function getEmailConfig(): Promise<EmailConfig> {
 
 // ── Transporter factory ────────────────────────────────────────────────────────
 async function buildTransporter(): Promise<nodemailer.Transporter | null> {
-  const smtpHost   = await getSettingLocal("email_smtp_host")   || "smtp.qq.com";
-  const smtpPort   = parseInt(await getSettingLocal("email_smtp_port") || "465", 10);
+  const smtpHost = (await getSettingLocal("email_smtp_host")) || "smtp.qq.com";
+  const smtpPort = parseInt(
+    (await getSettingLocal("email_smtp_port")) || "465",
+    10,
+  );
   const smtpSecure = (await getSettingLocal("email_smtp_secure")) !== "false";
-  const sender     = await getSettingLocal("email_sender") || process.env.QQ_EMAIL;
-  const authCode   = await getSettingLocal("email_auth_code")    || process.env.QQ_EMAIL_AUTH;
+  const sender =
+    (await getSettingLocal("email_sender")) || process.env.QQ_EMAIL;
+  const authCode =
+    (await getSettingLocal("email_auth_code")) || process.env.QQ_EMAIL_AUTH;
 
   if (!sender || !authCode) return null;
 
   return nodemailer.createTransport({
-    host:   smtpHost,
-    port:   smtpPort,
+    host: smtpHost,
+    port: smtpPort,
     secure: smtpSecure,
-    auth:   { user: sender, pass: authCode },
+    auth: { user: sender, pass: authCode },
   });
 }
 
 // ── Birthday reminder ─────────────────────────────────────────────────────────
 export interface BirthdayReminderData {
-  toEmail:        string;
-  contactName:    string;
+  toEmail: string;
+  contactName: string;
   birthdayDisplay: string;
-  daysUntil:      number;
-  age:            number | null;
-  relation:       string | null;
+  daysUntil: number;
+  age: number | null;
+  relation: string | null;
 }
 
-export async function sendBirthdayReminder(data: BirthdayReminderData): Promise<void> {
+export async function sendBirthdayReminder(
+  data: BirthdayReminderData,
+): Promise<void> {
   const transporter = await buildTransporter();
   if (!transporter) throw new Error("邮件服务未配置");
 
-  const senderEmail = await getSettingLocal("email_sender") || process.env.QQ_EMAIL!;
+  const senderEmail =
+    (await getSettingLocal("email_sender")) || process.env.QQ_EMAIL!;
 
-  const daysText = data.daysUntil === 0 ? "今天就是" : data.daysUntil === 1 ? "明天就是" : `还有 ${data.daysUntil} 天就是`;
-  const ageText  = data.age !== null ? `（${data.age + 1}岁生日）` : "";
-  const relText  = data.relation ? `（${data.relation}）` : "";
+  const daysText =
+    data.daysUntil === 0
+      ? "今天就是"
+      : data.daysUntil === 1
+        ? "明天就是"
+        : `还有 ${data.daysUntil} 天就是`;
+  const ageText = data.age !== null ? `（${data.age + 1}岁生日）` : "";
+  const relText = data.relation ? `（${data.relation}）` : "";
 
   const html = `
 <!DOCTYPE html>
@@ -118,10 +150,14 @@ export async function sendBirthdayReminder(data: BirthdayReminderData): Promise<
           </div>
         </div>
       </div>
-      ${data.daysUntil <= 1 ? `
+      ${
+        data.daysUntil <= 1
+          ? `
       <div style="background:#fffbf0;border:1px solid #ffe58f;border-radius:10px;padding:16px;margin-bottom:24px;font-size:14px;color:#856404;">
-        <strong>⏰ 温馨提示：</strong>别忘了提前准备一份心意礼物，让 ${data.contactName} 感受到你的祝福！
-      </div>` : ""}
+        <strong>⏰ 温馨提示：</strong>别忘了提前准备一份心意礼物，让 ${data.contactName} 感受到您的祝福！
+      </div>`
+          : ""
+      }
       <p style="font-size:14px;color:#999;line-height:1.8;margin:0;">此提醒由 <strong>生日通</strong> 自动发送。</p>
     </div>
     <div style="background:#f9f9f9;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
@@ -131,24 +167,31 @@ export async function sendBirthdayReminder(data: BirthdayReminderData): Promise<
 </body>
 </html>`.trim();
 
-  const subject = data.daysUntil === 0
-    ? `🎂 今天是 ${data.contactName} 的生日！`
-    : data.daysUntil === 1
-      ? `🎂 明天是 ${data.contactName} 的生日！`
-      : `🎂 ${data.daysUntil} 天后是 ${data.contactName} 的生日`;
+  const subject =
+    data.daysUntil === 0
+      ? `🎂 今天是 ${data.contactName} 的生日！`
+      : data.daysUntil === 1
+        ? `🎂 明天是 ${data.contactName} 的生日！`
+        : `🎂 ${data.daysUntil} 天后是 ${data.contactName} 的生日`;
 
   await transporter.sendMail({
     from: `"生日通" <${senderEmail}>`,
-    to:   data.toEmail,
+    to: data.toEmail,
     subject,
     html,
   });
 
-  logger.info({ to: data.toEmail, contact: data.contactName, daysUntil: data.daysUntil }, "Birthday reminder email sent");
+  logger.info(
+    { to: data.toEmail, contact: data.contactName, daysUntil: data.daysUntil },
+    "Birthday reminder email sent",
+  );
 }
 
 // ── SMTP verification ─────────────────────────────────────────────────────────
-export async function verifyEmailConfig(): Promise<{ ok: boolean; message: string }> {
+export async function verifyEmailConfig(): Promise<{
+  ok: boolean;
+  message: string;
+}> {
   const transporter = await buildTransporter();
   if (!transporter) {
     return { ok: false, message: "发件邮箱或授权码未配置" };
@@ -165,20 +208,23 @@ export async function verifyEmailConfig(): Promise<{ ok: boolean; message: strin
 }
 
 // ── Test email ────────────────────────────────────────────────────────────────
-export async function sendTestEmail(toEmail: string): Promise<{ ok: boolean; message: string }> {
+export async function sendTestEmail(
+  toEmail: string,
+): Promise<{ ok: boolean; message: string }> {
   const transporter = await buildTransporter();
   if (!transporter) {
     return { ok: false, message: "发件邮箱或授权码未配置" };
   }
-  const sender = await getSettingLocal("email_sender") || process.env.QQ_EMAIL!;
+  const sender =
+    (await getSettingLocal("email_sender")) || process.env.QQ_EMAIL!;
   try {
     await transporter.sendMail({
-      from:    `"生日通" <${sender}>`,
-      to:      toEmail,
+      from: `"生日通" <${sender}>`,
+      to: toEmail,
       subject: "🎂 生日通邮件配置测试",
       html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #eee;border-radius:12px;">
         <h2 style="color:#ff4757;">✅ 邮件配置测试成功</h2>
-        <p>你好！这是来自 <strong>生日通</strong> 管理后台的测试邮件。</p>
+        <p>您好！这是来自 <strong>生日通</strong> 管理后台的测试邮件。</p>
         <p>如果你收到此邮件，说明 SMTP 配置已正确生效，生日提醒邮件将能够正常发送。</p>
         <p style="color:#999;font-size:12px;margin-top:24px;">© 生日通 · 记住每一个重要的日子</p>
       </div>`,
