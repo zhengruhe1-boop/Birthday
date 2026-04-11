@@ -247,7 +247,7 @@
 
       <!-- 空状态 -->
       <block wx:if="{{!loadingUpcoming && !loadingEvents &&
-        (!upcoming || (!upcoming.imminent?.length && !upcoming.soon?.length && !upcoming.monthly?.length)) &&
+        (!upcoming || (!upcoming.imminent.length && !upcoming.soon.length && !upcoming.monthly.length)) &&
         anniversaries.length === 0 && countdowns.length === 0 && others.length === 0}}">
         <view class="empty-state">
           <view class="empty-icon-wrap"><text style="font-size:64rpx">🎂</text></view>

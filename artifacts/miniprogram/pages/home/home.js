@@ -11,7 +11,7 @@ Page({
     search: '',
 
     // Birthdays
-    upcoming: null,
+    upcoming: { imminent: [], soon: [], monthly: [] },
     loadingUpcoming: false,
 
     // Events
@@ -64,7 +64,7 @@ Page({
     try {
       const [me, upcoming, events] = await Promise.all([
         api.get('api/auth/me').catch(() => null),
-        api.get('api/contacts/upcoming').catch(() => ({})),
+        api.get('api/contacts/upcoming').catch(() => ({ imminent: [], soon: [], monthly: [] })),
         api.get('api/events/upcoming').catch(() => ({ anniversaries: [], countdowns: [], others: [] })),
       ]);
       const ann = (events.anniversaries || []).map(e => ({
