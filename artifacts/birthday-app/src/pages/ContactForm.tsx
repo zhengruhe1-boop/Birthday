@@ -696,7 +696,7 @@ export default function ContactForm() {
               </label>
               <Input
                 {...form.register("relation")}
-                placeholder="例如：朋友、同事、家人"
+                placeholder="例如：朋友、同事、家人、恋人"
               />
             </div>
 

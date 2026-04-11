@@ -5,6 +5,7 @@ import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
 import { formatBirthdayDisplay, calcDaysUntilBirthday } from "../lib/birthday.js";
 import { generateBirthdayEvents, BirthdayEvent } from "../lib/birthday-events.js";
+import { sendBirthdayReminder } from "../lib/email.js";
 
 const router: IRouter = Router();
 
@@ -186,6 +187,49 @@ router.post("/:id/birthday-events", async (req: AuthRequest, res) => {
   } catch (err) {
     req.log.error({ err }, "Generate birthday events error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Send a test birthday reminder email for a contact
+router.post("/:id/test-email", async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    const contacts = await db.select().from(contactsTable)
+      .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, userId)))
+      .limit(1);
+
+    if (contacts.length === 0) { res.status(404).json({ error: "Contact not found" }); return; }
+
+    const contact = contacts[0];
+    if (!contact.reminderEmail) {
+      res.status(400).json({ error: "该联系人未填写提醒邮箱" });
+      return;
+    }
+
+    const daysUntil = calcDaysUntilBirthday(contact.birthdayMonth, contact.birthdayDay);
+    const today = new Date();
+    const age = contact.birthYear ? today.getFullYear() - contact.birthYear : null;
+    const birthdayDisplay = formatBirthdayDisplay(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar);
+
+    await sendBirthdayReminder({
+      toEmail: contact.reminderEmail,
+      contactName: contact.name,
+      birthdayDisplay,
+      daysUntil,
+      age,
+      relation: contact.relation,
+    });
+
+    res.json({
+      success: true,
+      message: `测试提醒邮件已发送至 ${contact.reminderEmail}`,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to send test reminder email");
+    res.status(500).json({ error: "发送测试邮件失败，请检查邮箱配置" });
   }
 });
 
