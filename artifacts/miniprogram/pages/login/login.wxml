@@ -12,6 +12,11 @@
     <text class="app-subtitle">记住每一个重要的日子</text>
   </view>
 
+  <!-- 网络错误提示 -->
+  <view wx:if="{{networkError}}" class="network-error-box">
+    <text class="network-error-text">{{networkError}}</text>
+  </view>
+
   <!-- 登录卡片 -->
   <view class="login-cards">
 

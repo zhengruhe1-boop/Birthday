@@ -47,6 +47,22 @@
   color: #94a3b8;
 }
 
+.network-error-box {
+  margin: 0 32rpx 16rpx;
+  background: #fff7ed;
+  border: 1rpx solid #fed7aa;
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+}
+
+.network-error-text {
+  font-size: 24rpx;
+  color: #c2410c;
+  line-height: 1.8;
+  display: block;
+  white-space: pre-wrap;
+}
+
 .login-cards {
   flex: 1;
   padding: 0 32rpx;
