@@ -192,28 +192,6 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
     return res.ok;
   };
 
-  const saveOa = async () => {
-    setSavingOa(true); setOaMsg(null);
-    const ok = await putConfig({
-      oaAppId: config.oaAppId,
-      oaAppSecret: config.oaAppSecret,
-      oaDomain: config.oaDomain,
-      oaAccountName: config.oaAccountName,
-    }).catch(() => false);
-    setOaMsg(ok ? { ok: true, text: "公众号配置已保存" } : { ok: false, text: "保存失败" });
-    setSavingOa(false);
-  };
-
-  const saveMp = async () => {
-    setSavingMp(true); setMpMsg(null);
-    const ok = await putConfig({
-      mpAppId: config.mpAppId,
-      mpAppSecret: config.mpAppSecret,
-    }).catch(() => false);
-    setMpMsg(ok ? { ok: true, text: "小程序配置已保存" } : { ok: false, text: "保存失败" });
-    setSavingMp(false);
-  };
-
   const saveMode = async (h5: WechatConfig["h5LoginMode"], mp: WechatConfig["mpLoginMode"]) => {
     setSavingMode(true); setModeMsg(null);
     const ok = await putConfig({ h5LoginMode: h5, mpLoginMode: mp }).catch(() => false);
@@ -221,47 +199,42 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
     setSavingMode(false);
   };
 
+  // After save, optimistically mark secret as set when user entered a new value
+  const saveOaAndRefresh = async () => {
+    setSavingOa(true); setOaMsg(null);
+    const hadNewSecret = !!(config.oaAppSecret && !config.oaAppSecret.startsWith("•"));
+    const ok = await putConfig({
+      oaAppId: config.oaAppId,
+      oaAppSecret: config.oaAppSecret,
+      oaDomain: config.oaDomain,
+      oaAccountName: config.oaAccountName,
+    }).catch(() => false);
+    if (ok && hadNewSecret) {
+      setConfig(c => ({ ...c, oaAppSecretSet: true, oaAppSecret: "" }));
+    }
+    setOaMsg(ok ? { ok: true, text: "✓ 公众号配置已保存" } : { ok: false, text: "保存失败，请重试" });
+    setSavingOa(false);
+  };
+
+  const saveMpAndRefresh = async () => {
+    setSavingMp(true); setMpMsg(null);
+    const hadNewSecret = !!(config.mpAppSecret && !config.mpAppSecret.startsWith("•"));
+    const ok = await putConfig({
+      mpAppId: config.mpAppId,
+      mpAppSecret: config.mpAppSecret,
+    }).catch(() => false);
+    if (ok && hadNewSecret) {
+      setConfig(c => ({ ...c, mpAppSecretSet: true, mpAppSecret: "" }));
+    }
+    setMpMsg(ok ? { ok: true, text: "✓ 小程序配置已保存" } : { ok: false, text: "保存失败，请重试" });
+    setSavingMp(false);
+  };
+
   const oaCallbackUrl = config.oaDomain
     ? `${config.oaDomain}/api/auth/wechat/oauth/callback` : "（请先填写域名）";
 
   const isOaConfigured = !!(config.oaAppId && config.oaAppSecretSet && config.oaDomain);
   const isMpConfigured = !!(config.mpAppId && config.mpAppSecretSet);
-
-  // Small reusable badge
-  const StatusBadge = ({ ok, label }: { ok: boolean; label: string }) => (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-      ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-600"
-    }`}>
-      {ok ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-      {ok ? "已配置" : "未配置"}
-    </span>
-  );
-
-  const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
-    <div className="flex gap-3">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center">{n}</span>
-      <div className="text-sm text-gray-600">{children}</div>
-    </div>
-  );
-
-  const FieldInput = ({
-    label, value, onChange, placeholder, type = "text", hint, extra,
-  }: {
-    label: string; value: string; onChange: (v: string) => void;
-    placeholder: string; type?: string; hint?: string; extra?: React.ReactNode;
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}{extra}
-      </label>
-      <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 font-mono"
-      />
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-    </div>
-  );
 
   const SaveBtn = ({ saving, onClick, label = "保存配置" }: { saving: boolean; onClick: () => void; label?: string }) => (
     <button
@@ -286,308 +259,345 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
       </div>
     );
 
+  const wechatSvg = (
+    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
+    </svg>
+  );
+  const mockSvg = (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
 
-      {/* ═══════════════════════════════════════════════
-          一、登录方式配置
-      ═══════════════════════════════════════════════ */}
+      {/* ─── H5 登录方式 ─────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">登录方式配置</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            分别为 H5 网页版和微信小程序选择登录方式
-          </p>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <span className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">H5</span>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">H5 网页端登录方式</h2>
+            <p className="text-xs text-gray-400">选择 H5 前端用于登录的方式</p>
+          </div>
         </div>
-        <div className="p-6 space-y-6">
 
-          {/* H5 Web */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded bg-blue-100 text-blue-600 text-[10px] flex items-center justify-center font-bold">H5</span>
-              H5 网页前端登录方式
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button"
-                onClick={() => setConfig(c => ({ ...c, h5LoginMode: "wechat_oa" }))}
-                className={`relative flex flex-col items-center gap-2.5 px-4 py-4 rounded-xl border-2 transition-all text-left ${
-                  config.h5LoginMode === "wechat_oa"
-                    ? "border-[#07C160] bg-green-50"
-                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              >
-                {config.h5LoginMode === "wechat_oa" && <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-[#07C160]" />}
-                <div className="w-9 h-9 rounded-full bg-[#07C160] flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">微信公众号登录</p>
-                  <p className="text-xs text-gray-500 mt-0.5">OAuth 2.0 网页授权</p>
-                </div>
-                {!isOaConfigured && config.h5LoginMode === "wechat_oa" && (
-                  <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-0.5">需完成公众号配置</p>
-                )}
-              </button>
+        <div className="p-5 space-y-4">
+          {/* mode cards */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* 公众号登录 */}
+            <button type="button"
+              disabled={savingMode}
+              onClick={() => {
+                const next = "wechat_oa";
+                setConfig(c => ({ ...c, h5LoginMode: next }));
+                saveMode(next, config.mpLoginMode);
+              }}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
+                config.h5LoginMode === "wechat_oa"
+                  ? "border-[#07C160] bg-green-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.h5LoginMode === "wechat_oa" && (
+                <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-[#07C160]" />
+              )}
+              <div className="w-9 h-9 rounded-full bg-[#07C160] flex items-center justify-center">
+                {wechatSvg}
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">微信公众号登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">OAuth 2.0 网页授权</p>
+              </div>
+              {config.h5LoginMode === "wechat_oa" && !isOaConfigured && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">需完成下方配置</span>
+              )}
+              {config.h5LoginMode === "wechat_oa" && isOaConfigured && (
+                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">已配置</span>
+              )}
+            </button>
 
-              <button type="button"
-                onClick={() => setConfig(c => ({ ...c, h5LoginMode: "mock" }))}
-                className={`relative flex flex-col items-center gap-2.5 px-4 py-4 rounded-xl border-2 transition-all ${
-                  config.h5LoginMode === "mock"
-                    ? "border-rose-400 bg-rose-50"
-                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              >
-                {config.h5LoginMode === "mock" && <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-rose-500" />}
-                <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">测试登录</p>
-                  <p className="text-xs text-gray-500 mt-0.5">昵称登录，无需微信</p>
-                </div>
-              </button>
-            </div>
+            {/* 测试登录 */}
+            <button type="button"
+              disabled={savingMode}
+              onClick={() => {
+                const next = "mock";
+                setConfig(c => ({ ...c, h5LoginMode: next }));
+                saveMode(next, config.mpLoginMode);
+              }}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
+                config.h5LoginMode === "mock"
+                  ? "border-rose-400 bg-rose-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.h5LoginMode === "mock" && (
+                <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-rose-500" />
+              )}
+              <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center">
+                {mockSvg}
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">测试登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">昵称登录，无需微信</p>
+              </div>
+              {config.h5LoginMode === "mock" && (
+                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">当前模式</span>
+              )}
+            </button>
           </div>
 
-          {/* 小程序 */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded bg-purple-100 text-purple-600 text-[10px] flex items-center justify-center font-bold">MP</span>
-              微信小程序登录方式
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button"
-                onClick={() => setConfig(c => ({ ...c, mpLoginMode: "wechat_mp" }))}
-                className={`relative flex flex-col items-center gap-2.5 px-4 py-4 rounded-xl border-2 transition-all ${
-                  config.mpLoginMode === "wechat_mp"
-                    ? "border-purple-400 bg-purple-50"
-                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              >
-                {config.mpLoginMode === "wechat_mp" && <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-purple-500" />}
-                <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">微信小程序登录</p>
-                  <p className="text-xs text-gray-500 mt-0.5">wx.login() + jscode2session</p>
-                </div>
-                {!isMpConfigured && config.mpLoginMode === "wechat_mp" && (
-                  <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-0.5">需完成小程序配置</p>
-                )}
-              </button>
-
-              <button type="button"
-                onClick={() => setConfig(c => ({ ...c, mpLoginMode: "mock" }))}
-                className={`relative flex flex-col items-center gap-2.5 px-4 py-4 rounded-xl border-2 transition-all ${
-                  config.mpLoginMode === "mock"
-                    ? "border-rose-400 bg-rose-50"
-                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              >
-                {config.mpLoginMode === "mock" && <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-rose-500" />}
-                <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">测试登录</p>
-                  <p className="text-xs text-gray-500 mt-0.5">自动生成测试账号</p>
-                </div>
-              </button>
+          {/* 测试登录说明 */}
+          {config.h5LoginMode === "mock" && (
+            <div className="bg-blue-50 rounded-lg px-4 py-3 text-xs text-blue-700 space-y-1">
+              <p className="font-semibold">H5 测试登录说明</p>
+              <p>• 输入昵称作为账号标识，同昵称始终对应同一账号</p>
+              <p>• 换设备不丢失数据，无需微信即可完整体验</p>
+              <p className="text-amber-600 font-medium">测试模式不验证微信身份，仅适合开发调试阶段使用</p>
             </div>
+          )}
+
+          {/* OA 配置表单（仅在选择公众号登录时展示） */}
+          {config.h5LoginMode === "wechat_oa" && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-700">公众号应用配置</p>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                  isOaConfigured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                }`}>
+                  {isOaConfigured
+                    ? <><CheckCircle className="w-3 h-3" /> 已配置</>
+                    : <><AlertCircle className="w-3 h-3" /> 未配置</>
+                  }
+                </span>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">AppID（公众号）</label>
+                  <input
+                    type="text" value={config.oaAppId}
+                    onChange={(e) => setConfig(c => ({ ...c, oaAppId: e.target.value }))}
+                    placeholder="wx1234567890abcdef"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    AppSecret（公众号）
+                    {config.oaAppSecretSet && <span className="ml-2 text-xs text-green-600 font-normal">已设置，填新值可覆盖</span>}
+                  </label>
+                  <input
+                    type="password" value={config.oaAppSecret}
+                    onChange={(e) => setConfig(c => ({ ...c, oaAppSecret: e.target.value }))}
+                    placeholder={config.oaAppSecretSet ? "••••••••（已设置）" : "请输入 AppSecret"}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">网站域名</label>
+                  <input
+                    type="text" value={config.oaDomain}
+                    onChange={(e) => setConfig(c => ({ ...c, oaDomain: e.target.value }))}
+                    placeholder="https://yourdomain.com"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">含协议前缀，不含末尾斜杠</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">公众号名称</label>
+                  <input
+                    type="text" value={config.oaAccountName}
+                    onChange={(e) => setConfig(c => ({ ...c, oaAccountName: e.target.value }))}
+                    placeholder="例如：生日通提醒助手"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">显示在 H5 首页「关注公众号」横幅中</p>
+                </div>
+
+                {/* 回调地址 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">OAuth 回调地址（自动生成）</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-mono text-xs text-gray-700 break-all flex items-start gap-2">
+                    <span className="flex-1">{oaCallbackUrl}</span>
+                    {config.oaDomain && (
+                      <a href={oaCallbackUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">在公众号后台「网页授权域名」中填入你的域名即可</p>
+                </div>
+
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-rose-500 font-medium select-none list-none flex items-center gap-1">
+                    <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+                    查看配置步骤
+                  </summary>
+                  <div className="mt-3 space-y-2.5 text-xs text-gray-600">
+                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">1</span><span>登录微信公众平台 → <strong>设置与开发 → 公众号设置 → 功能设置 → 网页授权域名</strong>，添加你的域名并下载验证文件。</span></div>
+                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">2</span><span>在上方填写 AppID、AppSecret、域名和公众号名称后点击保存。</span></div>
+                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">3</span><span>配置完成后 H5 前端将自动显示微信 OAuth 登录入口。</span></div>
+                  </div>
+                </details>
+
+                <Msg msg={oaMsg} />
+                <SaveBtn saving={savingOa} onClick={saveOaAndRefresh} label="保存公众号配置" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── 小程序登录方式 ──────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <span className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">MP</span>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">微信小程序登录方式</h2>
+            <p className="text-xs text-gray-400">选择小程序端用于登录的方式</p>
           </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* mode cards */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* 小程序登录 */}
+            <button type="button"
+              disabled={savingMode}
+              onClick={() => {
+                const next = "wechat_mp";
+                setConfig(c => ({ ...c, mpLoginMode: next }));
+                saveMode(config.h5LoginMode, next);
+              }}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
+                config.mpLoginMode === "wechat_mp"
+                  ? "border-purple-400 bg-purple-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.mpLoginMode === "wechat_mp" && (
+                <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-purple-500" />
+              )}
+              <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">微信小程序登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">wx.login() + jscode2session</p>
+              </div>
+              {config.mpLoginMode === "wechat_mp" && !isMpConfigured && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">需完成下方配置</span>
+              )}
+              {config.mpLoginMode === "wechat_mp" && isMpConfigured && (
+                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">已配置</span>
+              )}
+            </button>
+
+            {/* 测试登录 */}
+            <button type="button"
+              disabled={savingMode}
+              onClick={() => {
+                const next = "mock";
+                setConfig(c => ({ ...c, mpLoginMode: next }));
+                saveMode(config.h5LoginMode, next);
+              }}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
+                config.mpLoginMode === "mock"
+                  ? "border-rose-400 bg-rose-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {config.mpLoginMode === "mock" && (
+                <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-rose-500" />
+              )}
+              <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center">
+                {mockSvg}
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">测试登录</p>
+                <p className="text-xs text-gray-500 mt-0.5">自动生成测试账号</p>
+              </div>
+              {config.mpLoginMode === "mock" && (
+                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">当前模式</span>
+              )}
+            </button>
+          </div>
+
+          {/* 测试登录说明 */}
+          {config.mpLoginMode === "mock" && (
+            <div className="bg-purple-50 rounded-lg px-4 py-3 text-xs text-purple-700 space-y-1">
+              <p className="font-semibold">小程序测试登录说明</p>
+              <p>• 调用 wx.login() 获取 code，用 code 哈希生成唯一 openid</p>
+              <p>• 无需填写小程序凭证，开发工具可直接测试</p>
+              <p className="text-amber-600 font-medium">测试模式不验证微信身份，仅适合开发调试阶段使用</p>
+            </div>
+          )}
+
+          {/* MP 配置表单（仅在选择小程序登录时展示） */}
+          {config.mpLoginMode === "wechat_mp" && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-700">小程序应用配置</p>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                  isMpConfigured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                }`}>
+                  {isMpConfigured
+                    ? <><CheckCircle className="w-3 h-3" /> 已配置</>
+                    : <><AlertCircle className="w-3 h-3" /> 未配置</>
+                  }
+                </span>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">AppID（小程序）</label>
+                  <input
+                    type="text" value={config.mpAppId}
+                    onChange={(e) => setConfig(c => ({ ...c, mpAppId: e.target.value }))}
+                    placeholder="wx1234567890abcdef"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    AppSecret（小程序）
+                    {config.mpAppSecretSet && <span className="ml-2 text-xs text-green-600 font-normal">已设置，填新值可覆盖</span>}
+                  </label>
+                  <input
+                    type="password" value={config.mpAppSecret}
+                    onChange={(e) => setConfig(c => ({ ...c, mpAppSecret: e.target.value }))}
+                    placeholder={config.mpAppSecretSet ? "••••••••（已设置）" : "请输入小程序 AppSecret"}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                  />
+                </div>
+
+                <div className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2.5 text-xs text-purple-700 space-y-1">
+                  <p className="font-semibold">登录流程说明</p>
+                  <p>① 用户点击登录 → wx.login() 获取临时 code</p>
+                  <p>② 后端用 code + AppSecret 换取用户唯一 openid</p>
+                  <p className="text-amber-600">⚠️ 未配置时自动降级为测试模式</p>
+                </div>
+
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-rose-500 font-medium select-none list-none flex items-center gap-1">
+                    <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+                    查看配置步骤
+                  </summary>
+                  <div className="mt-3 space-y-2.5 text-xs text-gray-600">
+                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">1</span><span>登录<a href="https://mp.weixin.qq.com" target="_blank" rel="noopener noreferrer" className="text-rose-500"> 微信小程序管理后台</a> → 开发 → 开发管理 → 开发设置，获取 AppID 和 AppSecret。</span></div>
+                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">2</span><span>在上方填写后保存，小程序将使用真实微信账号认证。</span></div>
+                  </div>
+                </details>
+
+                <Msg msg={mpMsg} />
+                <SaveBtn saving={savingMp} onClick={saveMpAndRefresh} label="保存小程序配置" />
+              </div>
+            </div>
+          )}
 
           <Msg msg={modeMsg} />
-          <SaveBtn
-            saving={savingMode}
-            onClick={() => saveMode(config.h5LoginMode, config.mpLoginMode)}
-            label="保存登录方式"
-          />
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════
-          二、微信公众号登录配置（H5 OAuth）
-      ═══════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700">微信公众号登录配置</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              用于 H5 网页版 OAuth 授权登录，需微信服务号
-            </p>
-          </div>
-          <StatusBadge ok={isOaConfigured} label="" />
-        </div>
-        <div className="p-6 space-y-5">
-          <FieldInput
-            label="AppID（公众号）"
-            value={config.oaAppId}
-            onChange={(v) => setConfig(c => ({ ...c, oaAppId: v }))}
-            placeholder="wx1234567890abcdef"
-          />
-          <FieldInput
-            label="AppSecret（公众号）"
-            value={config.oaAppSecret}
-            onChange={(v) => setConfig(c => ({ ...c, oaAppSecret: v }))}
-            placeholder={config.oaAppSecretSet ? "••••••••（已设置）" : "请输入 AppSecret"}
-            type="password"
-            extra={config.oaAppSecretSet && (
-              <span className="ml-2 text-xs text-green-600 font-normal">（已设置，填新值可覆盖）</span>
-            )}
-          />
-          <FieldInput
-            label="网站域名"
-            value={config.oaDomain}
-            onChange={(v) => setConfig(c => ({ ...c, oaDomain: v }))}
-            placeholder="https://yourdomain.com"
-            hint="含协议、不含末尾斜杠；微信回调将使用此域名"
-          />
-          <FieldInput
-            label="公众号名称"
-            value={config.oaAccountName}
-            onChange={(v) => setConfig(c => ({ ...c, oaAccountName: v }))}
-            placeholder="例如：生日通提醒助手"
-            hint="登录后首页会出现「关注公众号」横幅，显示此名称"
-          />
-
-          {/* 回调地址 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">OAuth 回调地址（自动生成）</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-mono text-xs text-gray-700 break-all flex items-start gap-2">
-              <span className="flex-1">{oaCallbackUrl}</span>
-              {config.oaDomain && (
-                <a href={oaCallbackUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex-shrink-0 text-gray-400 hover:text-gray-600">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-1">在公众号后台「网页授权域名」中填入你的域名即可，无需手动填此地址</p>
-          </div>
-
-          {/* 配置步骤 */}
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-rose-500 font-medium select-none list-none flex items-center gap-1">
-              <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
-              查看配置步骤
-            </summary>
-            <div className="mt-4 space-y-3">
-              <Step n={1}>登录微信公众平台 → <strong>设置与开发 → 公众号设置 → 功能设置 → 网页授权域名</strong>，添加你的域名。</Step>
-              <Step n={2}>下载验证文件放到网站根目录以通过域名验证。</Step>
-              <Step n={3}>在上方填写 AppID、AppSecret、域名和公众号名称后保存。</Step>
-              <Step n={4}>将登录方式选为「微信公众号登录」后，H5 前端会自动显示微信 OAuth 入口。</Step>
-            </div>
-          </details>
-
-          <Msg msg={oaMsg} />
-          <SaveBtn saving={savingOa} onClick={saveOa} label="保存公众号配置" />
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════
-          三、微信小程序登录配置
-      ═══════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700">微信小程序登录配置</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              用于微信小程序 wx.login() 授权，需小程序 AppID 和 AppSecret
-            </p>
-          </div>
-          <StatusBadge ok={isMpConfigured} label="" />
-        </div>
-        <div className="p-6 space-y-5">
-          <FieldInput
-            label="AppID（小程序）"
-            value={config.mpAppId}
-            onChange={(v) => setConfig(c => ({ ...c, mpAppId: v }))}
-            placeholder="wx1234567890abcdef"
-          />
-          <FieldInput
-            label="AppSecret（小程序）"
-            value={config.mpAppSecret}
-            onChange={(v) => setConfig(c => ({ ...c, mpAppSecret: v }))}
-            placeholder={config.mpAppSecretSet ? "••••••••（已设置）" : "请输入小程序 AppSecret"}
-            type="password"
-            extra={config.mpAppSecretSet && (
-              <span className="ml-2 text-xs text-green-600 font-normal">（已设置，填新值可覆盖）</span>
-            )}
-          />
-
-          <div className="bg-purple-50 border border-purple-100 rounded-lg px-4 py-3 text-xs text-purple-700 space-y-1">
-            <p className="font-semibold">小程序登录流程说明</p>
-            <p>① 用户点击登录 → 小程序调用 wx.login() 获取临时 code</p>
-            <p>② 后端使用 code + AppSecret 调用微信 jscode2session 接口</p>
-            <p>③ 换取用户唯一 openid，完成账号绑定并返回 token</p>
-            <p className="text-amber-600">⚠️ 未配置时自动降级为测试模式（用 sha256(code) 作为 openid）</p>
-          </div>
-
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-rose-500 font-medium select-none list-none flex items-center gap-1">
-              <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
-              查看配置步骤
-            </summary>
-            <div className="mt-4 space-y-3">
-              <Step n={1}>登录 <a href="https://mp.weixin.qq.com" target="_blank" rel="noopener noreferrer" className="text-rose-500">微信小程序管理后台</a> → 开发 → 开发管理 → 开发设置，获取 AppID 和 AppSecret。</Step>
-              <Step n={2}>在上方填写后保存。</Step>
-              <Step n={3}>将登录方式选为「微信小程序登录」后，小程序将使用真实微信账号认证。</Step>
-            </div>
-          </details>
-
-          <Msg msg={mpMsg} />
-          <SaveBtn saving={savingMp} onClick={saveMp} label="保存小程序配置" />
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════
-          四、测试登录说明
-      ═══════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">测试登录说明</h2>
-          <p className="text-xs text-gray-400 mt-0.5">无需微信凭证，适合开发/演示阶段使用</p>
-        </div>
-        <div className="p-6 space-y-4 text-sm text-gray-600">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-blue-200 text-blue-700 text-[10px] flex items-center justify-center font-bold">H5</span>
-                H5 网页测试登录
-              </p>
-              <ul className="text-xs text-blue-600 space-y-1">
-                <li>• 输入昵称作为账号标识</li>
-                <li>• 同昵称始终对应同一账号</li>
-                <li>• 换设备不丢失数据</li>
-                <li>• 无需微信即可完整体验</li>
-              </ul>
-            </div>
-            <div className="bg-purple-50 rounded-lg p-4">
-              <p className="font-semibold text-purple-700 mb-2 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-purple-200 text-purple-700 text-[10px] flex items-center justify-center font-bold">MP</span>
-                小程序测试登录
-              </p>
-              <ul className="text-xs text-purple-600 space-y-1">
-                <li>• 调用 wx.login() 获取 code</li>
-                <li>• 用 code 哈希生成唯一 openid</li>
-                <li>• 无需填写小程序凭证</li>
-                <li>• 开发工具可直接测试</li>
-              </ul>
-            </div>
-          </div>
-          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2.5">
-            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-            <span>测试模式不验证真实微信身份，仅适合开发调试。正式上线前请切换为对应的微信授权登录模式。</span>
-          </div>
         </div>
       </div>
 
