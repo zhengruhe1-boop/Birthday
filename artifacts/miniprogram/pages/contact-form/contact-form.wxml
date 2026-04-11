@@ -1,14 +1,5 @@
 <view class="form-page" wx:if="{{!loading}}">
 
-  <!-- Header -->
-  <view class="form-header">
-    <view class="back-btn" bindtap="handleBack">
-      <text class="back-arrow">‹</text>
-    </view>
-    <text class="header-title">{{isEdit ? '编辑生日' : '添加生日'}}</text>
-    <view style="width:64rpx" />
-  </view>
-
   <scroll-view class="form-scroll" scroll-y>
     <view class="form-body">
 

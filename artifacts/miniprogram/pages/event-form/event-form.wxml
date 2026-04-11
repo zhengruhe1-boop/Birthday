@@ -1,19 +1,5 @@
 <view class="form-page" wx:if="{{!loading}}">
 
-  <!-- Header -->
-  <view class="form-header">
-    <view class="back-btn" bindtap="handleBack">
-      <text class="back-arrow">‹</text>
-    </view>
-    <view class="header-center">
-      <view class="type-icon-badge" style="background:{{meta.bg}}">
-        <text style="color:{{meta.color}}">{{meta.icon}}</text>
-      </view>
-      <text class="header-title">{{isEdit ? '编辑' : '添加'}}{{meta.label}}</text>
-    </view>
-    <view style="width:64rpx" />
-  </view>
-
   <scroll-view class="form-scroll" scroll-y>
     <view class="form-body">
 

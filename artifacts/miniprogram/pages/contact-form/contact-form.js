@@ -74,6 +74,7 @@ Page({
       wx.setNavigationBarTitle({ title: '编辑生日' });
       this.loadContact(parseInt(id, 10));
     } else {
+      wx.setNavigationBarTitle({ title: '添加生日' });
       const now = new Date();
       const m = now.getMonth() + 1;
       const d = now.getDate();

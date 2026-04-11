@@ -5,35 +5,7 @@
   flex-direction: column;
 }
 
-.form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16rpx 24rpx;
-  padding-top: calc(16rpx + env(safe-area-inset-top));
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20rpx);
-  border-bottom: 1rpx solid rgba(0,0,0,0.06);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-.back-btn:active { background: #f1f5f9; }
-
-.back-arrow { font-size: 48rpx; color: #1e293b; line-height: 1; }
-
-.header-title { font-size: 32rpx; font-weight: 700; color: #1e293b; }
-
-.form-scroll { flex: 1; }
+.form-scroll { height: 100vh; }
 
 .form-body { padding: 24rpx 32rpx; }
 
