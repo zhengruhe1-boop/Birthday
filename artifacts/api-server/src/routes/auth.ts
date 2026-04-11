@@ -366,6 +366,32 @@ router.post("/logout", async (req: AuthRequest, res) => {
   }
 });
 
+// ── PUT /api/auth/me ─────────────────────────────────────────────────────────
+router.put("/me", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { nickname, avatarUrl } = req.body as { nickname?: string; avatarUrl?: string };
+    const updates: Record<string, unknown> = {};
+    if (nickname?.trim()) updates.nickname = nickname.trim();
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl || null;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "Nothing to update" });
+      return;
+    }
+
+    const updated = await db.update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, req.userId!))
+      .returning();
+
+    const user = updated[0];
+    res.json({ id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl });
+  } catch (err) {
+    req.log.error({ err }, "Update profile error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/auth/me ──────────────────────────────────────────────────────────
 router.get("/me", async (req: AuthRequest, res) => {
   try {

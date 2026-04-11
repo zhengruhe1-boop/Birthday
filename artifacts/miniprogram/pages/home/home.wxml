@@ -3,18 +3,21 @@
   <!-- 顶部 Header -->
   <view class="home-header">
     <view class="header-left">
-      <view class="avatar-wrap">
-        <text class="avatar-text">{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
-      </view>
-      <view>
-        <text class="welcome-text">您好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
+      <!-- 头像：使用 open-type="chooseAvatar" 让用户直接选微信头像 -->
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{userInfo && userInfo.avatarUrl}}"
+          class="avatar-img-hd" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="avatar-fallback-hd">
+          <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
+        </view>
+      </button>
+      <view class="header-text">
+        <text class="welcome-text">你好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
         <text class="welcome-sub">记住每一个重要的日子</text>
       </view>
     </view>
-    <view class="header-right">
-      <view class="icon-btn" bindtap="openSettings">
-        <text class="iconfont">⚙️</text>
-      </view>
+    <view class="icon-btn" bindtap="openSettings">
+      <text>⚙️</text>
     </view>
   </view>
 
@@ -43,19 +46,17 @@
           </view>
         </view>
 
-        <!-- 无结果 -->
         <block wx:if="{{!searching && searchContacts.length === 0 && searchEvents.length === 0}}">
           <view class="empty-tip">没有找到相关记录</view>
         </block>
 
-        <!-- 联系人结果 -->
         <block wx:if="{{searchContacts.length > 0}}">
           <view class="search-sub-title">生日联系人</view>
           <view wx:for="{{searchContacts}}" wx:key="id" class="contact-card"
             data-id="{{item.id}}" bindtap="goContact">
-            <view class="contact-avatar">
+            <view class="contact-avatar-wrap">
               <image wx:if="{{item.avatarUrl}}" class="avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
-              <text wx:else class="avatar-fallback">{{item.name[0]}}</text>
+              <text wx:else class="avatar-letter">{{item.name[0]}}</text>
             </view>
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
@@ -68,7 +69,6 @@
           </view>
         </block>
 
-        <!-- 事件结果 -->
         <block wx:if="{{searchEvents.length > 0}}">
           <view class="search-sub-title" style="margin-top:20rpx">纪念日 / 倒数日 / 其它</view>
           <view wx:for="{{searchEvents}}" wx:key="id" class="event-card"
@@ -78,11 +78,7 @@
             </view>
             <view class="event-info">
               <text class="event-name">{{item.name}}</text>
-              <text class="event-sub">
-                {{item.type === 'anniversary' ? (item.person ? item.person + ' · ' : '') + item.eventDate :
-                  item.type === 'countdown' ? '目标：' + item.eventDate :
-                  item.reminderTime}}
-              </text>
+              <text class="event-sub">{{item.person ? item.person + ' · ' : ''}}{{item.eventDate || item.reminderTime}}</text>
             </view>
             <view class="event-badge {{item.type === 'anniversary' ? 'badge-rose' : item.type === 'countdown' ? 'badge-orange' : 'badge-violet'}}">
               <text>{{item.type === 'anniversary' ? '纪念日' : item.type === 'countdown' ? '倒数日' : '其它'}}</text>
@@ -95,8 +91,8 @@
     <!-- ── 常规内容 ── -->
     <block wx:else>
 
-      <!-- 即将过生日 -->
-      <block wx:if="{{upcoming.imminent && upcoming.imminent.length > 0}}">
+      <!-- 即将过生日（7天内） -->
+      <block wx:if="{{upcoming.imminent.length > 0}}">
         <view class="content-section">
           <view class="section-header">
             <view class="section-bar" style="background:#f43f5e" />
@@ -105,9 +101,9 @@
           </view>
           <view wx:for="{{upcoming.imminent}}" wx:key="id" class="contact-card"
             data-id="{{item.id}}" bindtap="goContact">
-            <view class="contact-avatar">
+            <view class="contact-avatar-wrap">
               <image wx:if="{{item.avatarUrl}}" class="avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
-              <text wx:else class="avatar-fallback">{{item.name[0]}}</text>
+              <text wx:else class="avatar-letter">{{item.name[0]}}</text>
             </view>
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
@@ -117,14 +113,14 @@
               </text>
             </view>
             <view class="days-badge imminent">
-              <text>{{item.daysUntil === 0 ? '今天🎂' : item.daysUntil === 1 ? '明天' : item.daysUntil + '天后'}}</text>
+              <text>{{item.daysUntilBirthday === 0 ? '今天🎂' : item.daysUntilBirthday === 1 ? '明天' : item.daysUntilBirthday + '天后'}}</text>
             </view>
           </view>
         </view>
       </block>
 
-      <!-- 近期过生日 -->
-      <block wx:if="{{upcoming.soon && upcoming.soon.length > 0}}">
+      <!-- 近期过生日（8-30天） -->
+      <block wx:if="{{upcoming.soon.length > 0}}">
         <view class="content-section">
           <view class="section-header">
             <view class="section-bar" style="background:#f97316" />
@@ -133,9 +129,9 @@
           </view>
           <view wx:for="{{upcoming.soon}}" wx:key="id" class="contact-card"
             data-id="{{item.id}}" bindtap="goContact">
-            <view class="contact-avatar">
+            <view class="contact-avatar-wrap">
               <image wx:if="{{item.avatarUrl}}" class="avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
-              <text wx:else class="avatar-fallback">{{item.name[0]}}</text>
+              <text wx:else class="avatar-letter">{{item.name[0]}}</text>
             </view>
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
@@ -145,14 +141,14 @@
               </text>
             </view>
             <view class="days-badge soon">
-              <text>{{item.daysUntil}}天后</text>
+              <text>{{item.daysUntilBirthday}}天后</text>
             </view>
           </view>
         </view>
       </block>
 
-      <!-- 一个月后生日 -->
-      <block wx:if="{{upcoming.monthly && upcoming.monthly.length > 0}}">
+      <!-- 一个月后生日（31天以上） -->
+      <block wx:if="{{upcoming.monthly.length > 0}}">
         <view class="content-section">
           <view class="section-header">
             <view class="section-bar" style="background:#64748b" />
@@ -161,9 +157,9 @@
           </view>
           <view wx:for="{{upcoming.monthly}}" wx:key="id" class="contact-card"
             data-id="{{item.id}}" bindtap="goContact">
-            <view class="contact-avatar">
+            <view class="contact-avatar-wrap">
               <image wx:if="{{item.avatarUrl}}" class="avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
-              <text wx:else class="avatar-fallback">{{item.name[0]}}</text>
+              <text wx:else class="avatar-letter">{{item.name[0]}}</text>
             </view>
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
@@ -173,7 +169,7 @@
               </text>
             </view>
             <view class="days-badge monthly">
-              <text>{{item.daysUntil}}天后</text>
+              <text>{{item.daysUntilBirthday}}天后</text>
             </view>
           </view>
         </view>
@@ -247,7 +243,7 @@
 
       <!-- 空状态 -->
       <block wx:if="{{!loadingUpcoming && !loadingEvents &&
-        (!upcoming || (!upcoming.imminent.length && !upcoming.soon.length && !upcoming.monthly.length)) &&
+        !upcoming.imminent.length && !upcoming.soon.length && !upcoming.monthly.length &&
         anniversaries.length === 0 && countdowns.length === 0 && others.length === 0}}">
         <view class="empty-state">
           <view class="empty-icon-wrap"><text style="font-size:64rpx">🎂</text></view>
@@ -269,7 +265,7 @@
   <!-- FAB 遮罩 -->
   <view wx:if="{{showFab}}" class="fab-mask" bindtap="closeFab" />
 
-  <!-- FAB 菜单 -->
+  <!-- FAB -->
   <view class="fab-container">
     <block wx:if="{{showFab}}">
       <view class="fab-menu">
@@ -298,15 +294,45 @@
 
   <!-- 设置面板 -->
   <view wx:if="{{showSettings}}" class="modal-mask" bindtap="closeSettings">
-    <view class="modal-sheet settings-sheet" catchtap="">
+    <view class="modal-sheet" catchtap="">
       <view class="modal-handle" />
       <view class="modal-header">
         <text class="modal-title">设置</text>
         <view class="modal-close" bindtap="closeSettings"><text>✕</text></view>
       </view>
-      <view class="settings-body">
-        <view class="settings-section">
-          <text class="settings-section-title">提醒偏好</text>
+      <scroll-view class="settings-body" scroll-y>
+
+        <!-- 头像（点击换微信头像） -->
+        <view class="profile-section">
+          <button class="profile-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+            <image wx:if="{{userInfo && userInfo.avatarUrl}}"
+              class="profile-avatar-img" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
+            <view wx:else class="profile-avatar-fallback">
+              <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
+            </view>
+            <view class="profile-camera-badge"><text>📷</text></view>
+          </button>
+          <text class="profile-avatar-hint">点击更换微信头像</text>
+        </view>
+
+        <!-- 昵称 -->
+        <view class="settings-item-group">
+          <text class="settings-group-label">昵称</text>
+          <view class="nickname-row">
+            <input class="nickname-input" type="nickname"
+              placeholder="输入昵称或使用微信昵称"
+              value="{{editNickname}}" bindinput="onNicknameInput" />
+            <button class="save-nick-btn {{savingProfile ? 'saving' : ''}}"
+              bindtap="saveProfile" disabled="{{savingProfile}}">
+              {{savingProfile ? '…' : '保存'}}
+            </button>
+          </view>
+          <text class="settings-hint">type="nickname" 会自动填入微信昵称</text>
+        </view>
+
+        <!-- 提醒偏好 -->
+        <view class="settings-item-group">
+          <text class="settings-group-label">提醒偏好</text>
           <view class="toggle-row">
             <view class="toggle-info">
               <text class="toggle-label">邮件提醒</text>
@@ -315,9 +341,11 @@
             <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f43f5e" />
           </view>
         </view>
+
         <view style="height:24rpx" />
-        <button class="btn btn-outline btn-full" bindtap="handleLogout">退出登录</button>
-      </view>
+        <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+        <view style="height:40rpx" />
+      </scroll-view>
     </view>
   </view>
 

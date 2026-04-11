@@ -20,9 +20,34 @@
   gap: 20rpx;
 }
 
-.avatar-wrap {
-  width: 72rpx;
-  height: 72rpx;
+/* 头部头像按钮（open-type=chooseAvatar） */
+.avatar-btn {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar-btn::after { border: none; }
+.avatar-btn:active { opacity: 0.8; }
+
+.avatar-img-hd {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+.avatar-fallback-hd {
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #f43f5e, #fb923c);
   display: flex;
@@ -30,11 +55,13 @@
   justify-content: center;
 }
 
-.avatar-text {
+.avatar-fallback-hd text {
   color: #fff;
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 700;
 }
+
+.header-text { flex: 1; }
 
 .welcome-text {
   font-size: 28rpx;
@@ -48,12 +75,6 @@
   color: #94a3b8;
   display: block;
   margin-top: 2rpx;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
 }
 
 .icon-btn {
@@ -124,7 +145,7 @@
 }
 .contact-card:active { opacity: 0.8; }
 
-.contact-avatar {
+.contact-avatar-wrap {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
@@ -136,9 +157,9 @@
   overflow: hidden;
 }
 
-.avatar-img { width: 80rpx; height: 80rpx; border-radius: 50%; }
+.avatar-img { width: 80rpx; height: 80rpx; border-radius: 50%; display: block; }
 
-.avatar-fallback {
+.avatar-letter {
   color: #fff;
   font-size: 28rpx;
   font-weight: 700;
@@ -480,3 +501,151 @@
 .toggle-info { flex: 1; margin-right: 24rpx; }
 .toggle-label { font-size: 28rpx; font-weight: 500; display: block; }
 .toggle-desc { font-size: 22rpx; color: #94a3b8; display: block; margin-top: 4rpx; }
+
+/* ── 设置面板新样式 ────────────────────────────────────────────────────────── */
+.settings-body {
+  flex: 1;
+  max-height: 70vh;
+  padding: 0 40rpx 0;
+}
+
+/* 头像区域 */
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32rpx 0 24rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+  margin-bottom: 24rpx;
+}
+
+.profile-avatar-btn {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  padding: 0;
+  margin: 0 0 12rpx;
+  background: none;
+  border: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-avatar-btn::after { border: none; }
+.profile-avatar-btn:active { opacity: 0.8; }
+
+.profile-avatar-img {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+.profile-avatar-fallback {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f43f5e, #fb923c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar-fallback text {
+  color: #fff;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.profile-camera-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 44rpx;
+  height: 44rpx;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.15);
+}
+
+.profile-avatar-hint { font-size: 22rpx; color: #94a3b8; }
+
+/* 设置分组 */
+.settings-item-group {
+  margin-bottom: 32rpx;
+}
+
+.settings-group-label {
+  font-size: 22rpx;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1rpx;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+/* 昵称行 */
+.nickname-row {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.nickname-input {
+  flex: 1;
+  height: 80rpx;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+  background: #fafafa;
+}
+
+.save-nick-btn {
+  flex-shrink: 0;
+  height: 80rpx;
+  padding: 0 28rpx;
+  border-radius: 16rpx;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 600;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.save-nick-btn.saving { background: #94a3b8; }
+.save-nick-btn::after { border: none; }
+.save-nick-btn:active { opacity: 0.8; }
+
+.settings-hint {
+  font-size: 20rpx;
+  color: #94a3b8;
+  display: block;
+  margin-top: 8rpx;
+}
+
+/* 退出按钮 */
+.logout-btn {
+  width: 100%;
+  height: 88rpx;
+  border-radius: 20rpx;
+  background: #fff0f0;
+  color: #ef4444;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: 1rpx solid #fca5a5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logout-btn::after { border: none; }
+.logout-btn:active { opacity: 0.75; }
