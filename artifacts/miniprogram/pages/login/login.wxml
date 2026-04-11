@@ -1,79 +1,134 @@
 <view class="login-page">
 
-  <!-- 背景渐变 -->
-  <view class="login-bg" />
+  <!-- ═══════════════ 第一步：授权登录 ═══════════════ -->
+  <block wx:if="{{step === 'login'}}">
 
-  <!-- Logo 区域 -->
-  <view class="login-hero">
-    <view class="logo-wrap">
-      <text class="logo-emoji">🎂</text>
+    <!-- 背景装饰 -->
+    <view class="login-bg">
+      <view class="bg-circle bg-circle-1" />
+      <view class="bg-circle bg-circle-2" />
+      <view class="bg-circle bg-circle-3" />
     </view>
-    <text class="app-title">生日通</text>
-    <text class="app-subtitle">记住每一个重要的日子</text>
-  </view>
 
-  <!-- 网络错误提示 -->
-  <view wx:if="{{networkError}}" class="network-error-box">
-    <text class="network-error-text">{{networkError}}</text>
-  </view>
-
-  <!-- 登录卡片 -->
-  <view class="login-cards">
-
-    <!-- Mock 模式：访客登录 -->
-    <block wx:if="{{loginMode === 'mock'}}">
-      <view class="login-card">
-        <view class="card-header">
-          <text class="card-icon">👤</text>
-          <text class="card-title">访客登录</text>
-        </view>
-        <text class="card-desc">同一昵称始终对应同一账号，换设备数据不丢失</text>
-
-        <button class="btn btn-primary btn-full {{loading ? 'btn-disabled' : ''}}"
-          bindtap="handleQuickLogin" disabled="{{loading}}">
-          {{loading ? '登录中...' : '快速进入（本机账号）'}}
-        </button>
-
-        <view class="divider"><text>或输入昵称切换账号</text></view>
-
-        <input class="input-field" placeholder="输入昵称（选填）"
-          value="{{nickname}}" bindinput="onNicknameInput" />
-        <view style="height:16rpx" />
-        <button class="btn btn-outline btn-full {{loading ? 'btn-disabled' : ''}}"
-          bindtap="handleNicknameLogin" disabled="{{loading}}">
-          {{loading ? '登录中...' : '用此昵称登录'}}
-        </button>
+    <!-- Hero 区域 -->
+    <view class="login-hero">
+      <view class="logo-wrap">
+        <text class="logo-emoji">🎂</text>
       </view>
-    </block>
+      <text class="app-name">生日通</text>
+      <text class="app-tagline">记住每一个重要的日子</text>
+    </view>
 
-    <!-- WeChat 模式：小程序登录 -->
-    <block wx:if="{{loginMode === 'wechat'}}">
-      <view class="login-card">
-        <view class="card-header">
-          <text class="card-icon">💬</text>
-          <text class="card-title">微信登录</text>
-        </view>
-        <text class="card-desc">使用微信账号授权登录，无需手动输入任何信息</text>
+    <!-- 登录卡片 -->
+    <view class="login-card">
 
-        <button class="btn btn-primary-wechat btn-full {{wxLoginLoading ? 'btn-disabled' : ''}}"
-          bindtap="handleWxLogin" disabled="{{wxLoginLoading}}">
-          {{wxLoginLoading ? '授权中...' : '微信一键登录'}}
-        </button>
+      <!-- 网络错误 -->
+      <view wx:if="{{networkError}}" class="error-box">
+        <text class="error-text">{{networkError}}</text>
       </view>
-    </block>
 
-  </view>
+      <!-- 微信登录按钮 -->
+      <button
+        class="wx-login-btn {{loading ? 'loading' : ''}}"
+        bindtap="handleWxLogin"
+        disabled="{{loading}}"
+      >
+        <view class="wx-btn-inner">
+          <text class="wx-icon">💬</text>
+          <text class="wx-btn-text">{{loading ? '授权中...' : '微信一键登录'}}</text>
+        </view>
+      </button>
 
-  <!-- 法律协议 -->
-  <view class="legal-footer">
-    <text class="legal-text">登录即代表同意 </text>
-    <text class="legal-link" bindtap="showTerms">用户协议</text>
-    <text class="legal-text"> 和 </text>
-    <text class="legal-link" bindtap="showPrivacy">隐私政策</text>
-  </view>
+      <!-- 协议勾选 -->
+      <view class="agree-row" bindtap="toggleAgreed">
+        <view class="checkbox-wrap">
+          <view class="checkbox {{agreed ? 'checked' : ''}}">
+            <text wx:if="{{agreed}}" class="check-icon">✓</text>
+          </view>
+        </view>
+        <view class="agree-text-wrap">
+          <text class="agree-text">我已阅读并同意 </text>
+          <text class="agree-link" catchtap="showTerms">用户协议</text>
+          <text class="agree-text"> 和 </text>
+          <text class="agree-link" catchtap="showPrivacy">隐私政策</text>
+        </view>
+      </view>
 
-  <!-- 法律内容弹窗 -->
-  <view class="modal-mask" wx:if="{{showLegal}}" bindtap="closeLegal">
+    </view>
+
+    <!-- 数据说明 -->
+    <view class="security-tips">
+      <view class="tip-row"><text class="tip-icon">🔒</text><text class="tip-text">数据加密存储，安全可靠</text></view>
+      <view class="tip-row"><text class="tip-icon">🎯</text><text class="tip-text">仅用于生日提醒，绝不骚扰</text></view>
+    </view>
+
+  </block>
+
+  <!-- ═══════════════ 第二步：完善资料 ═══════════════ -->
+  <block wx:if="{{step === 'profile'}}">
+
+    <view class="profile-page">
+
+      <view class="profile-hero">
+        <text class="profile-title">完善你的资料</text>
+        <text class="profile-subtitle">让朋友更容易认识你</text>
+      </view>
+
+      <!-- 头像 -->
+      <view class="profile-avatar-section">
+        <button
+          class="profile-avatar-btn"
+          open-type="chooseAvatar"
+          bindchooseavatar="onChooseAvatar"
+        >
+          <image
+            wx:if="{{avatarUrl}}"
+            class="profile-avatar-img"
+            src="{{avatarUrl}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="profile-avatar-placeholder">
+            <text class="avatar-placeholder-icon">📷</text>
+          </view>
+          <view class="camera-badge"><text>📷</text></view>
+        </button>
+        <text class="avatar-hint">点击使用微信头像</text>
+      </view>
+
+      <!-- 昵称 -->
+      <view class="profile-field">
+        <text class="field-label">昵称</text>
+        <input
+          class="field-input"
+          type="nickname"
+          placeholder="点击使用微信昵称"
+          placeholder-class="field-placeholder"
+          value="{{nickname}}"
+          bindinput="onNicknameInput"
+          maxlength="20"
+        />
+      </view>
+
+      <!-- 完成按钮 -->
+      <button
+        class="save-btn {{savingProfile ? 'saving' : ''}}"
+        bindtap="handleSaveProfile"
+        disabled="{{savingProfile}}"
+      >
+        {{savingProfile ? '保存中...' : '完成，进入应用 →'}}
+      </button>
+
+      <!-- 跳过 -->
+      <view class="skip-row" bindtap="handleSkipProfile">
+        <text class="skip-text">稍后再说</text>
+      </view>
+
+    </view>
+
+  </block>
+
+  <!-- ═══════════════ 法律协议弹窗 ═══════════════ -->
+  <view wx:if="{{showLegal}}" class="modal-mask" bindtap="closeLegal">
     <view class="modal-sheet" catchtap="">
       <view class="modal-handle" />
       <view class="modal-header">
@@ -81,11 +136,10 @@
         <view class="modal-close" bindtap="closeLegal"><text>✕</text></view>
       </view>
       <scroll-view class="modal-body" scroll-y>
-        <text class="modal-text" wx:if="{{legalContent}}">{{legalContent}}</text>
-        <text class="modal-empty" wx:else>暂无内容，管理员尚未配置。</text>
+        <text class="modal-text">{{legalContent}}</text>
       </scroll-view>
       <view class="modal-footer">
-        <button class="btn btn-ghost btn-full" bindtap="closeLegal">我已知晓</button>
+        <button class="modal-ok-btn" bindtap="closeLegal">我已知晓</button>
       </view>
     </view>
   </view>

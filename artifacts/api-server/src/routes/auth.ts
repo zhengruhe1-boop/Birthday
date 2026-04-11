@@ -186,6 +186,8 @@ router.get("/wechat/oauth/callback", async (req, res) => {
 });
 
 // ── POST /api/auth/wechat/login (Mini Program jscode2session) ─────────────────
+// Falls back to mock-login when WECHAT_APPID / WECHAT_APP_SECRET are not set,
+// using a hash of the code as a stable device identifier.
 router.post("/wechat/login", async (req, res) => {
   try {
     const body = WechatLoginBody.safeParse(req.body);
@@ -194,27 +196,32 @@ router.post("/wechat/login", async (req, res) => {
       return;
     }
 
-    const appId = process.env.WECHAT_APPID;
-    const appSecret = process.env.WECHAT_APP_SECRET;
+    const appId     = process.env.WECHAT_APPID     || (await getSetting("wechat_mp_appid"))     || "";
+    const appSecret = process.env.WECHAT_APP_SECRET || (await getSetting("wechat_mp_appsecret")) || "";
 
-    if (!appId || !appSecret) {
-      res.status(500).json({ error: "WeChat not configured" });
-      return;
+    let openId: string;
+    let isMock = false;
+
+    if (appId && appSecret) {
+      // ── Real WeChat jscode2session ───────────────────────────────────────────
+      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${body.data.code}&grant_type=authorization_code`;
+      const response = await fetch(url);
+      const data = await response.json() as { openid?: string; session_key?: string; errcode?: number; errmsg?: string };
+
+      if (data.errcode || !data.openid) {
+        req.log.error({ data }, "WeChat jscode2session failed");
+        res.status(401).json({ error: data.errmsg || "WeChat login failed" });
+        return;
+      }
+      openId = data.openid;
+    } else {
+      // ── Fallback: use sha256(code) as stable pseudo-openid ──────────────────
+      openId = "mock:" + crypto.createHash("sha256").update(body.data.code).digest("hex").slice(0, 24);
+      isMock = true;
+      req.log.info({ openId }, "WeChat MP not configured – using mock openId");
     }
 
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${body.data.code}&grant_type=authorization_code`;
-    const response = await fetch(url);
-    const data = await response.json() as { openid?: string; session_key?: string; errcode?: number; errmsg?: string };
-
-    if (data.errcode || !data.openid) {
-      req.log.error({ data }, "WeChat login failed");
-      res.status(401).json({ error: data.errmsg || "WeChat login failed" });
-      return;
-    }
-
-    const openId = data.openid;
     const token = generateToken();
-
     const existingUsers = await db.select().from(usersTable).where(eq(usersTable.openId, openId)).limit(1);
 
     let user;
@@ -234,8 +241,10 @@ router.post("/wechat/login", async (req, res) => {
     }
 
     res.json({
-      user: { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
+      user:   { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
       token,
+      isMock,
+      needsProfile: !user.avatarUrl || user.nickname === "微信用户" || user.nickname === "匿名用户",
     });
   } catch (err) {
     req.log.error({ err }, "WeChat login error");
