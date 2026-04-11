@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { scheduleDailyReminders } from "./lib/reminder.js";
 import { scheduleWechatNotifications } from "./lib/wechat-notify.js";
+import { scheduleMpNotifications } from "./lib/wechat-mp-notify.js";
 import { runStartupMigrations } from "./lib/migrate.js";
 
 const rawPort = process.env["PORT"];
@@ -33,5 +34,8 @@ app.listen(port, (err) => {
 
     // Start the WeChat Official Account birthday notification scheduler
     scheduleWechatNotifications();
+
+    // Start the MP subscribe birthday notification scheduler
+    scheduleMpNotifications();
   });
 });

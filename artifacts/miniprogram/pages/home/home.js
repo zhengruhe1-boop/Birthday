@@ -174,6 +174,7 @@ Page({
   // ── 设置 ─────────────────────────────────────────────────────────────────────
   openSettings() { this.setData({ showSettings: true, editNickname: this.data.userInfo ? this.data.userInfo.nickname : '' }); },
   closeSettings(){ this.setData({ showSettings: false }); },
+  goSubscribePage() { this.closeSettings(); wx.navigateTo({ url: '/pages/subscribe/subscribe' }); },
 
   toggleEmailNotify(e) {
     const v = e.detail.value;

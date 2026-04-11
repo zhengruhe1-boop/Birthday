@@ -314,6 +314,51 @@ router.post("/notify-run", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/mp-notify-config ───────────────────────────────────────────
+router.get("/mp-notify-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getMpNotifyConfig } = await import("../lib/wechat-mp-notify.js");
+    res.json(await getMpNotifyConfig());
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/mp-notify-config ───────────────────────────────────────────
+router.put("/mp-notify-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { enabled, templateId, daysBefore, sendHour, tipText } = req.body as {
+      enabled?:    boolean;
+      templateId?: string;
+      daysBefore?: number[];
+      sendHour?:   number;
+      tipText?:    string;
+    };
+    if (enabled !== undefined)    await setSetting("mp_notify_enabled",      String(enabled));
+    if (templateId !== undefined) await setSetting("mp_notify_template_id",  templateId.trim());
+    if (daysBefore !== undefined) await setSetting("mp_notify_days_before",  daysBefore.map(String).join(","));
+    if (sendHour !== undefined)   await setSetting("mp_notify_send_hour",    String(sendHour));
+    if (tipText !== undefined)    await setSetting("mp_notify_tip_text",     tipText.trim());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/mp-notify-run ─────────────────────────────────────────────
+router.post("/mp-notify-run", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { runMpBirthdayNotifications } = await import("../lib/wechat-mp-notify.js");
+    const result = await runMpBirthdayNotifications();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/admin/email-config ───────────────────────────────────────────────
 router.get("/email-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;

@@ -430,4 +430,38 @@ router.get("/me", async (req: AuthRequest, res) => {
   }
 });
 
+// ── GET /api/auth/mp-subscribe-info ──────────────────────────────────────────
+router.get("/mp-subscribe-info", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const templateId = await getSetting("mp_notify_template_id") ?? "vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ";
+    const users = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    const user = users[0];
+    res.json({
+      templateId,
+      subscribed:     user?.mpSubscribed ?? false,
+      subscribeCount: user?.mpSubscribeCount ?? 0,
+    });
+  } catch (err) {
+    req.log.error({ err }, "mp-subscribe-info error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/auth/mp-subscribe ───────────────────────────────────────────────
+router.post("/mp-subscribe", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const users = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    if (!users[0]) return res.status(404).json({ error: "User not found" });
+    const newCount = (users[0].mpSubscribeCount ?? 0) + 1;
+    await db.update(usersTable).set({
+      mpSubscribed:     true,
+      mpSubscribeCount: newCount,
+    }).where(eq(usersTable.id, req.userId!));
+    res.json({ success: true, subscribeCount: newCount });
+  } catch (err) {
+    req.log.error({ err }, "mp-subscribe error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -3,7 +3,8 @@
     "pages/login/login",
     "pages/home/home",
     "pages/contact-form/contact-form",
-    "pages/event-form/event-form"
+    "pages/event-form/event-form",
+    "pages/subscribe/subscribe"
   ],
   "window": {
     "backgroundColor": "#f8fafc",

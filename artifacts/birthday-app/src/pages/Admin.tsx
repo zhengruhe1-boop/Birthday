@@ -59,14 +59,14 @@ interface StatsData {
 
 interface WechatConfig {
   // 公众号 (H5 OAuth)
-  oaAppId:        string;
-  oaAppSecret:    string;
+  oaAppId: string;
+  oaAppSecret: string;
   oaAppSecretSet: boolean;
-  oaDomain:       string;
-  oaAccountName:  string;
+  oaDomain: string;
+  oaAccountName: string;
   // 小程序 (Mini Program)
-  mpAppId:        string;
-  mpAppSecret:    string;
+  mpAppId: string;
+  mpAppSecret: string;
   mpAppSecretSet: boolean;
   // 登录模式
   h5LoginMode: "wechat_oa" | "mock";
@@ -160,49 +160,83 @@ function LoginPage({ onLogin }: { onLogin: (key: string) => void }) {
 // ─── WeChat Config Panel ──────────────────────────────────────────────────────
 function WechatConfigPanel({ adminKey }: { adminKey: string }) {
   const empty: WechatConfig = {
-    oaAppId: "", oaAppSecret: "", oaAppSecretSet: false,
-    oaDomain: "", oaAccountName: "",
-    mpAppId: "", mpAppSecret: "", mpAppSecretSet: false,
-    h5LoginMode: "mock", mpLoginMode: "mock",
+    oaAppId: "",
+    oaAppSecret: "",
+    oaAppSecretSet: false,
+    oaDomain: "",
+    oaAccountName: "",
+    mpAppId: "",
+    mpAppSecret: "",
+    mpAppSecretSet: false,
+    h5LoginMode: "mock",
+    mpLoginMode: "mock",
   };
   const [config, setConfig] = useState<WechatConfig>(empty);
   const [loading, setLoading] = useState(true);
   const [savingOa, setSavingOa] = useState(false);
   const [savingMp, setSavingMp] = useState(false);
   const [savingMode, setSavingMode] = useState(false);
-  const [oaMsg, setOaMsg]   = useState<{ ok: boolean; text: string } | null>(null);
-  const [mpMsg, setMpMsg]   = useState<{ ok: boolean; text: string } | null>(null);
-  const [modeMsg, setModeMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [oaMsg, setOaMsg] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
+  const [mpMsg, setMpMsg] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
+  const [modeMsg, setModeMsg] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}api/admin/wechat-config`, {
       headers: { "x-admin-key": adminKey },
     })
       .then((r) => r.json())
-      .then((d: WechatConfig) => { setConfig(d); setLoading(false); })
+      .then((d: WechatConfig) => {
+        setConfig(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [adminKey]);
 
   const putConfig = async (body: Record<string, unknown>) => {
-    const res = await fetch(`${import.meta.env.BASE_URL}api/admin/wechat-config`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(
+      `${import.meta.env.BASE_URL}api/admin/wechat-config`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify(body),
+      },
+    );
     return res.ok;
   };
 
-  const saveMode = async (h5: WechatConfig["h5LoginMode"], mp: WechatConfig["mpLoginMode"]) => {
-    setSavingMode(true); setModeMsg(null);
-    const ok = await putConfig({ h5LoginMode: h5, mpLoginMode: mp }).catch(() => false);
-    setModeMsg(ok ? { ok: true, text: "登录模式已保存" } : { ok: false, text: "保存失败" });
+  const saveMode = async (
+    h5: WechatConfig["h5LoginMode"],
+    mp: WechatConfig["mpLoginMode"],
+  ) => {
+    setSavingMode(true);
+    setModeMsg(null);
+    const ok = await putConfig({ h5LoginMode: h5, mpLoginMode: mp }).catch(
+      () => false,
+    );
+    setModeMsg(
+      ok
+        ? { ok: true, text: "登录模式已保存" }
+        : { ok: false, text: "保存失败" },
+    );
     setSavingMode(false);
   };
 
   // After save, optimistically mark secret as set when user entered a new value
   const saveOaAndRefresh = async () => {
-    setSavingOa(true); setOaMsg(null);
-    const hadNewSecret = !!(config.oaAppSecret && !config.oaAppSecret.startsWith("•"));
+    setSavingOa(true);
+    setOaMsg(null);
+    const hadNewSecret = !!(
+      config.oaAppSecret && !config.oaAppSecret.startsWith("•")
+    );
     const ok = await putConfig({
       oaAppId: config.oaAppId,
       oaAppSecret: config.oaAppSecret,
@@ -210,35 +244,60 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
       oaAccountName: config.oaAccountName,
     }).catch(() => false);
     if (ok && hadNewSecret) {
-      setConfig(c => ({ ...c, oaAppSecretSet: true, oaAppSecret: "" }));
+      setConfig((c) => ({ ...c, oaAppSecretSet: true, oaAppSecret: "" }));
     }
-    setOaMsg(ok ? { ok: true, text: "✓ 公众号配置已保存" } : { ok: false, text: "保存失败，请重试" });
+    setOaMsg(
+      ok
+        ? { ok: true, text: "✓ 公众号配置已保存" }
+        : { ok: false, text: "保存失败，请重试" },
+    );
     setSavingOa(false);
   };
 
   const saveMpAndRefresh = async () => {
-    setSavingMp(true); setMpMsg(null);
-    const hadNewSecret = !!(config.mpAppSecret && !config.mpAppSecret.startsWith("•"));
+    setSavingMp(true);
+    setMpMsg(null);
+    const hadNewSecret = !!(
+      config.mpAppSecret && !config.mpAppSecret.startsWith("•")
+    );
     const ok = await putConfig({
       mpAppId: config.mpAppId,
       mpAppSecret: config.mpAppSecret,
     }).catch(() => false);
     if (ok && hadNewSecret) {
-      setConfig(c => ({ ...c, mpAppSecretSet: true, mpAppSecret: "" }));
+      setConfig((c) => ({ ...c, mpAppSecretSet: true, mpAppSecret: "" }));
     }
-    setMpMsg(ok ? { ok: true, text: "✓ 小程序配置已保存" } : { ok: false, text: "保存失败，请重试" });
+    setMpMsg(
+      ok
+        ? { ok: true, text: "✓ 小程序配置已保存" }
+        : { ok: false, text: "保存失败，请重试" },
+    );
     setSavingMp(false);
   };
 
   const oaCallbackUrl = config.oaDomain
-    ? `${config.oaDomain}/api/auth/wechat/oauth/callback` : "（请先填写域名）";
+    ? `${config.oaDomain}/api/auth/wechat/oauth/callback`
+    : "（请先填写域名）";
 
-  const isOaConfigured = !!(config.oaAppId && config.oaAppSecretSet && config.oaDomain);
+  const isOaConfigured = !!(
+    config.oaAppId &&
+    config.oaAppSecretSet &&
+    config.oaDomain
+  );
   const isMpConfigured = !!(config.mpAppId && config.mpAppSecretSet);
 
-  const SaveBtn = ({ saving, onClick, label = "保存配置" }: { saving: boolean; onClick: () => void; label?: string }) => (
+  const SaveBtn = ({
+    saving,
+    onClick,
+    label = "保存配置",
+  }: {
+    saving: boolean;
+    onClick: () => void;
+    label?: string;
+  }) => (
     <button
-      onClick={onClick} disabled={saving}
+      onClick={onClick}
+      disabled={saving}
       className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
     >
       {saving ? "保存中..." : label}
@@ -247,7 +306,9 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
 
   const Msg = ({ msg }: { msg: { ok: boolean; text: string } | null }) =>
     msg ? (
-      <div className={`text-sm px-3 py-2 rounded-lg ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+      <div
+        className={`text-sm px-3 py-2 rounded-lg ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}
+      >
         {msg.text}
       </div>
     ) : null;
@@ -265,20 +326,33 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
     </svg>
   );
   const mockSvg = (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+      />
     </svg>
   );
 
   return (
     <div className="space-y-5 max-w-2xl">
-
       {/* ─── H5 登录方式 ─────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <span className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">H5</span>
+          <span className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+            H5
+          </span>
           <div>
-            <h2 className="text-sm font-semibold text-gray-700">H5 网页端登录方式</h2>
+            <h2 className="text-sm font-semibold text-gray-700">
+              H5 网页端登录方式
+            </h2>
             <p className="text-xs text-gray-400">选择 H5 前端用于登录的方式</p>
           </div>
         </div>
@@ -287,11 +361,12 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           {/* mode cards */}
           <div className="grid grid-cols-2 gap-3">
             {/* 公众号登录 */}
-            <button type="button"
+            <button
+              type="button"
               disabled={savingMode}
               onClick={() => {
                 const next = "wechat_oa";
-                setConfig(c => ({ ...c, h5LoginMode: next }));
+                setConfig((c) => ({ ...c, h5LoginMode: next }));
                 saveMode(next, config.mpLoginMode);
               }}
               className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
@@ -307,23 +382,32 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 {wechatSvg}
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-800">微信公众号登录</p>
-                <p className="text-xs text-gray-500 mt-0.5">OAuth 2.0 网页授权</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  微信公众号登录
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  OAuth 2.0 网页授权
+                </p>
               </div>
               {config.h5LoginMode === "wechat_oa" && !isOaConfigured && (
-                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">需完成下方配置</span>
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                  需完成下方配置
+                </span>
               )}
               {config.h5LoginMode === "wechat_oa" && isOaConfigured && (
-                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">已配置</span>
+                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                  已配置
+                </span>
               )}
             </button>
 
             {/* 测试登录 */}
-            <button type="button"
+            <button
+              type="button"
               disabled={savingMode}
               onClick={() => {
                 const next = "mock";
-                setConfig(c => ({ ...c, h5LoginMode: next }));
+                setConfig((c) => ({ ...c, h5LoginMode: next }));
                 saveMode(next, config.mpLoginMode);
               }}
               className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
@@ -340,10 +424,14 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-800">测试登录</p>
-                <p className="text-xs text-gray-500 mt-0.5">昵称登录，无需微信</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  昵称登录，无需微信
+                </p>
               </div>
               {config.h5LoginMode === "mock" && (
-                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">当前模式</span>
+                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">
+                  当前模式
+                </span>
               )}
             </button>
           </div>
@@ -354,7 +442,9 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
               <p className="font-semibold">H5 测试登录说明</p>
               <p>• 输入昵称作为账号标识，同昵称始终对应同一账号</p>
               <p>• 换设备不丢失数据，无需微信即可完整体验</p>
-              <p className="text-amber-600 font-medium">测试模式不验证微信身份，仅适合开发调试阶段使用</p>
+              <p className="text-amber-600 font-medium">
+                测试模式不验证微信身份，仅适合开发调试阶段使用
+              </p>
             </div>
           )}
 
@@ -362,22 +452,38 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           {config.h5LoginMode === "wechat_oa" && (
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700">公众号应用配置</p>
-                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                  isOaConfigured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                }`}>
-                  {isOaConfigured
-                    ? <><CheckCircle className="w-3 h-3" /> 已配置</>
-                    : <><AlertCircle className="w-3 h-3" /> 未配置</>
-                  }
+                <p className="text-sm font-semibold text-gray-700">
+                  公众号应用配置
+                </p>
+                <span
+                  className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                    isOaConfigured
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {isOaConfigured ? (
+                    <>
+                      <CheckCircle className="w-3 h-3" /> 已配置
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3 h-3" /> 未配置
+                    </>
+                  )}
                 </span>
               </div>
               <div className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">AppID（公众号）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    AppID（公众号）
+                  </label>
                   <input
-                    type="text" value={config.oaAppId}
-                    onChange={(e) => setConfig(c => ({ ...c, oaAppId: e.target.value }))}
+                    type="text"
+                    value={config.oaAppId}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, oaAppId: e.target.value }))
+                    }
                     placeholder="wx1234567890abcdef"
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
@@ -385,48 +491,85 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     AppSecret（公众号）
-                    {config.oaAppSecretSet && <span className="ml-2 text-xs text-green-600 font-normal">已设置，填新值可覆盖</span>}
+                    {config.oaAppSecretSet && (
+                      <span className="ml-2 text-xs text-green-600 font-normal">
+                        已设置，填新值可覆盖
+                      </span>
+                    )}
                   </label>
                   <input
-                    type="password" value={config.oaAppSecret}
-                    onChange={(e) => setConfig(c => ({ ...c, oaAppSecret: e.target.value }))}
-                    placeholder={config.oaAppSecretSet ? "••••••••（已设置）" : "请输入 AppSecret"}
+                    type="password"
+                    value={config.oaAppSecret}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, oaAppSecret: e.target.value }))
+                    }
+                    placeholder={
+                      config.oaAppSecretSet
+                        ? "••••••••（已设置）"
+                        : "请输入 AppSecret"
+                    }
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">网站域名</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    网站域名
+                  </label>
                   <input
-                    type="text" value={config.oaDomain}
-                    onChange={(e) => setConfig(c => ({ ...c, oaDomain: e.target.value }))}
+                    type="text"
+                    value={config.oaDomain}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, oaDomain: e.target.value }))
+                    }
                     placeholder="https://yourdomain.com"
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
-                  <p className="text-xs text-gray-400 mt-1">含协议前缀，不含末尾斜杠</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    含协议前缀，不含末尾斜杠
+                  </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">公众号名称</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    公众号名称
+                  </label>
                   <input
-                    type="text" value={config.oaAccountName}
-                    onChange={(e) => setConfig(c => ({ ...c, oaAccountName: e.target.value }))}
+                    type="text"
+                    value={config.oaAccountName}
+                    onChange={(e) =>
+                      setConfig((c) => ({
+                        ...c,
+                        oaAccountName: e.target.value,
+                      }))
+                    }
                     placeholder="例如：生日通提醒助手"
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
                   />
-                  <p className="text-xs text-gray-400 mt-1">显示在 H5 首页「关注公众号」横幅中</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    显示在 H5 首页「关注公众号」横幅中
+                  </p>
                 </div>
 
                 {/* 回调地址 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">OAuth 回调地址（自动生成）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    OAuth 回调地址（自动生成）
+                  </label>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-mono text-xs text-gray-700 break-all flex items-start gap-2">
                     <span className="flex-1">{oaCallbackUrl}</span>
                     {config.oaDomain && (
-                      <a href={oaCallbackUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                      <a
+                        href={oaCallbackUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+                      >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">在公众号后台「网页授权域名」中填入你的域名即可</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    在公众号后台「网页授权域名」中填入你的域名即可
+                  </p>
                 </div>
 
                 <details className="group">
@@ -435,14 +578,44 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                     查看配置步骤
                   </summary>
                   <div className="mt-3 space-y-2.5 text-xs text-gray-600">
-                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">1</span><span>登录微信公众平台 → <strong>设置与开发 → 公众号设置 → 功能设置 → 网页授权域名</strong>，添加你的域名并下载验证文件。</span></div>
-                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">2</span><span>在上方填写 AppID、AppSecret、域名和公众号名称后点击保存。</span></div>
-                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">3</span><span>配置完成后 H5 前端将自动显示微信 OAuth 登录入口。</span></div>
+                    <div className="flex gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                        1
+                      </span>
+                      <span>
+                        登录微信公众平台 →{" "}
+                        <strong>
+                          设置与开发 → 公众号设置 → 功能设置 → 网页授权域名
+                        </strong>
+                        ，添加你的域名并下载验证文件。
+                      </span>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                        2
+                      </span>
+                      <span>
+                        在上方填写
+                        AppID、AppSecret、域名和公众号名称后点击保存。
+                      </span>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                        3
+                      </span>
+                      <span>
+                        配置完成后 H5 前端将自动显示微信 OAuth 登录入口。
+                      </span>
+                    </div>
                   </div>
                 </details>
 
                 <Msg msg={oaMsg} />
-                <SaveBtn saving={savingOa} onClick={saveOaAndRefresh} label="保存公众号配置" />
+                <SaveBtn
+                  saving={savingOa}
+                  onClick={saveOaAndRefresh}
+                  label="保存公众号配置"
+                />
               </div>
             </div>
           )}
@@ -452,9 +625,13 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
       {/* ─── 小程序登录方式 ──────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <span className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">MP</span>
+          <span className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+            MP
+          </span>
           <div>
-            <h2 className="text-sm font-semibold text-gray-700">微信小程序登录方式</h2>
+            <h2 className="text-sm font-semibold text-gray-700">
+              微信小程序登录方式
+            </h2>
             <p className="text-xs text-gray-400">选择小程序端用于登录的方式</p>
           </div>
         </div>
@@ -463,11 +640,12 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           {/* mode cards */}
           <div className="grid grid-cols-2 gap-3">
             {/* 小程序登录 */}
-            <button type="button"
+            <button
+              type="button"
               disabled={savingMode}
               onClick={() => {
                 const next = "wechat_mp";
-                setConfig(c => ({ ...c, mpLoginMode: next }));
+                setConfig((c) => ({ ...c, mpLoginMode: next }));
                 saveMode(config.h5LoginMode, next);
               }}
               className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
@@ -480,28 +658,41 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-purple-500" />
               )}
               <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  className="w-5 h-5 text-purple-600"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M8.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3.5-6.5C15.5 2.7 12.9 1 9.9 1 5.6 1 2 4.1 2 8c0 2.1 1 3.9 2.6 5.2l-.6 2.2 2.5-1.3c.9.3 1.9.4 2.9.4.3 0 .6 0 .9-.1-.2-.5-.3-1.1-.3-1.7 0-3.5 3-6.3 6.7-6.3.3 0 .6 0 .9.1-.3-1.3-1.1-2.4-2.1-3.3zm3.5 5.5c-2.8 0-5 1.9-5 4.3 0 2.3 2.2 4.2 5 4.2.6 0 1.2-.1 1.8-.3l1.7.9-.4-1.6c1.2-.9 1.9-2 1.9-3.2.1-2.4-2.2-4.3-5-4.3zm-1.5 3a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0zm3 0a.7.7 0 1 1-1.4 0 .7.7 0 0 1 1.4 0z" />
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-800">微信小程序登录</p>
-                <p className="text-xs text-gray-500 mt-0.5">wx.login() + jscode2session</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  微信小程序登录
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  wx.login() + jscode2session
+                </p>
               </div>
               {config.mpLoginMode === "wechat_mp" && !isMpConfigured && (
-                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">需完成下方配置</span>
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                  需完成下方配置
+                </span>
               )}
               {config.mpLoginMode === "wechat_mp" && isMpConfigured && (
-                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">已配置</span>
+                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                  已配置
+                </span>
               )}
             </button>
 
             {/* 测试登录 */}
-            <button type="button"
+            <button
+              type="button"
               disabled={savingMode}
               onClick={() => {
                 const next = "mock";
-                setConfig(c => ({ ...c, mpLoginMode: next }));
+                setConfig((c) => ({ ...c, mpLoginMode: next }));
                 saveMode(config.h5LoginMode, next);
               }}
               className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${
@@ -521,7 +712,9 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 <p className="text-xs text-gray-500 mt-0.5">自动生成测试账号</p>
               </div>
               {config.mpLoginMode === "mock" && (
-                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">当前模式</span>
+                <span className="text-[10px] text-rose-500 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">
+                  当前模式
+                </span>
               )}
             </button>
           </div>
@@ -532,7 +725,9 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
               <p className="font-semibold">小程序测试登录说明</p>
               <p>• 调用 wx.login() 获取 code，用 code 哈希生成唯一 openid</p>
               <p>• 无需填写小程序凭证，开发工具可直接测试</p>
-              <p className="text-amber-600 font-medium">测试模式不验证微信身份，仅适合开发调试阶段使用</p>
+              <p className="text-amber-600 font-medium">
+                测试模式不验证微信身份，仅适合开发调试阶段使用
+              </p>
             </div>
           )}
 
@@ -540,22 +735,38 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           {config.mpLoginMode === "wechat_mp" && (
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700">小程序应用配置</p>
-                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                  isMpConfigured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                }`}>
-                  {isMpConfigured
-                    ? <><CheckCircle className="w-3 h-3" /> 已配置</>
-                    : <><AlertCircle className="w-3 h-3" /> 未配置</>
-                  }
+                <p className="text-sm font-semibold text-gray-700">
+                  小程序应用配置
+                </p>
+                <span
+                  className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                    isMpConfigured
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {isMpConfigured ? (
+                    <>
+                      <CheckCircle className="w-3 h-3" /> 已配置
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3 h-3" /> 未配置
+                    </>
+                  )}
                 </span>
               </div>
               <div className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">AppID（小程序）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    AppID（小程序）
+                  </label>
                   <input
-                    type="text" value={config.mpAppId}
-                    onChange={(e) => setConfig(c => ({ ...c, mpAppId: e.target.value }))}
+                    type="text"
+                    value={config.mpAppId}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, mpAppId: e.target.value }))
+                    }
                     placeholder="wx1234567890abcdef"
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
@@ -563,12 +774,23 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     AppSecret（小程序）
-                    {config.mpAppSecretSet && <span className="ml-2 text-xs text-green-600 font-normal">已设置，填新值可覆盖</span>}
+                    {config.mpAppSecretSet && (
+                      <span className="ml-2 text-xs text-green-600 font-normal">
+                        已设置，填新值可覆盖
+                      </span>
+                    )}
                   </label>
                   <input
-                    type="password" value={config.mpAppSecret}
-                    onChange={(e) => setConfig(c => ({ ...c, mpAppSecret: e.target.value }))}
-                    placeholder={config.mpAppSecretSet ? "••••••••（已设置）" : "请输入小程序 AppSecret"}
+                    type="password"
+                    value={config.mpAppSecret}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, mpAppSecret: e.target.value }))
+                    }
+                    placeholder={
+                      config.mpAppSecretSet
+                        ? "••••••••（已设置）"
+                        : "请输入小程序 AppSecret"
+                    }
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
                 </div>
@@ -577,7 +799,9 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                   <p className="font-semibold">登录流程说明</p>
                   <p>① 用户点击登录 → wx.login() 获取临时 code</p>
                   <p>② 后端用 code + AppSecret 换取用户唯一 openid</p>
-                  <p className="text-amber-600">⚠️ 未配置时自动降级为测试模式</p>
+                  <p className="text-amber-600">
+                    ⚠️ 未配置时自动降级为测试模式
+                  </p>
                 </div>
 
                 <details className="group">
@@ -586,13 +810,41 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                     查看配置步骤
                   </summary>
                   <div className="mt-3 space-y-2.5 text-xs text-gray-600">
-                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">1</span><span>登录<a href="https://mp.weixin.qq.com" target="_blank" rel="noopener noreferrer" className="text-rose-500"> 微信小程序管理后台</a> → 开发 → 开发管理 → 开发设置，获取 AppID 和 AppSecret。</span></div>
-                    <div className="flex gap-2.5"><span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">2</span><span>在上方填写后保存，小程序将使用真实微信账号认证。</span></div>
+                    <div className="flex gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                        1
+                      </span>
+                      <span>
+                        登录
+                        <a
+                          href="https://mp.weixin.qq.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-rose-500"
+                        >
+                          {" "}
+                          微信小程序管理后台
+                        </a>{" "}
+                        → 开发 → 开发管理 → 开发设置，获取 AppID 和 AppSecret。
+                      </span>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                        2
+                      </span>
+                      <span>
+                        在上方填写后保存，小程序将使用真实微信账号认证。
+                      </span>
+                    </div>
                   </div>
                 </details>
 
                 <Msg msg={mpMsg} />
-                <SaveBtn saving={savingMp} onClick={saveMpAndRefresh} label="保存小程序配置" />
+                <SaveBtn
+                  saving={savingMp}
+                  onClick={saveMpAndRefresh}
+                  label="保存小程序配置"
+                />
               </div>
             </div>
           )}
@@ -600,7 +852,6 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           <Msg msg={modeMsg} />
         </div>
       </div>
-
     </div>
   );
 }
@@ -1389,24 +1640,43 @@ interface NotifyConfig {
   lastRunResult: { sent: number; skipped: number; errors: number } | null;
 }
 
+interface MpNotifyConfig {
+  enabled: boolean;
+  templateId: string;
+  daysBefore: number[];
+  sendHour: number;
+  tipText: string;
+  lastRunAt: string | null;
+  lastRunResult: { sent: number; skipped: number; errors: number } | null;
+}
+
 function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
-  const [cfg, setCfg] = useState<NotifyConfig>({
-    enabled: false,
-    daysBefore: [1],
-    sendHour: 8,
-    templateId: "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w",
-    lastRunAt: null,
-    lastRunResult: null,
-  });
+  const BASE = import.meta.env.BASE_URL;
+  const H = { "Content-Type": "application/json", "x-admin-key": adminKey };
+
+  const [channel, setChannel] = useState<"oa" | "mp">("oa");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(
-    null,
-  );
-  const [runMsg, setRunMsg] = useState<{ ok: boolean; text: string } | null>(
-    null,
-  );
+
+  const [oa, setOa] = useState<NotifyConfig>({
+    enabled: false, daysBefore: [1], sendHour: 8,
+    templateId: "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w",
+    lastRunAt: null, lastRunResult: null,
+  });
+  const [oaSaving, setOaSaving] = useState(false);
+  const [oaRunning, setOaRunning] = useState(false);
+  const [oaSaveMsg, setOaSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [oaRunMsg, setOaRunMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [mp, setMp] = useState<MpNotifyConfig>({
+    enabled: false, daysBefore: [1], sendHour: 8,
+    templateId: "vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ",
+    tipText: "Ta的生日快到了，记得送上生日祝福！",
+    lastRunAt: null, lastRunResult: null,
+  });
+  const [mpSaving, setMpSaving] = useState(false);
+  const [mpRunning, setMpRunning] = useState(false);
+  const [mpSaveMsg, setMpSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [mpRunMsg, setMpRunMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const DAY_OPTIONS = [
     { value: 0, label: "生日当天" },
@@ -1416,344 +1686,352 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   ];
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}api/admin/notify-config`, {
-      headers: { "x-admin-key": adminKey },
-    })
-      .then((r) => r.json())
-      .then((d: NotifyConfig) => {
-        setCfg(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    setLoading(true);
+    Promise.all([
+      fetch(`${BASE}api/admin/notify-config`, { headers: { "x-admin-key": adminKey } }).then(r => r.json()),
+      fetch(`${BASE}api/admin/mp-notify-config`, { headers: { "x-admin-key": adminKey } }).then(r => r.json()),
+    ]).then(([oaData, mpData]) => {
+      setOa(oaData as NotifyConfig);
+      setMp(mpData as MpNotifyConfig);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [adminKey]);
 
-  const toggleDay = (day: number) => {
-    setCfg((c) => ({
-      ...c,
-      daysBefore: c.daysBefore.includes(day)
-        ? c.daysBefore.filter((d) => d !== day)
-        : [...c.daysBefore, day].sort((a, b) => a - b),
-    }));
-  };
+  const toggleOaDay = (day: number) => setOa(c => ({
+    ...c, daysBefore: c.daysBefore.includes(day)
+      ? c.daysBefore.filter(d => d !== day)
+      : [...c.daysBefore, day].sort((a, b) => a - b),
+  }));
 
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveMsg(null);
+  const toggleMpDay = (day: number) => setMp(c => ({
+    ...c, daysBefore: c.daysBefore.includes(day)
+      ? c.daysBefore.filter(d => d !== day)
+      : [...c.daysBefore, day].sort((a, b) => a - b),
+  }));
+
+  const saveOa = async () => {
+    setOaSaving(true); setOaSaveMsg(null);
     try {
-      const res = await fetch(
-        `${import.meta.env.BASE_URL}api/admin/notify-config`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-          },
-          body: JSON.stringify({
-            enabled: cfg.enabled,
-            daysBefore: cfg.daysBefore,
-            sendHour: cfg.sendHour,
-            templateId: cfg.templateId,
-          }),
-        },
-      );
-      setSaveMsg(
-        res.ok
-          ? { ok: true, text: "保存成功" }
-          : { ok: false, text: "保存失败" },
-      );
-    } catch {
-      setSaveMsg({ ok: false, text: "网络错误" });
-    } finally {
-      setSaving(false);
-    }
+      const res = await fetch(`${BASE}api/admin/notify-config`, {
+        method: "PUT", headers: H,
+        body: JSON.stringify({ enabled: oa.enabled, daysBefore: oa.daysBefore, sendHour: oa.sendHour, templateId: oa.templateId }),
+      });
+      setOaSaveMsg(res.ok ? { ok: true, text: "✓ 保存成功" } : { ok: false, text: "保存失败" });
+    } catch { setOaSaveMsg({ ok: false, text: "网络错误" }); }
+    finally { setOaSaving(false); }
   };
 
-  const handleRun = async () => {
-    setRunning(true);
-    setRunMsg(null);
+  const runOa = async () => {
+    setOaRunning(true); setOaRunMsg(null);
     try {
-      const res = await fetch(
-        `${import.meta.env.BASE_URL}api/admin/notify-run`,
-        {
-          method: "POST",
-          headers: { "x-admin-key": adminKey },
-        },
-      );
-      const data = (await res.json()) as {
-        sent?: number;
-        skipped?: number;
-        errors?: number;
-        error?: string;
-      };
-      if (res.ok && data.error === undefined) {
-        setRunMsg({
-          ok: true,
-          text: `完成：发送 ${data.sent} 条，跳过 ${data.skipped} 条，失败 ${data.errors} 条`,
-        });
-        setCfg((c) => ({
-          ...c,
-          lastRunAt: new Date().toISOString(),
-          lastRunResult: {
-            sent: data.sent ?? 0,
-            skipped: data.skipped ?? 0,
-            errors: data.errors ?? 0,
-          },
-        }));
-      } else {
-        setRunMsg({ ok: false, text: data.error ?? "执行失败" });
-      }
-    } catch {
-      setRunMsg({ ok: false, text: "网络错误" });
-    } finally {
-      setRunning(false);
-    }
+      const res = await fetch(`${BASE}api/admin/notify-run`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json() as { sent?: number; skipped?: number; errors?: number; error?: string };
+      if (res.ok && !data.error) {
+        setOaRunMsg({ ok: true, text: `完成：发送 ${data.sent} 条，跳过 ${data.skipped} 条，失败 ${data.errors} 条` });
+        setOa(c => ({ ...c, lastRunAt: new Date().toISOString(), lastRunResult: { sent: data.sent ?? 0, skipped: data.skipped ?? 0, errors: data.errors ?? 0 } }));
+      } else { setOaRunMsg({ ok: false, text: data.error ?? "执行失败" }); }
+    } catch { setOaRunMsg({ ok: false, text: "网络错误" }); }
+    finally { setOaRunning(false); }
   };
 
-  if (loading)
-    return (
-      <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
-        <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
+  const saveMp = async () => {
+    setMpSaving(true); setMpSaveMsg(null);
+    try {
+      const res = await fetch(`${BASE}api/admin/mp-notify-config`, {
+        method: "PUT", headers: H,
+        body: JSON.stringify({ enabled: mp.enabled, daysBefore: mp.daysBefore, sendHour: mp.sendHour, templateId: mp.templateId, tipText: mp.tipText }),
+      });
+      setMpSaveMsg(res.ok ? { ok: true, text: "✓ 保存成功" } : { ok: false, text: "保存失败" });
+    } catch { setMpSaveMsg({ ok: false, text: "网络错误" }); }
+    finally { setMpSaving(false); }
+  };
+
+  const runMp = async () => {
+    setMpRunning(true); setMpRunMsg(null);
+    try {
+      const res = await fetch(`${BASE}api/admin/mp-notify-run`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json() as { sent?: number; skipped?: number; errors?: number; error?: string };
+      if (res.ok && !data.error) {
+        setMpRunMsg({ ok: true, text: `完成：发送 ${data.sent} 条，跳过 ${data.skipped} 条，失败 ${data.errors} 条` });
+        setMp(c => ({ ...c, lastRunAt: new Date().toISOString(), lastRunResult: { sent: data.sent ?? 0, skipped: data.skipped ?? 0, errors: data.errors ?? 0 } }));
+      } else { setMpRunMsg({ ok: false, text: data.error ?? "执行失败" }); }
+    } catch { setMpRunMsg({ ok: false, text: "网络错误" }); }
+    finally { setMpRunning(false); }
+  };
+
+  const MsgBox = ({ msg }: { msg: { ok: boolean; text: string } | null }) =>
+    msg ? <div className={`text-sm px-3 py-2 rounded-lg ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div> : null;
+
+  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
+    <button type="button" onClick={onChange}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${checked ? "bg-rose-500" : "bg-gray-200"}`}>
+      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${checked ? "translate-x-5" : "translate-x-0"}`} />
+    </button>
+  );
+
+  const DayPicker = ({ days, toggle }: { days: number[]; toggle: (d: number) => void }) => (
+    <div className="grid grid-cols-2 gap-3">
+      {DAY_OPTIONS.map(opt => {
+        const checked = days.includes(opt.value);
+        return (
+          <button key={opt.value} type="button" onClick={() => toggle(opt.value)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${checked ? "border-rose-400 bg-rose-50 text-rose-700" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"}`}>
+            <div className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border-2 ${checked ? "border-rose-500 bg-rose-500" : "border-gray-300"}`}>
+              {checked && <CheckCircle className="w-3 h-3 text-white" />}
+            </div>
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const RunRecord = ({ lastRunAt, lastRunResult }: { lastRunAt: string | null; lastRunResult: { sent: number; skipped: number; errors: number } | null }) => (
+    lastRunAt ? (
+      <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1.5">
+        <div className="flex items-center gap-2 text-gray-600">
+          <Clock className="w-4 h-4 text-gray-400" />
+          <span>上次运行：{new Date(lastRunAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+        {lastRunResult && (
+          <div className="flex gap-4 text-xs text-gray-500 pl-6">
+            <span className="text-green-600">✓ 发送 {lastRunResult.sent} 条</span>
+            <span>跳过 {lastRunResult.skipped} 条</span>
+            {lastRunResult.errors > 0 && <span className="text-red-500">✗ 失败 {lastRunResult.errors} 条</span>}
+          </div>
+        )}
       </div>
-    );
+    ) : <p className="text-sm text-gray-400">暂无运行记录</p>
+  );
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
+      <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
+    </div>
+  );
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* ── 开关 ── */}
+    <div className="space-y-5 max-w-2xl">
+
+      {/* ── 渠道选择 ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700">
-              公众号生日消息通知
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              通过微信公众号模板消息，在生日前提醒用户
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCfg((c) => ({ ...c, enabled: !c.enabled }))}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${cfg.enabled ? "bg-rose-500" : "bg-gray-200"}`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${cfg.enabled ? "translate-x-5" : "translate-x-0"}`}
-            />
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">选择通知渠道</h2>
+          <p className="text-xs text-gray-400 mt-0.5">选择要配置的通知方式，两种渠道可独立启用</p>
+        </div>
+        <div className="p-5 grid grid-cols-2 gap-3">
+          {/* OA 公众号 */}
+          <button type="button" onClick={() => setChannel("oa")}
+            className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${channel === "oa" ? "border-[#07C160] bg-green-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}>
+            {channel === "oa" && <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-[#07C160]" />}
+            <div className="w-9 h-9 rounded-full bg-[#07C160] flex items-center justify-center">
+              <Bell className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-800">公众号模板消息</p>
+              <p className="text-xs text-gray-500 mt-0.5">通过服务号发送</p>
+            </div>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${oa.enabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+              {oa.enabled ? "已启用" : "未启用"}
+            </span>
           </button>
-        </div>
-        <div className="px-6 py-4">
-          <div
-            className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${cfg.enabled ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-400"}`}
-          >
-            <Bell className="w-3.5 h-3.5 flex-shrink-0" />
-            {cfg.enabled
-              ? "通知已启用，将按以下配置每天自动发送"
-              : "通知已关闭，不会向用户发送任何消息"}
-          </div>
-        </div>
-      </div>
 
-      {/* ── 发送时机 ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">发送时机</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            选择在生日哪几天发送提醒（可多选）
-          </p>
-        </div>
-        <div className="p-6 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            {DAY_OPTIONS.map((opt) => {
-              const checked = cfg.daysBefore.includes(opt.value);
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => toggleDay(opt.value)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${
-                    checked
-                      ? "border-rose-400 bg-rose-50 text-rose-700"
-                      : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border-2 ${checked ? "border-rose-500 bg-rose-500" : "border-gray-300"}`}
-                  >
-                    {checked && <CheckCircle className="w-3 h-3 text-white" />}
-                  </div>
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span>每天发送时间</span>
+          {/* MP 小程序 */}
+          <button type="button" onClick={() => setChannel("mp")}
+            className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all ${channel === "mp" ? "border-purple-400 bg-purple-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}>
+            {channel === "mp" && <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-purple-500" />}
+            <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-purple-600" />
             </div>
-            <select
-              value={cfg.sendHour}
-              onChange={(e) =>
-                setCfg((c) => ({ ...c, sendHour: parseInt(e.target.value) }))
-              }
-              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>
-                  {String(i).padStart(2, "0")}:00
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 模板消息配置 ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">模板消息配置</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            在公众号后台「功能 → 模板消息」中创建模板后，将 ID 和变量名填入此处
-          </p>
-        </div>
-        <div className="p-6 space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              模板 ID
-            </label>
-            <input
-              type="text"
-              value={cfg.templateId}
-              onChange={(e) =>
-                setCfg((c) => ({ ...c, templateId: e.target.value }))
-              }
-              placeholder="例：T1234567890abcdef"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 font-mono"
-            />
-          </div>
-
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-700 space-y-1.5">
-            <p className="font-semibold">模板变量说明</p>
-            <p>系统使用固定的两个变量，请确保模板中包含以下字段：</p>
-            <ul className="space-y-1 list-disc list-inside font-mono text-xs">
-              <li>
-                <span className="bg-gray-100 px-1 rounded">
-                  {"{{thing19.DATA}}"}
-                </span>{" "}
-                — 姓名 · 事件类型（如「张伟 · 生日」「结婚纪念日 · 纪念日」）
-              </li>
-              <li>
-                <span className="bg-gray-100 px-1 rounded">
-                  {"{{time24.DATA}}"}
-                </span>{" "}
-                — 事件日期时间（如「2026-04-10 08:00」）
-              </li>
-            </ul>
-          </div>
-
-          {saveMsg && (
-            <div
-              className={`text-sm px-3 py-2 rounded-lg ${saveMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}
-            >
-              {saveMsg.text}
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-800">小程序订阅消息</p>
+              <p className="text-xs text-gray-500 mt-0.5">用户授权后推送</p>
             </div>
-          )}
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
-          >
-            {saving ? "保存中..." : "保存配置"}
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${mp.enabled ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}`}>
+              {mp.enabled ? "已启用" : "未启用"}
+            </span>
           </button>
         </div>
       </div>
 
-      {/* ── 上次运行状态 & 手动触发 ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">运行记录</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            可立即触发一次发送以测试配置是否正确
-          </p>
-        </div>
-        <div className="p-6 space-y-4">
-          {cfg.lastRunAt ? (
-            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1.5">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span>
-                  上次运行：
-                  {new Date(cfg.lastRunAt).toLocaleString("zh-CN", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+      {/* ── 公众号模板消息配置 ── */}
+      {channel === "oa" && (
+        <>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700">公众号模板消息通知</h2>
+                <p className="text-xs text-gray-400 mt-0.5">通过微信服务号模板消息，在生日前提醒用户</p>
               </div>
-              {cfg.lastRunResult && (
-                <div className="flex gap-4 text-xs text-gray-500 pl-6">
-                  <span className="text-green-600">
-                    ✓ 发送 {cfg.lastRunResult.sent} 条
-                  </span>
-                  <span>跳过 {cfg.lastRunResult.skipped} 条</span>
-                  {cfg.lastRunResult.errors > 0 && (
-                    <span className="text-red-500">
-                      ✗ 失败 {cfg.lastRunResult.errors} 条
-                    </span>
-                  )}
+              <Toggle checked={oa.enabled} onChange={() => setOa(c => ({ ...c, enabled: !c.enabled }))} />
+            </div>
+            <div className="px-6 py-4">
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${oa.enabled ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-400"}`}>
+                <Bell className="w-3.5 h-3.5 flex-shrink-0" />
+                {oa.enabled ? "已启用，将按以下配置每天自动发送" : "已关闭，不会向用户发送消息"}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">发送时机</h2>
+            </div>
+            <div className="p-5 space-y-5">
+              <DayPicker days={oa.daysBefore} toggle={toggleOaDay} />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <Clock className="w-4 h-4 text-gray-400" /><span>每天发送时间</span>
                 </div>
-              )}
+                <select value={oa.sendHour} onChange={e => setOa(c => ({ ...c, sendHour: parseInt(e.target.value) }))}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-gray-400">暂无运行记录</p>
-          )}
+          </div>
 
-          {runMsg && (
-            <div
-              className={`text-sm px-3 py-2 rounded-lg ${runMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}
-            >
-              {runMsg.text}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">模板消息配置</h2>
+              <p className="text-xs text-gray-400 mt-0.5">在公众号后台「功能 → 模板消息」中创建模板，获取模板 ID</p>
             </div>
-          )}
-
-          <button
-            onClick={handleRun}
-            disabled={running}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60"
-          >
-            {running ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4" />
-            )}
-            {running ? "执行中..." : "立即执行一次"}
-          </button>
-        </div>
-      </div>
-
-      {/* ── 说明 ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">配置说明</h2>
-        </div>
-        <div className="p-6 space-y-4 text-sm text-gray-600">
-          {[
-            "确保「微信配置」页面中已正确填写 AppID 和 AppSecret（公众号必须是服务号才支持模板消息）。",
-            "在公众号后台进入「功能 → 模板消息 → 添加模板」，选择或自定义生日提醒模板，获取模板 ID。",
-            "模板需包含两个固定变量：{{thing19.DATA}}（姓名·事件类型）和 {{time24.DATA}}（事件时间）。",
-            "系统将在每天设定时间自动扫描数据库，向当天或指定天数内过生日的联系人所属用户发送通知。",
-            "只有通过微信登录的用户才会收到通知，测试账号用户不会收到。",
-          ].map((text, i) => (
-            <div key={i} className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center">
-                {i + 1}
-              </span>
-              <p>{text}</p>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">模板 ID</label>
+                <input type="text" value={oa.templateId}
+                  onChange={e => setOa(c => ({ ...c, templateId: e.target.value }))}
+                  placeholder="例：T1234567890abcdef"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono" />
+              </div>
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-700 space-y-1.5">
+                <p className="font-semibold">模板变量说明（固定字段）</p>
+                <p><span className="font-mono bg-gray-100 px-1 rounded">{"{{thing19.DATA}}"}</span> — 姓名 · 事件类型（如「张伟 · 生日」）</p>
+                <p><span className="font-mono bg-gray-100 px-1 rounded">{"{{time24.DATA}}"}</span> — 事件日期时间（如「2026-04-10 08:00」）</p>
+              </div>
+              <MsgBox msg={oaSaveMsg} />
+              <button onClick={saveOa} disabled={oaSaving}
+                className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {oaSaving ? "保存中..." : "保存配置"}
+              </button>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">运行记录</h2>
+              <p className="text-xs text-gray-400 mt-0.5">可立即触发一次以测试配置</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <RunRecord lastRunAt={oa.lastRunAt} lastRunResult={oa.lastRunResult} />
+              <MsgBox msg={oaRunMsg} />
+              <button onClick={runOa} disabled={oaRunning}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {oaRunning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                {oaRunning ? "执行中..." : "立即执行一次"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── 小程序订阅消息配置 ── */}
+      {channel === "mp" && (
+        <>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700">小程序订阅消息通知</h2>
+                <p className="text-xs text-gray-400 mt-0.5">用户在小程序中授权订阅后，可收到生日提醒通知</p>
+              </div>
+              <Toggle checked={mp.enabled} onChange={() => setMp(c => ({ ...c, enabled: !c.enabled }))} />
+            </div>
+            <div className="px-6 py-4">
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${mp.enabled ? "bg-purple-50 text-purple-700" : "bg-gray-50 text-gray-400"}`}>
+                <Bell className="w-3.5 h-3.5 flex-shrink-0" />
+                {mp.enabled ? "已启用，将向已订阅的用户发送生日提醒" : "已关闭，不会向用户发送消息"}
+              </div>
+              <div className="mt-3 text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+                用户需在小程序内「设置 → 生日提醒订阅」页面主动授权才会收到消息
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">发送时机</h2>
+            </div>
+            <div className="p-5 space-y-5">
+              <DayPicker days={mp.daysBefore} toggle={toggleMpDay} />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <Clock className="w-4 h-4 text-gray-400" /><span>每天发送时间</span>
+                </div>
+                <select value={mp.sendHour} onChange={e => setMp(c => ({ ...c, sendHour: parseInt(e.target.value) }))}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">订阅消息模板配置</h2>
+              <p className="text-xs text-gray-400 mt-0.5">在小程序后台「订阅消息」中选择并获取模板 ID</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">模板 ID</label>
+                <input type="text" value={mp.templateId}
+                  onChange={e => setMp(c => ({ ...c, templateId: e.target.value }))}
+                  placeholder="vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">温馨提示文案</label>
+                <input type="text" value={mp.tipText}
+                  onChange={e => setMp(c => ({ ...c, tipText: e.target.value }))}
+                  placeholder="Ta的生日快到了，记得送上生日祝福！"
+                  maxLength={20}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300" />
+                <p className="text-xs text-gray-400 mt-1">对应模板中「温馨提示」字段，最多 20 字</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-xs text-purple-700 space-y-1.5">
+                <p className="font-semibold">模板字段说明（固定映射）</p>
+                <p><span className="font-mono bg-white/60 px-1 rounded">{"{{name1.DATA}}"}</span> — 称呼（联系人姓名）</p>
+                <p><span className="font-mono bg-white/60 px-1 rounded">{"{{thing6.DATA}}"}</span> — 生日日期（如「04月15日」）</p>
+                <p><span className="font-mono bg-white/60 px-1 rounded">{"{{thing5.DATA}}"}</span> — 温馨提示（上方填写的文案）</p>
+              </div>
+              <MsgBox msg={mpSaveMsg} />
+              <button onClick={saveMp} disabled={mpSaving}
+                className="px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {mpSaving ? "保存中..." : "保存配置"}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700">运行记录</h2>
+              <p className="text-xs text-gray-400 mt-0.5">可立即触发一次以测试（仅向已订阅用户发送）</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <RunRecord lastRunAt={mp.lastRunAt} lastRunResult={mp.lastRunResult} />
+              <MsgBox msg={mpRunMsg} />
+              <button onClick={runMp} disabled={mpRunning}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {mpRunning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                {mpRunning ? "执行中..." : "立即执行一次"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

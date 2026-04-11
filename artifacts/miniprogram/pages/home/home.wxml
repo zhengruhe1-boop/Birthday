@@ -340,6 +340,13 @@
             </view>
             <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f43f5e" />
           </view>
+          <view class="settings-nav-row" bindtap="goSubscribePage">
+            <view class="toggle-info">
+              <text class="toggle-label">生日提醒订阅</text>
+              <text class="toggle-desc">授权小程序消息推送</text>
+            </view>
+            <text class="nav-arrow">›</text>
+          </view>
         </view>
 
         <view style="height:24rpx" />
