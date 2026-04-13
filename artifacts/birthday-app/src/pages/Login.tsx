@@ -73,7 +73,7 @@ function getOrCreateDeviceId(): string {
 interface WechatPublicConfig {
   configured: boolean;
   appId: string | null;
-  loginMode: "wechat" | "mock";
+  loginMode: "wechat_oa" | "wechat" | "mock";
 }
 
 // Platform tab icons as inline SVG components
@@ -108,8 +108,10 @@ export default function Login() {
 
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      window.history.replaceState({}, "", window.location.pathname);
-      setLocation("/");
+      // Use a full-page redirect to "/" to ensure TanStack Query cache is cleared
+      // and isAuthenticated is computed fresh from the new token.
+      const home = import.meta.env.BASE_URL || "/";
+      window.location.replace(home);
       return;
     }
     if (err) {
@@ -248,7 +250,7 @@ export default function Login() {
           )}
 
           {/* ── 微信公众号 OAuth 登录 ── */}
-          {(platform === "wechat_mp" || loginMode === "wechat") && (
+          {(platform === "wechat_mp" || loginMode === "wechat_oa" || loginMode === "wechat") && (
             <div className="bg-white/85 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <IconMP />
@@ -287,7 +289,7 @@ export default function Login() {
           )}
 
           {/* ── 小程序 in wechat mode: show wechat login card ── */}
-          {platform === "miniprogram" && loginMode === "wechat" && (
+          {platform === "miniprogram" && (loginMode === "wechat_oa" || loginMode === "wechat") && (
             <div className="bg-white/85 backdrop-blur-sm p-6 rounded-3xl shadow-sm border border-border/50 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <IconMini />

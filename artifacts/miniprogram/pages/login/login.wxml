@@ -58,8 +58,8 @@
 
     <!-- 数据说明 -->
     <view class="security-tips">
-      <view class="tip-row"><text class="tip-icon">🔒</text><text class="tip-text">数据加密存储，安全可靠</text></view>
-      <view class="tip-row"><text class="tip-icon">🎯</text><text class="tip-text">仅用于生日提醒，绝不骚扰</text></view>
+      <!-- <view class="tip-row"><text class="tip-icon">🔒</text><text class="tip-text">数据加密存储，安全可靠</text></view>
+      <view class="tip-row"><text class="tip-icon">🎯</text><text class="tip-text">仅用于生日提醒，绝不骚扰</text></view> -->
     </view>
 
   </block>

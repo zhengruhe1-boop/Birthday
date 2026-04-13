@@ -108,8 +108,13 @@ router.get("/wechat/oauth/callback", async (req, res) => {
 
   const frontendBase = (await getSetting("wechat_callback_domain")) || "";
 
+  // Helper: redirect errors always to the login page so the error param is visible
+  const loginBase = frontendBase.replace(/\/+$/, "");
+  const errorRedirect = (code: string) =>
+    res.redirect(`${loginBase}/login?wechat_error=${code}`);
+
   if (!code) {
-    return res.redirect(`${frontendBase}/?wechat_error=no_code`);
+    return errorRedirect("no_code");
   }
 
   try {
@@ -117,7 +122,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     const appSecret = await getSetting("wechat_appsecret");
 
     if (!appId || !appSecret) {
-      return res.redirect(`${frontendBase}/?wechat_error=not_configured`);
+      return errorRedirect("not_configured");
     }
 
     // 1. Exchange code for access_token
@@ -134,7 +139,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     };
 
     if (tokenData.errcode || !tokenData.access_token || !tokenData.openid) {
-      return res.redirect(`${frontendBase}/?wechat_error=token_failed`);
+      return errorRedirect("token_failed");
     }
 
     // 2. Get user info
@@ -151,7 +156,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     };
 
     if (infoData.errcode || !infoData.openid) {
-      return res.redirect(`${frontendBase}/?wechat_error=userinfo_failed`);
+      return errorRedirect("userinfo_failed");
     }
 
     const openId   = infoData.openid;
@@ -183,7 +188,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     return res.redirect(redirectUrl.toString());
 
   } catch (err) {
-    return res.redirect(`${frontendBase}/?wechat_error=server_error`);
+    return errorRedirect("server_error");
   }
 });
 
