@@ -76,6 +76,12 @@ Page({
         this.setData({
           networkError: '⚠️ 无法连接服务器\n开发者工具「详情→本地设置」请勾选\n「不校验合法域名」',
         });
+      } else if (msg.includes('invalid appid') || msg.includes('40013')) {
+        this.setData({
+          networkError: '⚠️ 小程序 AppID 配置错误\n请在管理后台「微信配置」中检查\n小程序 AppID 与 AppSecret 是否正确',
+        });
+      } else if (msg.includes('invalid js code') || msg.includes('40029') || msg.includes('45011')) {
+        this.setData({ networkError: '授权码已过期，请重试' });
       } else {
         this.setData({ networkError: '授权失败：' + (msg || '请重试') });
       }

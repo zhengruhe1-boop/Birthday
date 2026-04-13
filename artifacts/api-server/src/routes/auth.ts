@@ -216,8 +216,12 @@ router.post("/wechat/login", async (req, res) => {
       const data = await response.json() as { openid?: string; session_key?: string; errcode?: number; errmsg?: string };
 
       if (data.errcode || !data.openid) {
-        req.log.error({ data }, "WeChat jscode2session failed");
-        res.status(401).json({ error: data.errmsg || "WeChat login failed" });
+        req.log.error({ data, appId }, "WeChat jscode2session failed");
+        // Include errcode so clients can distinguish error types
+        res.status(401).json({
+          error:   data.errmsg  || "WeChat login failed",
+          errcode: data.errcode || 0,
+        });
         return;
       }
       openId = data.openid;
