@@ -9,7 +9,6 @@ Page({
     // login step
     loading: false,
     networkError: '',
-    agreed: false,
 
     // profile step
     avatarUrl: '',
@@ -21,6 +20,7 @@ Page({
     showLegal: false,
     legalTitle: '',
     legalContent: '',
+    legalLoading: false,
   },
 
   onLoad() {
@@ -29,17 +29,8 @@ Page({
     }
   },
 
-  // ── 协议勾选 ──────────────────────────────────────────────────────────────
-  toggleAgreed() {
-    this.setData({ agreed: !this.data.agreed });
-  },
-
-  // ── 微信一键授权登录 ──────────────────────────────────────────────────────
+  // ── 微信一键授权登录（点击即视为同意协议）─────────────────────────────────
   async handleWxLogin() {
-    if (!this.data.agreed) {
-      wx.showToast({ title: '请先同意用户协议', icon: 'none' });
-      return;
-    }
     if (this.data.loading) return;
 
     this.setData({ loading: true, networkError: '' });
@@ -94,7 +85,6 @@ Page({
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl;
     if (!url) return;
-    // 临时路径直接用，无需上传（小程序内可访问）
     this.setData({ avatarUrl: url });
   },
 
@@ -125,23 +115,33 @@ Page({
     wx.reLaunch({ url: '/pages/home/home' });
   },
 
-  // ── 法律协议 ────────────────────────────────────────────────────────────
+  // ── 用户协议（从管理后台获取）──────────────────────────────────────────
   async showTerms() {
+    this.setData({ showLegal: true, legalTitle: '用户协议', legalContent: '', legalLoading: true });
     try {
       const data = await api.get('api/auth/legal');
       this.setData({
-        showLegal: true,
-        legalTitle: '用户协议',
         legalContent: data.termsOfService || '暂无内容，管理员尚未配置。',
+        legalLoading: false,
       });
     } catch {
-      this.setData({ showLegal: true, legalTitle: '用户协议', legalContent: '暂无内容，管理员尚未配置。' });
+      this.setData({ legalContent: '暂无内容，管理员尚未配置。', legalLoading: false });
     }
   },
 
-  showPrivacy() {
-    this.setData({ showLegal: true, legalTitle: '隐私政策', legalContent: '暂无内容，管理员尚未配置。' });
+  // ── 隐私政策（从管理后台获取）──────────────────────────────────────────
+  async showPrivacy() {
+    this.setData({ showLegal: true, legalTitle: '隐私政策', legalContent: '', legalLoading: true });
+    try {
+      const data = await api.get('api/auth/legal');
+      this.setData({
+        legalContent: data.privacyPolicy || '暂无内容，管理员尚未配置。',
+        legalLoading: false,
+      });
+    } catch {
+      this.setData({ legalContent: '暂无内容，管理员尚未配置。', legalLoading: false });
+    }
   },
 
-  closeLegal() { this.setData({ showLegal: false }); },
+  closeLegal() { this.setData({ showLegal: false, legalLoading: false }); },
 });

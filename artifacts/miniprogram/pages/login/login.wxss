@@ -136,30 +136,15 @@
 .wx-icon { font-size: 36rpx; line-height: 1; }
 .wx-btn-text { font-size: 32rpx; font-weight: 700; color: #fff; }
 
-/* 协议勾选 */
+/* 协议说明（点击登录即同意，无需勾选）*/
 .agree-row {
   display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-}
-.checkbox-wrap { flex-shrink: 0; padding-top: 2rpx; }
-.checkbox {
-  width: 36rpx;
-  height: 36rpx;
-  border: 2rpx solid #cbd5e1;
-  border-radius: 10rpx;
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
+  gap: 0;
 }
-.checkbox.checked {
-  background: #f43f5e;
-  border-color: #f43f5e;
-}
-.check-icon { color: #fff; font-size: 22rpx; font-weight: 700; }
-
-.agree-text-wrap { flex: 1; display: flex; flex-wrap: wrap; align-items: center; }
-.agree-text { font-size: 24rpx; color: #64748b; }
+.agree-text { font-size: 24rpx; color: #94a3b8; }
 .agree-link { font-size: 24rpx; color: #f43f5e; font-weight: 500; }
 
 /* 安全说明 */
@@ -362,7 +347,16 @@
 }
 .modal-close:active { background: #f1f5f9; }
 .modal-body { flex: 1; padding: 32rpx 40rpx; }
-.modal-text { font-size: 26rpx; color: #475569; line-height: 1.8; }
+.modal-text {
+  font-size: 26rpx;
+  color: #475569;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: block;
+}
+.modal-loading { display: flex; align-items: center; justify-content: center; padding: 60rpx 0; }
+.modal-loading-text { font-size: 26rpx; color: #94a3b8; }
 .modal-footer { padding: 16rpx 40rpx 0; }
 .modal-ok-btn {
   width: 100%;

@@ -39,28 +39,18 @@
         </view>
       </button>
 
-      <!-- 协议勾选 -->
-      <view class="agree-row" bindtap="toggleAgreed">
-        <view class="checkbox-wrap">
-          <view class="checkbox {{agreed ? 'checked' : ''}}">
-            <text wx:if="{{agreed}}" class="check-icon">✓</text>
-          </view>
-        </view>
-        <view class="agree-text-wrap">
-          <text class="agree-text">我已阅读并同意 </text>
-          <text class="agree-link" catchtap="showTerms">用户协议</text>
-          <text class="agree-text"> 和 </text>
-          <text class="agree-link" catchtap="showPrivacy">隐私政策</text>
-        </view>
+      <!-- 协议说明（点击登录即视为同意，无需勾选）-->
+      <view class="agree-row">
+        <text class="agree-text">登录即同意 </text>
+        <text class="agree-link" catchtap="showTerms">用户协议</text>
+        <text class="agree-text"> 和 </text>
+        <text class="agree-link" catchtap="showPrivacy">隐私政策</text>
       </view>
 
     </view>
 
     <!-- 数据说明 -->
-    <view class="security-tips">
-      <!-- <view class="tip-row"><text class="tip-icon">🔒</text><text class="tip-text">数据加密存储，安全可靠</text></view>
-      <view class="tip-row"><text class="tip-icon">🎯</text><text class="tip-text">仅用于生日提醒，绝不骚扰</text></view> -->
-    </view>
+    <view class="security-tips" />
 
   </block>
 
@@ -136,7 +126,10 @@
         <view class="modal-close" bindtap="closeLegal"><text>✕</text></view>
       </view>
       <scroll-view class="modal-body" scroll-y>
-        <text class="modal-text">{{legalContent}}</text>
+        <view wx:if="{{legalLoading}}" class="modal-loading">
+          <text class="modal-loading-text">加载中...</text>
+        </view>
+        <text wx:else class="modal-text">{{legalContent}}</text>
       </scroll-view>
       <view class="modal-footer">
         <button class="modal-ok-btn" bindtap="closeLegal">我已知晓</button>
