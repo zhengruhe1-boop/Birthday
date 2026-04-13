@@ -61,6 +61,10 @@ Page({
     // Test email
     testEmailStatus: 'idle',
     testEmailMsg: '',
+
+    // 消息通知
+    oaSubscribed: false,
+    notifyEnabled: false,
   },
 
   onLoad(opts) {
@@ -84,6 +88,31 @@ Page({
         zodiac: getZodiac(m, d),
       });
     }
+    this.loadOaStatus();
+  },
+
+  async loadOaStatus() {
+    try {
+      const res = await api.get('api/auth/wechat/subscribe-status');
+      const subscribed = !!(res && res.subscribed);
+      this.setData({ oaSubscribed: subscribed, notifyEnabled: subscribed });
+    } catch {
+      this.setData({ oaSubscribed: false, notifyEnabled: false });
+    }
+  },
+
+  onNotifyToggle(e) {
+    const val = e.detail.value;
+    if (val && !this.data.oaSubscribed) {
+      this.setData({ notifyEnabled: false });
+      wx.navigateTo({ url: '/pages/follow-oa/follow-oa' });
+      return;
+    }
+    this.setData({ notifyEnabled: val });
+  },
+
+  goFollowOa() {
+    wx.navigateTo({ url: '/pages/follow-oa/follow-oa' });
   },
 
   async loadContact(id) {

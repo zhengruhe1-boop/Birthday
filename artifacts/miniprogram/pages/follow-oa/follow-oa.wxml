@@ -1,0 +1,63 @@
+<view class="page">
+
+  <scroll-view class="scroll" scroll-y>
+
+    <!-- 顶部图标区 -->
+    <view class="hero">
+      <view class="hero-icon">🔔</view>
+      <text class="hero-title">开通微信提醒</text>
+    </view>
+
+    <!-- 说明卡片 -->
+    <view class="card">
+      <view class="alert-row">
+        <text class="alert-icon">⚠️</text>
+        <text class="alert-text">您尚未关注生日通公众号</text>
+      </view>
+      <text class="desc">
+由于小程序提醒机制限制，我们无法直接通过微信给您推送生日提醒。
+      </text>
+      <text class="desc" style="margin-top:16rpx">
+请按以下步骤操作：用微信搜索「生日通」，关注公众号后即可开通微信提醒。
+      </text>
+      <text class="desc" style="margin-top:16rpx">
+您在小程序里记录的生日，会通过微信提前通知您，让您不会错过亲友生日。
+      </text>
+    </view>
+
+    <!-- 步骤说明 -->
+    <view class="card steps-card">
+      <text class="steps-title">操作步骤</text>
+      <view class="step-item">
+        <view class="step-num">1</view>
+        <text class="step-text">打开微信，点击右上角🔍搜索图标</text>
+      </view>
+      <view class="step-item">
+        <view class="step-num">2</view>
+        <text class="step-text">搜索「生日通」，找到下方公众号</text>
+      </view>
+      <view class="step-item">
+        <view class="step-num">3</view>
+        <text class="step-text">点击进入并关注公众号，即可开通提醒</text>
+      </view>
+    </view>
+
+    <!-- 搜索引导图 -->
+    <view class="card img-card">
+      <text class="img-label">在微信中搜索「生日通」：</text>
+      <image
+        class="guide-img"
+        src="/images/follow-oa-guide.jpg"
+        mode="widthFix"
+      />
+    </view>
+
+    <!-- 返回按钮 -->
+    <view class="btn-wrap">
+      <button class="back-btn" bindtap="goBack">返回</button>
+    </view>
+
+    <view style="height:60rpx" />
+  </scroll-view>
+
+</view>

@@ -78,10 +78,31 @@
         </view>
       </view>
 
+      <!-- 消息通知开关 -->
+      <view class="form-card notify-card">
+        <view class="notify-row">
+          <view class="notify-left">
+            <text class="notify-label">消息通知</text>
+            <text class="notify-sub">
+              {{oaSubscribed ? '已关注公众号，日期临近将推送微信提醒' : '关注生日通公众号后可开启'}}
+            </text>
+          </view>
+          <switch
+            class="notify-switch"
+            checked="{{notifyEnabled}}"
+            bindchange="onNotifyToggle"
+            color="#f43f5e"
+          />
+        </view>
+        <view wx:if="{{!oaSubscribed}}" class="notify-tip" bindtap="goFollowOa">
+          <text class="notify-tip-text">👆 点此了解如何关注公众号开通提醒</text>
+        </view>
+      </view>
+
       <!-- 邮件提醒 -->
       <view class="form-card">
         <view class="field-group">
-          <text class="label">关注"生日通"，和输入"邮箱"都会收到消息提醒</text>
+          <text class="label">输入邮箱消息提醒</text>
           <input class="input-field" type="email" placeholder="输入邮箱（选填）"
             value="{{reminderEmail}}" bindinput="onEmailInput" />
           <text class="field-hint">系统提前1天和当天8点发送邮件和公众号消息提醒您。</text>
