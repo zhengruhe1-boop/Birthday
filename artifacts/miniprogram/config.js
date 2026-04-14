@@ -18,6 +18,6 @@ const PROD_BASE = "https://shengritong.kuixi.com";
 
 // ★ 在这里切换环境 ★
 // 开发测试期间使用 DEV_BASE；正式发布前改为 PROD_BASE
-const API_BASE = DEV_BASE;
+const API_BASE = PROD_BASE;
 
 module.exports = { API_BASE };
