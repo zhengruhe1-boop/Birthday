@@ -520,14 +520,11 @@
 .settings-body {
   flex: 1;
   max-height: 72vh;
-  overflow: hidden;
 }
 
-/* 설정 패널 내부 패딩 래퍼 */
+/* 设置面板内边距 */
 .settings-inner {
-  padding: 0 40rpx;
-  box-sizing: border-box;
-  width: 100%;
+  padding: 0 36rpx;
 }
 
 /* 头像区域 */
