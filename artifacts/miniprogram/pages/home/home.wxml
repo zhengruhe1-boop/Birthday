@@ -61,8 +61,7 @@
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
               <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日
-                {{item.relation ? ' · ' + item.relation : ''}}
+                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.zodiac ? ' · ' + item.zodiac : ''}}{{item.relation ? ' · ' + item.relation : ''}}
               </text>
             </view>
             <text class="arrow">›</text>
@@ -108,8 +107,7 @@
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
               <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日
-                {{item.relation ? ' · ' + item.relation : ''}}
+                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.zodiac ? ' · ' + item.zodiac : ''}}{{item.relation ? ' · ' + item.relation : ''}}
               </text>
             </view>
             <view class="days-badge imminent">
@@ -136,8 +134,7 @@
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
               <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日
-                {{item.relation ? ' · ' + item.relation : ''}}
+                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.zodiac ? ' · ' + item.zodiac : ''}}{{item.relation ? ' · ' + item.relation : ''}}
               </text>
             </view>
             <view class="days-badge soon">
@@ -164,8 +161,7 @@
             <view class="contact-info">
               <text class="contact-name">{{item.name}}</text>
               <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日
-                {{item.relation ? ' · ' + item.relation : ''}}
+                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.zodiac ? ' · ' + item.zodiac : ''}}{{item.relation ? ' · ' + item.relation : ''}}
               </text>
             </view>
             <view class="days-badge monthly">

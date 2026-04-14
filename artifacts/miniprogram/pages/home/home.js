@@ -1,6 +1,6 @@
 const api = require('../../utils/api');
 const { isLoggedIn, clearToken } = require('../../utils/auth');
-const { calcAnniversaryYear } = require('../../utils/date');
+const { calcAnniversaryYear, getZodiac } = require('../../utils/date');
 
 // 将相对路径转为绝对 URL（微信小程序 image 不支持相对路径）
 function toAbsUrl(url) {
@@ -10,10 +10,14 @@ function toAbsUrl(url) {
   return base + (url.startsWith('/') ? url : '/' + url);
 }
 
-// 将联系人列表中的头像 URL 统一转为绝对路径
+// 将联系人列表中的头像 URL 转为绝对路径，并补充星座字段
 function normalizeContacts(list) {
-  return (list || []).map(c => c.avatarUrl && !c.avatarUrl.startsWith('http')
-    ? { ...c, avatarUrl: toAbsUrl(c.avatarUrl) } : c);
+  return (list || []).map(c => ({
+    ...c,
+    avatarUrl: c.avatarUrl && !c.avatarUrl.startsWith('http') ? toAbsUrl(c.avatarUrl) : (c.avatarUrl || ''),
+    zodiac: (!c.birthdayLunar && c.birthdayMonth && c.birthdayDay)
+      ? getZodiac(c.birthdayMonth, c.birthdayDay) : '',
+  }));
 }
 
 const PREF_EMAIL_NOTIFY = 'birthday_pref_email_notify';

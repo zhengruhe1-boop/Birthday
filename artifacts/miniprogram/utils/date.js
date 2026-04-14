@@ -41,4 +41,25 @@ const DAYS_RANGE = Array.from({ length: 31 }, (_, i) => String(i + 1) + '日');
 function monthList() { return MONTHS; }
 function dayList() { return DAYS_RANGE; }
 
-module.exports = { formatDate, formatDateTime, todayStr, calcAnniversaryYear, monthList, dayList, padTwo };
+const ZODIAC_SIGNS = [
+  { name: '摩羯座', m: 1,  d: 20 }, { name: '水瓶座', m: 2,  d: 19 },
+  { name: '双鱼座', m: 3,  d: 20 }, { name: '白羊座', m: 4,  d: 20 },
+  { name: '金牛座', m: 5,  d: 21 }, { name: '双子座', m: 6,  d: 21 },
+  { name: '巨蟹座', m: 7,  d: 23 }, { name: '狮子座', m: 8,  d: 23 },
+  { name: '处女座', m: 9,  d: 23 }, { name: '天秤座', m: 10, d: 23 },
+  { name: '天蝎座', m: 11, d: 22 }, { name: '射手座', m: 12, d: 22 },
+  { name: '摩羯座', m: 1,  d: 31 },
+];
+
+function getZodiac(month, day) {
+  const m = parseInt(month, 10);
+  const d = parseInt(day, 10);
+  if (!m || !d) return '';
+  for (var i = 0; i < ZODIAC_SIGNS.length; i++) {
+    var s = ZODIAC_SIGNS[i];
+    if (m < s.m || (m === s.m && d < s.d)) return s.name;
+  }
+  return '摩羯座';
+}
+
+module.exports = { formatDate, formatDateTime, todayStr, calcAnniversaryYear, monthList, dayList, padTwo, getZodiac };

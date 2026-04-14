@@ -232,7 +232,9 @@ Page({
     this.setData({ aiLoading: true, aiError: '', showAiEvents: true });
     try {
       const res = await api.post('api/contacts/' + this.data.contactId + '/birthday-events', {});
-      this.setData({ aiEvents: res || [], aiLoading: false });
+      // 服务器返回 { events: [...] }，取 events 数组
+      const events = (res && Array.isArray(res.events)) ? res.events : (Array.isArray(res) ? res : []);
+      this.setData({ aiEvents: events, aiLoading: false });
     } catch (err) {
       this.setData({ aiError: err.message || '获取失败', aiLoading: false });
     }
