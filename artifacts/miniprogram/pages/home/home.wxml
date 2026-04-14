@@ -327,7 +327,6 @@
               {{savingProfile ? '…' : '保存'}}
             </button>
           </view>
-          <text class="settings-hint">type="nickname" 会自动填入微信昵称</text>
         </view>
 
         <!-- 提醒偏好 -->
@@ -343,7 +342,6 @@
           <view class="settings-nav-row" bindtap="goSubscribePage">
             <view class="toggle-info">
               <text class="toggle-label">生日提醒订阅</text>
-              <text class="toggle-desc">授权小程序消息推送</text>
             </view>
             <text class="nav-arrow">›</text>
           </view>

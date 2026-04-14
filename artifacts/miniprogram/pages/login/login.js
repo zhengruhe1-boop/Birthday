@@ -49,18 +49,8 @@ Page({
         wx.setStorageSync('birthday_userinfo', res.user);
       }
 
-      // 4. 新用户 或 资料缺失 → 进入资料完善步骤
-      if (res.needsProfile) {
-        this.setData({
-          step: 'profile',
-          nickname: (res.user && res.user.nickname !== '微信用户' && res.user.nickname !== '匿名用户')
-            ? res.user.nickname : '',
-          avatarUrl: (res.user && res.user.avatarUrl) ? res.user.avatarUrl : '',
-          isNewUser: true,
-        });
-      } else {
-        wx.reLaunch({ url: '/pages/home/home' });
-      }
+      // 4. 登录成功，直接进入首页
+      wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
       const msg = err.message || '';
       if (msg.includes('timeout') || msg.includes('fail') || msg.includes('domain') || msg.includes('白名单')) {
