@@ -48,13 +48,22 @@
           </view>
         </block>
 
-        <!-- 其它：提醒时间（含年月日） -->
+        <!-- 其它：提醒时间（日期 + 时间分两个 picker） -->
         <block wx:if="{{eventType === 'other'}}">
           <view class="field-group">
-            <text class="label">提醒时间<text class="label-required">*</text></text>
-            <picker mode="datetime" value="{{reminderTime}}" start="{{minDate}}" bindchange="onReminderTimeChange">
+            <text class="label">提醒日期<text class="label-required">*</text></text>
+            <picker mode="date" value="{{reminderDate}}" start="{{minDate}}" bindchange="onReminderDateChange">
               <view class="picker-field">
-                <text>{{reminderTime || '请选择提醒日期和时间'}}</text>
+                <text>{{reminderDate || '请选择日期'}}</text>
+                <text class="picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="field-group">
+            <text class="label">提醒时间<text class="label-required">*</text></text>
+            <picker mode="time" value="{{reminderTimeVal}}" bindchange="onReminderTimeValChange">
+              <view class="picker-field">
+                <text>{{reminderTimeVal || '08:00'}}</text>
                 <text class="picker-arrow">›</text>
               </view>
             </picker>

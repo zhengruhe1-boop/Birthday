@@ -22,7 +22,9 @@ Page({
     name: '',
     eventDate: '',
     person: '',
-    reminderTime: '',
+    reminderDate: '',   // 其它提醒 - 日期部分 YYYY-MM-DD
+    reminderTimeVal: '08:00', // 其它提醒 - 时间部分 HH:MM
+    reminderTime: '',   // 合并值 YYYY-MM-DD HH:MM（提交给服务器）
     reminderEmail: '',
 
     minDate: todayStr(),
@@ -82,13 +84,20 @@ Page({
       const e = await api.get('api/events/' + id);
       const type = e.type || 'anniversary';
       const meta = TYPE_META[type] || TYPE_META.anniversary;
+      // 拆分 reminderTime "YYYY-MM-DD HH:MM" 为日期和时间两部分
+      const rt = e.reminderTime || '';
+      const rtParts = rt.split(' ');
+      const reminderDate = rtParts[0] || '';
+      const reminderTimeVal = rtParts[1] || '08:00';
       this.setData({
         eventType: type,
         meta,
         name: e.name || '',
         eventDate: e.eventDate || '',
         person: e.person || '',
-        reminderTime: e.reminderTime || '',
+        reminderDate,
+        reminderTimeVal,
+        reminderTime: rt,
         reminderEmail: e.reminderEmail || '',
         loading: false,
       });
@@ -105,9 +114,24 @@ Page({
 
   onDateChange(e) { this.setData({ eventDate: e.detail.value }); },
 
-  onReminderTimeChange(e) {
-    // datetime picker returns 'YYYY-MM-DD HH:MM'
-    this.setData({ reminderTime: e.detail.value });
+  // 其它提醒 - 日期选择（mode="date"）
+  onReminderDateChange(e) {
+    const date = e.detail.value;
+    const time = this.data.reminderTimeVal || '08:00';
+    this.setData({
+      reminderDate: date,
+      reminderTime: date ? date + ' ' + time : '',
+    });
+  },
+
+  // 其它提醒 - 时间选择（mode="time"）
+  onReminderTimeValChange(e) {
+    const time = e.detail.value;
+    const date = this.data.reminderDate || '';
+    this.setData({
+      reminderTimeVal: time,
+      reminderTime: date ? date + ' ' + time : '',
+    });
   },
 
   validate() {
@@ -118,8 +142,8 @@ Page({
     if ((eventType === 'anniversary' || eventType === 'countdown') && !eventDate) {
       wx.showToast({ title: '请选择日期', icon: 'none' }); return false;
     }
-    if (eventType === 'other' && !reminderTime) {
-      wx.showToast({ title: '请填写提醒时间', icon: 'none' }); return false;
+    if (eventType === 'other' && !this.data.reminderDate) {
+      wx.showToast({ title: '请选择提醒日期', icon: 'none' }); return false;
     }
     const email = reminderEmail.trim();
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
