@@ -341,7 +341,7 @@
           </view>
           <view class="settings-nav-row" bindtap="goSubscribePage">
             <view class="toggle-info">
-              <text class="toggle-label">生日提醒订阅</text>
+             <!-- <text class="toggle-label">生日提醒订阅</text> -->
             </view>
             <text class="nav-arrow">›</text>
           </view>

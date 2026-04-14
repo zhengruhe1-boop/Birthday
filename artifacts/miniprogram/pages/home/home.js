@@ -2,6 +2,14 @@ const api = require('../../utils/api');
 const { isLoggedIn, clearToken } = require('../../utils/auth');
 const { calcAnniversaryYear } = require('../../utils/date');
 
+// 将相对路径转为绝对 URL（微信小程序 image 不支持相对路径）
+function toAbsUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
+
 const PREF_EMAIL_NOTIFY = 'birthday_pref_email_notify';
 
 Page({
@@ -57,12 +65,14 @@ Page({
         api.get('api/contacts/upcoming').catch(() => ({ imminent: [], soon: [], monthly: [] })),
         api.get('api/events/upcoming').catch(() => ({ anniversaries: [], countdowns: [], others: [] })),
       ]);
+      // 头像 URL 必须是绝对路径，微信小程序不支持相对路径
+      const meNormalized = me ? { ...me, avatarUrl: toAbsUrl(me.avatarUrl) } : null;
       const ann = (events.anniversaries || []).map(e => ({
         ...e,
         anniversaryYear: calcAnniversaryYear(e.eventDate),
       }));
       this.setData({
-        userInfo: me,
+        userInfo: meNormalized,
         editNickname: me ? me.nickname : '',
         upcoming: upcoming || { imminent: [], soon: [], monthly: [] },
         anniversaries: ann,
@@ -120,10 +130,12 @@ Page({
     try {
       // 1. 先上传到服务器
       const uploadRes = await api.upload('api/upload', avatarUrl, 'image');
-      const serverUrl = uploadRes && uploadRes.url ? uploadRes.url : avatarUrl;
-      // 2. 保存到用户资料
+      // 微信小程序 image 不支持相对路径，必须转为绝对 URL
+      const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
+      const serverUrl = rawUrl ? toAbsUrl(rawUrl) : avatarUrl;
+      // 2. 保存到用户资料（存入服务器时保存绝对 URL）
       const updated = await api.put('api/auth/me', { avatarUrl: serverUrl });
-      this.setData({ userInfo: { ...this.data.userInfo, ...updated } });
+      this.setData({ userInfo: { ...this.data.userInfo, ...updated, avatarUrl: toAbsUrl(updated.avatarUrl || serverUrl) } });
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch {
       // 上传失败时直接用临时地址展示（刷新后消失，但不报错）

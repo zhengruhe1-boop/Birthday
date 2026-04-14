@@ -18,6 +18,8 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
+  flex: 1;
+  min-width: 0;
 }
 
 /* 头部头像按钮（open-type=chooseAvatar） */
