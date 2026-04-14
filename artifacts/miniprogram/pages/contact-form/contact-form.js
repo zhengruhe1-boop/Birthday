@@ -1,6 +1,14 @@
 const api = require('../../utils/api');
 const { isLoggedIn } = require('../../utils/auth');
 
+// 将相对路径转为绝对 URL（微信小程序 image 不支持相对路径）
+function toAbsUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
+
 const MONTHS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 const DAYS   = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const RELATIONS = ['家人', '朋友', '同事', '恋人', '同学', '其他'];
@@ -131,7 +139,7 @@ Page({
         relation: c.relation || '',
         hometown: c.hometown || '',
         reminderEmail: c.reminderEmail || '',
-        avatarUrl: c.avatarUrl || null,
+        avatarUrl: toAbsUrl(c.avatarUrl) || null,
         monthIndex: m - 1,
         dayIndex: d - 1,
         zodiac: getZodiac(m, d),
@@ -190,8 +198,10 @@ Page({
       this.setData({ avatarUploading: true });
       const uploadRes = await api.upload('api/upload', tempFile, 'image');
       if (uploadRes && uploadRes.url) {
-        await api.put('api/contacts/' + this.data.contactId, { avatarUrl: uploadRes.url });
-        this.setData({ avatarUrl: uploadRes.url, avatarUploading: false });
+        // 微信小程序 image 不支持相对路径，必须转为绝对 URL
+        const absUrl = toAbsUrl(uploadRes.url);
+        await api.put('api/contacts/' + this.data.contactId, { avatarUrl: absUrl });
+        this.setData({ avatarUrl: absUrl, avatarUploading: false });
         wx.showToast({ title: '头像已更新', icon: 'success' });
       }
     } catch (err) {

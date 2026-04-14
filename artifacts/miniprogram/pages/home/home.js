@@ -10,6 +10,12 @@ function toAbsUrl(url) {
   return base + (url.startsWith('/') ? url : '/' + url);
 }
 
+// 将联系人列表中的头像 URL 统一转为绝对路径
+function normalizeContacts(list) {
+  return (list || []).map(c => c.avatarUrl && !c.avatarUrl.startsWith('http')
+    ? { ...c, avatarUrl: toAbsUrl(c.avatarUrl) } : c);
+}
+
 const PREF_EMAIL_NOTIFY = 'birthday_pref_email_notify';
 
 Page({
@@ -71,10 +77,15 @@ Page({
         ...e,
         anniversaryYear: calcAnniversaryYear(e.eventDate),
       }));
+      const upcomingNorm = upcoming ? {
+        imminent: normalizeContacts(upcoming.imminent),
+        soon: normalizeContacts(upcoming.soon),
+        monthly: normalizeContacts(upcoming.monthly),
+      } : { imminent: [], soon: [], monthly: [] };
       this.setData({
         userInfo: meNormalized,
         editNickname: me ? me.nickname : '',
-        upcoming: upcoming || { imminent: [], soon: [], monthly: [] },
+        upcoming: upcomingNorm,
         anniversaries: ann,
         countdowns: events.countdowns || [],
         others: events.others || [],
@@ -113,7 +124,7 @@ Page({
         (e.person || '').toLowerCase().includes(lower)
       );
       this.setData({
-        searchContacts: Array.isArray(contacts) ? contacts : [],
+        searchContacts: normalizeContacts(Array.isArray(contacts) ? contacts : []),
         searchEvents: matchedEvents,
         searching: false,
       });
