@@ -70,8 +70,11 @@ Page({
       // 5. 登录成功，直接进入首页
       wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
-      const msg = err.message || '';
-      if (msg.includes('timeout') || msg.includes('fail') || msg.includes('domain') || msg.includes('白名单')) {
+      // wx.login fail 回调传的是 { errMsg: '...' } 对象，不是 Error，需兼容两者
+      const msg = err.message || err.errMsg || String(err) || '';
+      if (msg.includes('timeout')) {
+        this.setData({ networkError: '⚠️ 网络超时，请检查网络连接后重试' });
+      } else if (msg.includes('url not in domain') || msg.includes('白名单') || msg.includes('domain') || msg.includes('invalid url')) {
         this.setData({
           networkError: '⚠️ 无法连接服务器\n开发者工具「详情→本地设置」请勾选\n「不校验合法域名」',
         });
@@ -80,9 +83,11 @@ Page({
           networkError: '⚠️ 小程序 AppID 配置错误\n请在管理后台「微信配置」中检查\n小程序 AppID 与 AppSecret 是否正确',
         });
       } else if (msg.includes('invalid js code') || msg.includes('40029') || msg.includes('45011')) {
-        this.setData({ networkError: '授权码已过期，请重试' });
+        this.setData({ networkError: '⚠️ 授权码已过期，请重新点击登录' });
+      } else if (msg.includes('fail') || msg.includes('network')) {
+        this.setData({ networkError: '⚠️ 网络异常，请稍后重试' });
       } else {
-        this.setData({ networkError: '授权失败：' + (msg || '请重试') });
+        this.setData({ networkError: '⚠️ 登录失败：' + (msg || '请稍后重试') });
       }
     } finally {
       this.setData({ loading: false });

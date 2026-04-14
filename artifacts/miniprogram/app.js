@@ -21,7 +21,7 @@ App({
     const self = this;
     return new Promise(function(resolve) {
       wx.login({
-        timeout: 8000,
+        timeout: 12000,
         success: function(loginRes) {
           const base = (self.globalData.apiBase || '').replace(/\/$/, '');
           wx.request({
@@ -29,7 +29,7 @@ App({
             method: 'POST',
             data: { code: loginRes.code },
             header: { 'Content-Type': 'application/json' },
-            timeout: 10000,
+            timeout: 15000,
             success: function(r) {
               if (r.statusCode >= 200 && r.statusCode < 300 && r.data && r.data.token) {
                 wx.setStorageSync('birthday_token', r.data.token);

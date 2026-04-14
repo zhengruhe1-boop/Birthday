@@ -7,9 +7,16 @@ function getBase() {
   return (app.globalData.apiBase || '').replace(/\/$/, '');
 }
 
+// 把 wx 回调的 errMsg / message 统一提取成字符串
+function extractMsg(err) {
+  if (!err) return '';
+  if (typeof err === 'string') return err;
+  return err.message || err.errMsg || String(err);
+}
+
 function request(method, path, data) {
-  const base = getBase();
-  const url  = base + '/' + path.replace(/^\//, '');
+  const base  = getBase();
+  const url   = base + '/' + path.replace(/^\//, '');
   const token = getToken();
 
   return new Promise((resolve, reject) => {
@@ -17,7 +24,7 @@ function request(method, path, data) {
       url,
       method,
       data: data || undefined,
-      timeout: 10000,          // 10 秒超时，避免无限等待
+      timeout: 15000,
       header: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
@@ -31,12 +38,13 @@ function request(method, path, data) {
         }
       },
       fail(err) {
-        const msg = err.errMsg || '网络错误';
-        // 域名未配置时给出明确提示
-        if (msg.includes('url not in domain') || msg.includes('invalid url')) {
+        const raw = extractMsg(err);
+        if (raw.includes('timeout')) {
+          reject(new Error('网络超时，请检查网络连接后重试'));
+        } else if (raw.includes('url not in domain') || raw.includes('invalid url')) {
           reject(new Error('域名未在白名单，请在开发者工具「详情→本地设置」勾选"不校验合法域名"'));
         } else {
-          reject(new Error(msg));
+          reject(new Error(raw || '网络错误'));
         }
       },
     });
@@ -65,7 +73,12 @@ function uploadFile(path, filePath, name) {
         }
       },
       fail(err) {
-        reject(new Error(err.errMsg || '上传失败'));
+        const raw = extractMsg(err);
+        if (raw.includes('timeout')) {
+          reject(new Error('上传超时，请检查网络后重试'));
+        } else {
+          reject(new Error(raw || '上传失败'));
+        }
       },
     });
   });
