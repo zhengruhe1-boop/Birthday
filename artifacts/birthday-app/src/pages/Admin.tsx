@@ -64,6 +64,7 @@ interface WechatConfig {
   oaAppSecretSet: boolean;
   oaDomain: string;
   oaAccountName: string;
+  serverToken: string;
   // 小程序 (Mini Program)
   mpAppId: string;
   mpAppSecret: string;
@@ -169,6 +170,7 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
     oaAppSecretSet: false,
     oaDomain: "",
     oaAccountName: "",
+    serverToken: "",
     mpAppId: "",
     mpAppSecret: "",
     mpAppSecretSet: false,
@@ -246,6 +248,7 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
       oaAppSecret: config.oaAppSecret,
       oaDomain: config.oaDomain,
       oaAccountName: config.oaAccountName,
+      serverToken: config.serverToken,
     }).catch(() => false);
     if (ok && hadNewSecret) {
       setConfig((c) => ({ ...c, oaAppSecretSet: true, oaAppSecret: "" }));
@@ -613,6 +616,38 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                     </div>
                   </div>
                 </details>
+
+                {/* ── 事件推送（Webhook）配置 ── */}
+                <div className="border-t border-gray-100 pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    事件推送（关注/取关 通知）
+                  </p>
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
+                    <p className="font-semibold">配置步骤</p>
+                    <p>① 微信公众号后台 → 开发 → 基本配置 → 服务器配置 → 启用</p>
+                    <p>② URL 填写：<code className="bg-blue-100 px-1 rounded break-all font-mono">{config.oaDomain ? config.oaDomain.replace(/\/+$/, "") + "/api/auth/wechat/webhook" : "https://你的域名/api/auth/wechat/webhook"}</code></p>
+                    <p>③ 自定义 Token 填写任意字符串，与下方保持一致</p>
+                    <p>④ 消息加解密方式选择「明文模式」</p>
+                    <p className="text-blue-600">配置后：用户关注公众号时系统自动记录 unionId，小程序端可实时检测关注状态。</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      服务器 Token（与微信后台一致）
+                    </label>
+                    <input
+                      type="text"
+                      value={config.serverToken}
+                      onChange={(e) =>
+                        setConfig((c) => ({ ...c, serverToken: e.target.value }))
+                      }
+                      placeholder="例如：birthday2024token"
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                    />
+                    <p className="mt-1 text-[11px] text-gray-400">
+                      任意英文字母 + 数字组合，长度 3-32 位，与微信后台填写的 Token 相同即可。
+                    </p>
+                  </div>
+                </div>
 
                 <Msg msg={oaMsg} />
                 <SaveBtn

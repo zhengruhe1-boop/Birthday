@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
+import express, { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, isNotNull } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
@@ -55,7 +55,8 @@ router.get("/wechat/public-config", async (_req, res) => {
 
 // ── GET /api/auth/wechat/subscribe-status ────────────────────────────────────
 // Checks whether the authenticated user has followed the Official Account.
-// Returns { subscribed: boolean }.
+// Returns { subscribed: boolean, linkedOa: boolean }.
+// Linked via unionId: MP user → find OA user → check subscription.
 // Falls back to false on any error (non-WeChat users, API failures, etc.).
 router.get("/wechat/subscribe-status", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -63,41 +64,72 @@ router.get("/wechat/subscribe-status", requireAuth, async (req: AuthRequest, res
       .where(eq(usersTable.id, req.userId!)).limit(1);
     if (!rows.length) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const openId = rows[0].openId;
+    const { openId, unionId } = rows[0];
 
     // Non-WeChat users (mock accounts) are never subscribed
     if (!openId || openId.startsWith("mock:")) {
-      res.json({ subscribed: false });
+      res.json({ subscribed: false, linkedOa: false });
       return;
     }
 
-    const token = await getAccessToken();
-    if (!token) {
-      req.log.warn("subscribe-status: could not obtain global access token");
-      res.json({ subscribed: false });
+    const oaToken = await getAccessToken();
+    if (!oaToken) {
+      req.log.warn("subscribe-status: could not obtain OA access token");
+      res.json({ subscribed: false, linkedOa: false });
       return;
     }
 
-    const url =
-      `https://api.weixin.qq.com/cgi-bin/user/info` +
-      `?access_token=${token}&openid=${encodeURIComponent(openId)}&lang=zh_CN`;
-    const resp = await fetch(url);
-    const data = await resp.json() as {
-      subscribe?: number;
-      errcode?: number;
-      errmsg?: string;
+    // Helper: check if a given openId follows the OA
+    const checkSubscription = async (oid: string) => {
+      const url =
+        `https://api.weixin.qq.com/cgi-bin/user/info` +
+        `?access_token=${oaToken}&openid=${encodeURIComponent(oid)}&lang=zh_CN`;
+      const resp = await fetch(url);
+      const data = await resp.json() as { subscribe?: number; errcode?: number; errmsg?: string };
+      if (data.errcode) return { ok: false, subscribed: false, errcode: data.errcode };
+      return { ok: true, subscribed: data.subscribe === 1, errcode: 0 };
     };
 
-    if (data.errcode) {
-      req.log.warn({ errcode: data.errcode, errmsg: data.errmsg }, "subscribe-status: WeChat API error");
-      res.json({ subscribed: false });
+    // Step 1: Try current user's openId directly (works if they're already an OA user)
+    const direct = await checkSubscription(openId);
+    if (direct.ok) {
+      // Current openId is valid for the OA → return result + indicate OA is linked
+      res.json({ subscribed: direct.subscribed, linkedOa: true });
       return;
     }
 
-    res.json({ subscribed: data.subscribe === 1 });
+    // Step 2: If direct check failed (likely MP openId, not OA openId), find linked OA user via unionId
+    if (unionId) {
+      const linked = await db.select().from(usersTable)
+        .where(and(
+          eq(usersTable.unionId, unionId),
+          ne(usersTable.id, req.userId!),
+          isNotNull(usersTable.openId),
+        ))
+        .limit(5);
+
+      for (const linkedUser of linked) {
+        if (!linkedUser.openId || linkedUser.openId.startsWith("mock:")) continue;
+        const result = await checkSubscription(linkedUser.openId);
+        if (result.ok) {
+          req.log.info({ unionId, linkedOpenId: linkedUser.openId }, "subscribe-status: resolved via unionId");
+          res.json({ subscribed: result.subscribed, linkedOa: true });
+          return;
+        }
+      }
+
+      // Found unionId but no linked OA account that works → OA not yet bound
+      req.log.info({ unionId }, "subscribe-status: unionId set but no linked OA user found");
+      res.json({ subscribed: false, linkedOa: false });
+      return;
+    }
+
+    // Step 3: No unionId available → OA not bound to this MP account yet
+    req.log.warn({ errcode: direct.errcode }, "subscribe-status: direct check failed, no unionId to fall back on");
+    res.json({ subscribed: false, linkedOa: false });
   } catch (err) {
     req.log.error({ err }, "subscribe-status error");
-    res.json({ subscribed: false });
+    res.json({ subscribed: false, linkedOa: false });
   }
 });
 
@@ -150,6 +182,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     const infoResp = await fetch(infoUrl);
     const infoData = await infoResp.json() as {
       openid?: string;
+      unionid?: string;
       nickname?: string;
       headimgurl?: string;
       errcode?: number;
@@ -160,20 +193,22 @@ router.get("/wechat/oauth/callback", async (req, res) => {
     }
 
     const openId   = infoData.openid;
+    const oaUnionId = infoData.unionid || null;
     const nickname = infoData.nickname || "微信用户";
     const avatar   = infoData.headimgurl || null;
     const token    = generateToken();
 
-    // 3. Upsert user
+    // 3. Upsert user (OA openId)
     const existing = await db.select().from(usersTable)
       .where(eq(usersTable.openId, openId)).limit(1);
 
+    const unionIdUpdate = oaUnionId ? { unionId: oaUnionId } : {};
     if (existing.length > 0) {
       await db.update(usersTable)
-        .set({ sessionToken: token, nickname, avatarUrl: avatar })
+        .set({ sessionToken: token, nickname, avatarUrl: avatar, ...unionIdUpdate })
         .where(eq(usersTable.openId, openId));
     } else {
-      await db.insert(usersTable).values({ openId, nickname, avatarUrl: avatar, sessionToken: token });
+      await db.insert(usersTable).values({ openId, unionId: oaUnionId || undefined, nickname, avatarUrl: avatar, sessionToken: token });
     }
 
     // 4. Redirect to frontend LOGIN page with token in URL.
@@ -207,13 +242,14 @@ router.post("/wechat/login", async (req, res) => {
     const appSecret = process.env.WECHAT_APP_SECRET || (await getSetting("wechat_mp_appsecret")) || "";
 
     let openId: string;
+    let unionId: string | null = null;
     let isMock = false;
 
     if (appId && appSecret) {
       // ── Real WeChat jscode2session ───────────────────────────────────────────
       const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${body.data.code}&grant_type=authorization_code`;
       const response = await fetch(url);
-      const data = await response.json() as { openid?: string; session_key?: string; errcode?: number; errmsg?: string };
+      const data = await response.json() as { openid?: string; unionid?: string; session_key?: string; errcode?: number; errmsg?: string };
 
       if (data.errcode || !data.openid) {
         req.log.error({ data, appId }, "WeChat jscode2session failed");
@@ -224,7 +260,8 @@ router.post("/wechat/login", async (req, res) => {
         });
         return;
       }
-      openId = data.openid;
+      openId  = data.openid;
+      unionId = data.unionid || null;
     } else {
       // ── Fallback: use sha256(code) as stable pseudo-openid ──────────────────
       openId = "mock:" + crypto.createHash("sha256").update(body.data.code).digest("hex").slice(0, 24);
@@ -236,15 +273,17 @@ router.post("/wechat/login", async (req, res) => {
     const existingUsers = await db.select().from(usersTable).where(eq(usersTable.openId, openId)).limit(1);
 
     let user;
+    const unionIdUpdate = unionId ? { unionId } : {};
     if (existingUsers.length > 0) {
       const updated = await db.update(usersTable)
-        .set({ sessionToken: token })
+        .set({ sessionToken: token, ...unionIdUpdate })
         .where(eq(usersTable.openId, openId))
         .returning();
       user = updated[0];
     } else {
       const inserted = await db.insert(usersTable).values({
         openId,
+        unionId: unionId || undefined,
         nickname: "微信用户",
         sessionToken: token,
       }).returning();
@@ -472,5 +511,109 @@ router.post("/mp-subscribe", requireAuth, async (req: AuthRequest, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ── WeChat OA Webhook (server verification + event push) ──────────────────────
+// Register URL: https://your-domain/api/auth/wechat/webhook
+// Settings required: wechat_server_token (any string you set in WeChat OA backend)
+
+// Helper: simple WeChat XML field extractor (handles both CDATA and plain text)
+function wxXmlField(xml: string, tag: string): string {
+  const m = xml.match(
+    new RegExp(`<${tag}(?:\\s[^>]*)?><!\\[CDATA\\[([^\\]]*)\\]\\]></${tag}>|<${tag}>([^<]*)</${tag}>`)
+  );
+  return m ? (m[1] ?? m[2] ?? "") : "";
+}
+
+// GET: WeChat server URL verification
+router.get("/wechat/webhook", async (req, res) => {
+  const { signature, timestamp, nonce, echostr } = req.query as Record<string, string>;
+  const serverToken = (await getSetting("wechat_server_token")) || "";
+  if (!serverToken) {
+    res.status(400).send("wechat_server_token not configured");
+    return;
+  }
+  const sorted = [serverToken, timestamp, nonce].sort().join("");
+  const hash = crypto.createHash("sha1").update(sorted).digest("hex");
+  if (hash === signature) {
+    res.send(echostr);
+  } else {
+    res.status(403).send("Invalid signature");
+  }
+});
+
+// POST: Handle WeChat OA event push (subscribe / unsubscribe)
+router.post(
+  "/wechat/webhook",
+  express.text({ type: ["text/xml", "application/xml", "text/plain", "*/*"] }),
+  async (req, res) => {
+    // Always reply "success" immediately per WeChat spec
+    res.send("success");
+
+    const body = typeof req.body === "string" ? req.body : "";
+    if (!body) return;
+
+    const msgType  = wxXmlField(body, "MsgType");
+    const event    = wxXmlField(body, "Event").toLowerCase();
+    const fromUser = wxXmlField(body, "FromUserName");
+
+    if (msgType !== "event" || !fromUser) return;
+
+    req.log.info({ event, fromUser }, "WeChat OA event received");
+
+    // Handle subscribe (新关注) and re-subscribe (取消后再关注)
+    if (event !== "subscribe") return;
+
+    try {
+      const oaToken = await getAccessToken();
+      if (!oaToken) {
+        req.log.warn("Webhook: could not obtain OA access token");
+        return;
+      }
+
+      const infoUrl =
+        `https://api.weixin.qq.com/cgi-bin/user/info` +
+        `?access_token=${oaToken}&openid=${encodeURIComponent(fromUser)}&lang=zh_CN`;
+      const infoResp = await fetch(infoUrl);
+      const info = await infoResp.json() as {
+        openid?: string;
+        unionid?: string;
+        nickname?: string;
+        headimgurl?: string;
+        errcode?: number;
+      };
+
+      if (info.errcode || !info.openid) {
+        req.log.warn({ errcode: info.errcode, fromUser }, "Webhook: failed to get OA user info");
+        return;
+      }
+
+      const oaUnionId = info.unionid || null;
+      const nickname  = info.nickname || "微信用户";
+      const avatar    = info.headimgurl || null;
+
+      // Upsert OA user record so unionId→OA openId mapping exists in DB
+      const existing = await db.select().from(usersTable)
+        .where(eq(usersTable.openId, fromUser)).limit(1);
+
+      const unionPatch = oaUnionId ? { unionId: oaUnionId } : {};
+      if (existing.length > 0) {
+        await db.update(usersTable)
+          .set({ ...unionPatch, nickname, avatarUrl: avatar })
+          .where(eq(usersTable.openId, fromUser));
+      } else {
+        await db.insert(usersTable).values({
+          openId:   fromUser,
+          unionId:  oaUnionId || undefined,
+          nickname,
+          avatarUrl: avatar,
+        });
+      }
+
+      req.log.info({ fromUser, oaUnionId }, "Webhook: OA subscriber upserted");
+    } catch (err) {
+      req.log.error({ err }, "Webhook: error processing subscribe event");
+    }
+  }
+);
 
 export default router;

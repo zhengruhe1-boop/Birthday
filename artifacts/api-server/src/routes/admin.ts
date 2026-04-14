@@ -106,6 +106,7 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
     const oaAppSecret   = await getSetting("wechat_appsecret");
     const oaDomain      = await getSetting("wechat_callback_domain");
     const oaAccountName = await getSetting("wechat_account_name") ?? "";
+    const serverToken   = await getSetting("wechat_server_token") ?? "";
 
     // ── 小程序（Mini Program jscode2session）配置 ────────────────────────────
     const mpAppIdDb     = await getSetting("wechat_mp_appid");
@@ -134,6 +135,7 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
       oaAppSecretSet: !!oaAppSecret,
       oaDomain:       oaDomain     ?? "",
       oaAccountName,
+      serverToken,
       // Mini Program (MP) — 数据库中保存的值
       mpAppId:        mpAppIdDb      ?? "",
       mpAppSecret:    mpAppSecretDb  ? "••••••••" : "",
@@ -159,7 +161,7 @@ router.put("/wechat-config", async (req: Request, res: Response) => {
   try {
     const {
       // OA fields
-      oaAppId, oaAppSecret, oaDomain, oaAccountName,
+      oaAppId, oaAppSecret, oaDomain, oaAccountName, serverToken,
       // MP fields
       mpAppId, mpAppSecret,
       // modes
@@ -169,6 +171,7 @@ router.put("/wechat-config", async (req: Request, res: Response) => {
       oaAppSecret?:   string;
       oaDomain?:      string;
       oaAccountName?: string;
+      serverToken?:   string;
       mpAppId?:       string;
       mpAppSecret?:   string;
       h5LoginMode?:   string;
@@ -182,6 +185,7 @@ router.put("/wechat-config", async (req: Request, res: Response) => {
     }
     if (oaDomain      !== undefined) await setSetting("wechat_callback_domain",  oaDomain.trim());
     if (oaAccountName !== undefined) await setSetting("wechat_account_name",     oaAccountName.trim());
+    if (serverToken   !== undefined) await setSetting("wechat_server_token",     serverToken.trim());
 
     // MP
     if (mpAppId !== undefined)  await setSetting("wechat_mp_appid",   mpAppId.trim());

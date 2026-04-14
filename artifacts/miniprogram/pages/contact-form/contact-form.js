@@ -73,6 +73,7 @@ Page({
     // 消息通知
     oaSubscribed: false,
     notifyEnabled: false,
+    oaChecked: false,
   },
 
   onLoad(opts) {
@@ -99,13 +100,18 @@ Page({
     this.loadOaStatus();
   },
 
+  async onShow() {
+    if (!this.data.oaChecked) return;
+    this.loadOaStatus();
+  },
+
   async loadOaStatus() {
     try {
       const res = await api.get('api/auth/wechat/subscribe-status');
       const subscribed = !!(res && res.subscribed);
-      this.setData({ oaSubscribed: subscribed, notifyEnabled: subscribed });
+      this.setData({ oaSubscribed: subscribed, notifyEnabled: subscribed, oaChecked: true });
     } catch {
-      this.setData({ oaSubscribed: false, notifyEnabled: false });
+      this.setData({ oaSubscribed: false, notifyEnabled: false, oaChecked: true });
     }
   },
 
