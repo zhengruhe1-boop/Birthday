@@ -307,7 +307,6 @@
               <view wx:else class="profile-avatar-fallback">
                 <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
               </view>
-              <view class="profile-camera-badge"><text>+</text></view>
             </button>
             <text class="profile-avatar-hint">点击更换微信头像</text>
           </view>
@@ -335,12 +334,6 @@
                 <text class="toggle-desc">提前1天和当天发邮件提醒</text>
               </view>
               <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f43f5e" />
-            </view>
-            <view class="settings-nav-row" bindtap="goSubscribePage">
-              <view class="toggle-info">
-                <text class="toggle-label">生日提醒订阅</text>
-              </view>
-              <text class="nav-arrow">›</text>
             </view>
           </view>
 
