@@ -23,8 +23,16 @@ Page({
     legalLoading: false,
   },
 
-  onLoad() {
-    if (isLoggedIn()) {
+  async onLoad() {
+    // 等待 app.js 的无感知自动登录完成
+    const app = getApp();
+    let loggedIn = false;
+    if (app && app.globalData.sessionReady) {
+      loggedIn = await app.globalData.sessionReady;
+    } else {
+      loggedIn = isLoggedIn();
+    }
+    if (loggedIn) {
       wx.reLaunch({ url: '/pages/home/home' });
     }
   },

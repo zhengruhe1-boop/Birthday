@@ -48,8 +48,17 @@ Page({
     savingProfile: false,
   },
 
-  onLoad() {
-    if (!isLoggedIn()) {
+  async onLoad() {
+    // 等待 app.js 的无感知自动登录完成，避免重新进入时被误认为未登录
+    const app = getApp();
+    let loggedIn = false;
+    if (app && app.globalData.sessionReady) {
+      loggedIn = await app.globalData.sessionReady;
+    } else {
+      loggedIn = isLoggedIn();
+    }
+
+    if (!loggedIn) {
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
