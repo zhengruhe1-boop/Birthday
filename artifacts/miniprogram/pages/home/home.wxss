@@ -17,36 +17,27 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 24rpx;
+  gap: 16rpx;
   flex: 1;
   min-width: 0;
 }
+.header-left:active { opacity: 0.8; }
 
-/* 头部头像按钮（open-type=chooseAvatar） */
-.avatar-btn {
+/* 头部头像容器 */
+.avatar-wrap-hd {
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 0 0 4rpx rgba(244,63,94,0.18);
+  overflow: hidden;
 }
-.avatar-btn::after { border: none; }
-.avatar-btn:active { opacity: 0.8; }
 
 .avatar-img-hd {
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
   display: block;
-  border: 3rpx solid #fff;
 }
 
 .avatar-fallback-hd {
@@ -57,7 +48,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3rpx solid #fff;
 }
 
 .avatar-fallback-hd text {

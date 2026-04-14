@@ -2,15 +2,15 @@
 
   <!-- 顶部 Header -->
   <view class="home-header">
-    <view class="header-left">
-      <!-- 头像：使用 open-type="chooseAvatar" 让用户直接选微信头像 -->
-      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+    <view class="header-left" bindtap="openSettings">
+      <!-- 头像（点击进入设置） -->
+      <view class="avatar-wrap-hd">
         <image wx:if="{{userInfo && userInfo.avatarUrl}}"
           class="avatar-img-hd" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
         <view wx:else class="avatar-fallback-hd">
           <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
         </view>
-      </button>
+      </view>
       <view class="header-text">
         <text class="welcome-text">你好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
         <text class="welcome-sub">记住每一个重要的日子</text>
