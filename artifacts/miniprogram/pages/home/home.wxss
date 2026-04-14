@@ -8,24 +8,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 32rpx 16rpx;
-  padding-top: calc(20rpx + env(safe-area-inset-top));
-  background: #fff;
-  border-bottom: 1rpx solid rgba(0,0,0,0.05);
+  padding: 24rpx 32rpx 24rpx;
+  padding-top: calc(24rpx + env(safe-area-inset-top));
+  background: linear-gradient(135deg, #fff5f7 0%, #fff9f0 100%);
+  border-bottom: 1rpx solid rgba(244,63,94,0.08);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 24rpx;
   flex: 1;
   min-width: 0;
 }
 
 /* 头部头像按钮（open-type=chooseAvatar） */
 .avatar-btn {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
   padding: 0;
   margin: 0;
@@ -36,59 +36,69 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 4rpx rgba(244,63,94,0.18);
 }
 .avatar-btn::after { border: none; }
 .avatar-btn:active { opacity: 0.8; }
 
 .avatar-img-hd {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
   display: block;
+  border: 3rpx solid #fff;
 }
 
 .avatar-fallback-hd {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #f43f5e, #fb923c);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 3rpx solid #fff;
 }
 
 .avatar-fallback-hd text {
   color: #fff;
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 700;
 }
 
-.header-text { flex: 1; }
+.header-text { flex: 1; min-width: 0; }
 
 .welcome-text {
-  font-size: 28rpx;
-  font-weight: 600;
+  font-size: 30rpx;
+  font-weight: 700;
   color: #1e293b;
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .welcome-sub {
   font-size: 22rpx;
-  color: #94a3b8;
+  color: #f43f5e;
   display: block;
-  margin-top: 2rpx;
+  margin-top: 6rpx;
+  opacity: 0.7;
 }
 
 .icon-btn {
-  width: 64rpx;
-  height: 64rpx;
+  width: 68rpx;
+  height: 68rpx;
   border-radius: 50%;
+  background: rgba(255,255,255,0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 36rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
-.icon-btn:active { background: #f1f5f9; }
+.icon-btn:active { background: #fce7eb; }
 
 /* Search */
 .search-wrap {

@@ -25,7 +25,7 @@
   <view class="search-wrap">
     <view class="search-bar">
       <text class="search-icon">🔍</text>
-      <input class="search-input" placeholder="搜索亲友、纪念日、事件..."
+      <input class="search-input" placeholder="搜索亲友、生日纪念日、事件..."
         value="{{search}}" bindinput="onSearchInput" confirm-type="search" />
       <view wx:if="{{search}}" class="search-clear" bindtap="onSearchClear">
         <text>✕</text>
