@@ -63,7 +63,11 @@ Page({
         wx.setStorageSync('birthday_userinfo', res.user);
       }
 
-      // 4. 登录成功，直接进入首页
+      // 4. 同步更新 sessionReady，让首页 onLoad 拿到 true，避免被踢回登录页
+      const app = getApp();
+      if (app) app.globalData.sessionReady = Promise.resolve(true);
+
+      // 5. 登录成功，直接进入首页
       wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
       const msg = err.message || '';
