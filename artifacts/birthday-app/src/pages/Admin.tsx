@@ -68,6 +68,10 @@ interface WechatConfig {
   mpAppId: string;
   mpAppSecret: string;
   mpAppSecretSet: boolean;
+  mpAppIdActive?: string;
+  mpAppSecretActive?: string;
+  mpAppIdSource?: "env" | "db" | "none";
+  mpAppSecretSource?: "env" | "db" | "none";
   // 登录模式
   h5LoginMode: "wechat_oa" | "mock";
   mpLoginMode: "wechat_mp" | "mock";
@@ -757,9 +761,40 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                 </span>
               </div>
               <div className="p-4 space-y-4">
+                {/* 环境变量覆盖警告 */}
+                {(config.mpAppIdSource === "env" || config.mpAppSecretSource === "env") && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 space-y-1">
+                    <p className="font-semibold flex items-center gap-1">
+                      ⚠️ 检测到环境变量覆盖
+                    </p>
+                    {config.mpAppIdSource === "env" && (
+                      <p>
+                        <span className="font-medium">AppID</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_APPID</code> 提供，
+                        数据库中的值无效。请修改服务器环境变量，或联系运维人员删除该环境变量后重启服务，再重新保存此处配置。
+                      </p>
+                    )}
+                    {config.mpAppSecretSource === "env" && (
+                      <p>
+                        <span className="font-medium">AppSecret</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_APP_SECRET</code> 提供，
+                        数据库中的值无效。
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     AppID（小程序）
+                    {config.mpAppIdSource === "env" && (
+                      <span className="ml-2 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                        环境变量覆盖中
+                      </span>
+                    )}
+                    {config.mpAppIdSource === "db" && (
+                      <span className="ml-2 text-[11px] text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
+                        ✓ 来自数据库
+                      </span>
+                    )}
                   </label>
                   <input
                     type="text"
@@ -770,11 +805,21 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                     placeholder="wx1234567890abcdef"
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
                   />
+                  {config.mpAppIdSource === "env" && config.mpAppIdActive && (
+                    <p className="mt-1 text-[11px] text-amber-600">
+                      当前实际生效：<code className="font-mono">{config.mpAppIdActive}</code>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     AppSecret（小程序）
-                    {config.mpAppSecretSet && (
+                    {config.mpAppSecretSource === "env" && (
+                      <span className="ml-2 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                        环境变量覆盖中
+                      </span>
+                    )}
+                    {config.mpAppSecretSet && config.mpAppSecretSource !== "env" && (
                       <span className="ml-2 text-xs text-green-600 font-normal">
                         已设置，填新值可覆盖
                       </span>

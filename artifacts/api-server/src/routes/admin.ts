@@ -108,8 +108,16 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
     const oaAccountName = await getSetting("wechat_account_name") ?? "";
 
     // ── 小程序（Mini Program jscode2session）配置 ────────────────────────────
-    const mpAppId     = await getSetting("wechat_mp_appid");
-    const mpAppSecret = await getSetting("wechat_mp_appsecret");
+    const mpAppIdDb     = await getSetting("wechat_mp_appid");
+    const mpAppSecretDb = await getSetting("wechat_mp_appsecret");
+
+    // 检查环境变量是否覆盖了数据库设置
+    const mpAppIdEnv     = process.env.WECHAT_APPID     || "";
+    const mpAppSecretEnv = process.env.WECHAT_APP_SECRET || "";
+
+    // 实际生效的值（与 auth.ts wechat/login 保持一致的优先级）
+    const mpAppIdActive     = mpAppIdEnv     || mpAppIdDb     || "";
+    const mpAppSecretActive = mpAppSecretEnv || mpAppSecretDb || "";
 
     // ── 登录模式 ─────────────────────────────────────────────────────────────
     // h5LoginMode:   "wechat_oa" | "mock"
@@ -126,10 +134,16 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
       oaAppSecretSet: !!oaAppSecret,
       oaDomain:       oaDomain     ?? "",
       oaAccountName,
-      // Mini Program (MP)
-      mpAppId:        mpAppId      ?? "",
-      mpAppSecret:    mpAppSecret  ? "••••••••" : "",
-      mpAppSecretSet: !!mpAppSecret,
+      // Mini Program (MP) — 数据库中保存的值
+      mpAppId:        mpAppIdDb      ?? "",
+      mpAppSecret:    mpAppSecretDb  ? "••••••••" : "",
+      mpAppSecretSet: !!mpAppSecretDb,
+      // 实际生效的 AppID（用于 UI 展示对比）
+      mpAppIdActive,
+      mpAppSecretActive: mpAppSecretActive ? "••••••••" : "",
+      // 来源标识：env = 环境变量覆盖，db = 数据库，none = 未配置
+      mpAppIdSource:     mpAppIdEnv ? "env" : (mpAppIdDb ? "db" : "none"),
+      mpAppSecretSource: mpAppSecretEnv ? "env" : (mpAppSecretDb ? "db" : "none"),
       // Login modes
       h5LoginMode,
       mpLoginMode,
