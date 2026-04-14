@@ -10,6 +10,29 @@
   overflow: hidden;
 }
 
+/* ── 检查会话状态的全屏 loading ── */
+.session-checking {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #fff5f7 0%, #fff9f0 100%);
+  gap: 24rpx;
+}
+
+.session-checking .logo-emoji {
+  font-size: 100rpx;
+}
+
+.checking-text {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #f43f5e;
+  letter-spacing: 4rpx;
+}
+
 /* ── 背景装饰圆 ── */
 .login-bg {
   position: absolute;

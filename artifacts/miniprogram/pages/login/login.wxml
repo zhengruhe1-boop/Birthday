@@ -1,7 +1,13 @@
 <view class="login-page">
 
+  <!-- ═══════════════ 检查登录状态中 ═══════════════ -->
+  <view wx:if="{{checkingSession}}" class="session-checking">
+    <text class="logo-emoji">🎂</text>
+    <text class="checking-text">生日通</text>
+  </view>
+
   <!-- ═══════════════ 第一步：授权登录 ═══════════════ -->
-  <block wx:if="{{step === 'login'}}">
+  <block wx:if="{{!checkingSession && step === 'login'}}">
 
     <!-- 背景装饰 -->
     <view class="login-bg">

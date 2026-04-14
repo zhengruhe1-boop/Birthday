@@ -6,6 +6,9 @@ Page({
     // step: 'login' | 'profile'
     step: 'login',
 
+    // 等待 sessionReady 期间显示 loading，避免闪烁
+    checkingSession: true,
+
     // login step
     loading: false,
     networkError: '',
@@ -24,7 +27,7 @@ Page({
   },
 
   async onLoad() {
-    // 等待 app.js 的无感知自动登录完成
+    // 等待 app.js 的无感知自动登录完成，期间显示 loading 避免登录页闪烁
     const app = getApp();
     let loggedIn = false;
     if (app && app.globalData.sessionReady) {
@@ -34,7 +37,10 @@ Page({
     }
     if (loggedIn) {
       wx.reLaunch({ url: '/pages/home/home' });
+      return;
     }
+    // 未登录：显示登录页
+    this.setData({ checkingSession: false });
   },
 
   // ── 微信一键授权登录（点击即视为同意协议）─────────────────────────────────

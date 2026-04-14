@@ -224,7 +224,14 @@ Page({
       title: '退出登录', content: '确定要退出登录吗？',
       confirmText: '退出', confirmColor: '#ef4444',
       success: (res) => {
-        if (res.confirm) { clearToken(); wx.reLaunch({ url: '/pages/login/login' }); }
+        if (res.confirm) {
+          clearToken();
+          // 重置 sessionReady，防止登录页因已缓存的 true 值立即跳回首页
+          const app = getApp();
+          if (app) app.globalData.sessionReady = Promise.resolve(false);
+          this.closeSettings();
+          wx.reLaunch({ url: '/pages/login/login' });
+        }
       },
     });
   },
