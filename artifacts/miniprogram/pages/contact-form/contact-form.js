@@ -241,11 +241,8 @@ Page({
   },
 
   toggleAiEvents() {
-    if (!this.data.showAiEvents && this.data.aiEvents.length === 0 && !this.data.aiLoading) {
-      this.loadAiEvents();
-    } else {
-      this.setData({ showAiEvents: !this.data.showAiEvents });
-    }
+    // 仅切换展开/收起，不自动加载，由用户点击"生成"按钮触发加载
+    this.setData({ showAiEvents: !this.data.showAiEvents });
   },
 
   async sendTestEmail() {

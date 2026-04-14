@@ -158,31 +158,32 @@
         </block>
       </view>
 
-      <!-- AI 历史事件 -->
+      <!-- AI 历史事件（点击展开后，再点"生成"才加载） -->
       <block wx:if="{{isEdit}}">
         <view class="form-card">
           <view class="ai-header" bindtap="toggleAiEvents">
             <view class="ai-header-left">
               <text class="ai-icon">🤖</text>
-              <view>
-                <text class="ai-title">出生那天发生的历史事件</text>
-                <!-- <text class="ai-desc">查看这天发生的历史大事</text> -->
-              </view>
+              <text class="ai-title">出生那天发生的历史事件</text>
             </view>
             <text class="expand-arrow">{{showAiEvents ? '∧' : '∨'}}</text>
           </view>
 
           <block wx:if="{{showAiEvents}}">
-            <view class="ai-loading" wx:if="{{aiLoading}}">
-              <text>🤖 AI 生成中...</text>
+            <!-- 未加载：显示"生成"按钮 -->
+            <view wx:if="{{!aiLoading && !aiError && aiEvents.length === 0}}" class="ai-generate-wrap">
+              <button class="ai-generate-btn" bindtap="loadAiEvents">✨ 点击生成历史事件</button>
             </view>
+            <!-- 加载中 -->
+            <view class="ai-loading" wx:elif="{{aiLoading}}">
+              <text>🤖 AI 生成中，请稍候...</text>
+            </view>
+            <!-- 错误 -->
             <view class="ai-error" wx:elif="{{aiError}}">
               <text>⚠️ {{aiError}}</text>
               <view class="retry-btn" bindtap="loadAiEvents"><text>重试</text></view>
             </view>
-            <view wx:elif="{{aiEvents.length === 0}}">
-              <text class="ai-empty">暂无历史事件数据</text>
-            </view>
+            <!-- 事件列表 -->
             <view wx:else class="ai-events-list">
               <view wx:for="{{aiEvents}}" wx:key="index" class="ai-event-item">
                 <view class="ai-event-year">{{item.year}}</view>
