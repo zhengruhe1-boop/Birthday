@@ -108,6 +108,7 @@ export async function generateBirthdayEvents(
 2. 年代尽量跨度大（包含古代、近代、现代）
 3. 至少2件中国历史事件，至少2件世界历史事件
 4. year字段填写具体年份（如"1949年"），title不超过20字，description不超过60字（须含具体月日）
+5. 【重要】禁止包含任何人物逝世、去世、死亡、遇刺、殉难等负面内容；只选取积极、建设性或中性的历史事件（如：发明、建国、条约签订、重大发现、战争胜利、重要会议等）
 
 只返回JSON数组，不加任何说明：
 [
@@ -123,7 +124,7 @@ export async function generateBirthdayEvents(
       messages: [
         {
           role:    "system",
-          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。",
+          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。严禁出现任何人物逝世、去世、死亡、遇刺、殉难等负面死亡内容。",
         },
         { role: "user", content: prompt },
       ],
