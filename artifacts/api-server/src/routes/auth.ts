@@ -228,7 +228,7 @@ router.get("/wechat/oauth/callback", async (req, res) => {
 });
 
 // ── POST /api/auth/wechat/login (Mini Program jscode2session) ─────────────────
-// Falls back to mock-login when WECHAT_APPID / WECHAT_APP_SECRET are not set,
+// Falls back to mock-login when WECHAT_MP_APPID / WECHAT_MP_APP_SECRET are not set,
 // using a hash of the code as a stable device identifier.
 router.post("/wechat/login", async (req, res) => {
   try {
@@ -238,8 +238,10 @@ router.post("/wechat/login", async (req, res) => {
       return;
     }
 
-    const appId     = process.env.WECHAT_APPID     || (await getSetting("wechat_mp_appid"))     || "";
-    const appSecret = process.env.WECHAT_APP_SECRET || (await getSetting("wechat_mp_appsecret")) || "";
+    // Use specific MP env vars (WECHAT_MP_APPID / WECHAT_MP_APP_SECRET) to avoid
+    // collision with the generic OA env vars (WECHAT_APPID / WECHAT_APP_SECRET).
+    const appId     = process.env.WECHAT_MP_APPID     || (await getSetting("wechat_mp_appid"))     || "";
+    const appSecret = process.env.WECHAT_MP_APP_SECRET || (await getSetting("wechat_mp_appsecret")) || "";
 
     let openId: string;
     let unionId: string | null = null;

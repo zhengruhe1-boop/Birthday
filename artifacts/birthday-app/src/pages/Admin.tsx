@@ -804,13 +804,13 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
                     </p>
                     {config.mpAppIdSource === "env" && (
                       <p>
-                        <span className="font-medium">AppID</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_APPID</code> 提供，
-                        数据库中的值无效。请修改服务器环境变量，或联系运维人员删除该环境变量后重启服务，再重新保存此处配置。
+                        <span className="font-medium">AppID</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_MP_APPID</code> 提供，
+                        数据库中的值无效。请联系运维人员删除或修正该环境变量后重启服务，再重新保存此处配置。
                       </p>
                     )}
                     {config.mpAppSecretSource === "env" && (
                       <p>
-                        <span className="font-medium">AppSecret</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_APP_SECRET</code> 提供，
+                        <span className="font-medium">AppSecret</span> 当前由服务器环境变量 <code className="bg-amber-100 px-1 rounded">WECHAT_MP_APP_SECRET</code> 提供，
                         数据库中的值无效。
                       </p>
                     )}

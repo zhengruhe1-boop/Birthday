@@ -112,9 +112,9 @@ router.get("/wechat-config", async (req: Request, res: Response) => {
     const mpAppIdDb     = await getSetting("wechat_mp_appid");
     const mpAppSecretDb = await getSetting("wechat_mp_appsecret");
 
-    // 检查环境变量是否覆盖了数据库设置
-    const mpAppIdEnv     = process.env.WECHAT_APPID     || "";
-    const mpAppSecretEnv = process.env.WECHAT_APP_SECRET || "";
+    // 检查环境变量是否覆盖了数据库设置（使用小程序专用名称，避免与公众号通用变量冲突）
+    const mpAppIdEnv     = process.env.WECHAT_MP_APPID     || "";
+    const mpAppSecretEnv = process.env.WECHAT_MP_APP_SECRET || "";
 
     // 实际生效的值（与 auth.ts wechat/login 保持一致的优先级）
     const mpAppIdActive     = mpAppIdEnv     || mpAppIdDb     || "";
