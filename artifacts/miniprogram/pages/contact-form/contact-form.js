@@ -196,24 +196,34 @@ Page({
         });
       });
       const tempFile = res.tempFiles[0].tempFilePath;
+
+      // ① 立即显示选中的图片，不等待上传
+      this.setData({ avatarUrl: tempFile, avatarUploading: true });
+
+      // ② 新联系人先保存，再上传头像
       if (!this.data.contactId) {
-        // Save first, then upload
         const saved = await this.saveContactForAvatar();
-        if (!saved) return;
+        if (!saved) {
+          this.setData({ avatarUploading: false });
+          return;
+        }
       }
-      this.setData({ avatarUploading: true });
+
+      // ③ 后台上传到服务器
       const uploadRes = await api.upload('api/upload', tempFile, 'image');
       if (uploadRes && uploadRes.url) {
-        // 微信小程序 image 不支持相对路径，必须转为绝对 URL
         const absUrl = toAbsUrl(uploadRes.url);
         await api.put('api/contacts/' + this.data.contactId, { avatarUrl: absUrl });
         this.setData({ avatarUrl: absUrl, avatarUploading: false });
         wx.showToast({ title: '头像已更新', icon: 'success' });
+      } else {
+        // 没有服务器 URL，保留临时图片展示
+        this.setData({ avatarUploading: false });
       }
     } catch (err) {
       this.setData({ avatarUploading: false });
       if (err && err.errMsg && err.errMsg.includes('cancel')) return;
-      wx.showToast({ title: '上传失败', icon: 'none' });
+      wx.showToast({ title: '上传失败，头像已临时保存', icon: 'none' });
     }
   },
 

@@ -158,25 +158,28 @@ Page({
 
   // ── 头像：使用微信 chooseAvatar ──────────────────────────────────────────────
   async onChooseAvatar(e) {
-    const avatarUrl = e.detail.avatarUrl;   // 微信临时路径
-    if (!avatarUrl) return;
-    wx.showLoading({ title: '更新头像...' });
+    const tempUrl = e.detail.avatarUrl;   // 微信临时路径或 CDN URL
+    if (!tempUrl) return;
+
+    // ① 立即显示选中的头像，不等待上传
+    this.setData({ userInfo: { ...this.data.userInfo, avatarUrl: tempUrl } });
+    wx.setStorageSync('birthday_userinfo', { ...this.data.userInfo, avatarUrl: tempUrl });
+
+    // ② 后台上传到服务器
     try {
-      // 1. 先上传到服务器
-      const uploadRes = await api.upload('api/upload', avatarUrl, 'image');
-      // 微信小程序 image 不支持相对路径，必须转为绝对 URL
+      const uploadRes = await api.upload('api/upload', tempUrl, 'image');
       const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-      const serverUrl = rawUrl ? toAbsUrl(rawUrl) : avatarUrl;
-      // 2. 保存到用户资料（存入服务器时保存绝对 URL）
-      const updated = await api.put('api/auth/me', { avatarUrl: serverUrl });
-      this.setData({ userInfo: { ...this.data.userInfo, ...updated, avatarUrl: toAbsUrl(updated.avatarUrl || serverUrl) } });
+      if (rawUrl) {
+        const serverUrl = toAbsUrl(rawUrl);
+        const updated = await api.put('api/auth/me', { avatarUrl: serverUrl });
+        const finalUrl = toAbsUrl(updated.avatarUrl || serverUrl);
+        this.setData({ userInfo: { ...this.data.userInfo, avatarUrl: finalUrl } });
+        wx.setStorageSync('birthday_userinfo', { ...this.data.userInfo, avatarUrl: finalUrl });
+      }
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch {
-      // 上传失败时直接用临时地址展示（刷新后消失，但不报错）
-      this.setData({ userInfo: { ...this.data.userInfo, avatarUrl } });
-      wx.showToast({ title: '头像已更新（本地）', icon: 'none' });
-    } finally {
-      wx.hideLoading();
+      // 上传失败：保留已显示的临时头像，提示用户
+      wx.showToast({ title: '头像已选择（同步中）', icon: 'none' });
     }
   },
 

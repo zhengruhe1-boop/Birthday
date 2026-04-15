@@ -8,7 +8,7 @@
         <image wx:if="{{userInfo && userInfo.avatarUrl}}"
           class="avatar-img-hd" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
         <view wx:else class="avatar-fallback-hd">
-          <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
+          <text class="avatar-logo-emoji">🎂</text>
         </view>
       </view>
       <view class="header-text">
@@ -305,18 +305,19 @@
               <image wx:if="{{userInfo && userInfo.avatarUrl}}"
                 class="profile-avatar-img" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
               <view wx:else class="profile-avatar-fallback">
-                <text>{{userInfo ? userInfo.nickname[0] : 'U'}}</text>
+                <text class="avatar-logo-emoji">🎂</text>
               </view>
+              <view class="profile-camera-badge"><text>📷</text></view>
             </button>
-            <text class="profile-avatar-hint">点击更换微信头像</text>
+            <text class="profile-avatar-hint">点击更换头像</text>
           </view>
 
           <!-- 昵称 -->
           <view class="settings-item-group">
             <text class="settings-group-label">昵称</text>
             <view class="nickname-row">
-              <input class="nickname-input" type="nickname"
-                placeholder="输入昵称或使用微信昵称"
+              <input class="nickname-input" type="text"
+                placeholder="输入你的昵称"
                 value="{{editNickname}}" bindinput="onNicknameInput" />
               <button class="save-nick-btn {{savingProfile ? 'saving' : ''}}"
                 bindtap="saveProfile" disabled="{{savingProfile}}">

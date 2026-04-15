@@ -18,7 +18,7 @@
             <text>…</text>
           </view>
         </view>
-        <text class="avatar-hint">{{isEdit ? '点击更换头像' : '点击上传头像（先保存后上传）'}}</text>
+        <text class="avatar-hint">点击上传头像</text>
       </view>
 
       <!-- 基本信息 -->

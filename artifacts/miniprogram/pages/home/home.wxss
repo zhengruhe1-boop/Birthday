@@ -56,6 +56,11 @@
   font-weight: 700;
 }
 
+.avatar-logo-emoji {
+  font-size: 40rpx;
+  line-height: 1;
+}
+
 .header-text { flex: 1; min-width: 0; }
 
 .welcome-text {
@@ -574,6 +579,7 @@
   color: #fff;
   font-size: 44rpx;
   font-weight: 700;
+  line-height: 1;
 }
 
 .profile-camera-badge {
