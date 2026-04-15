@@ -92,10 +92,13 @@ Page({
         api.get('api/contacts/upcoming').catch(() => ({ imminent: [], soon: [], monthly: [] })),
         api.get('api/events/upcoming').catch(() => ({ anniversaries: [], countdowns: [], others: [] })),
       ]);
-      // 头像 URL 必须是绝对路径，微信小程序不支持相对路径
-      const meNormalized = me ? { ...me, avatarUrl: toAbsUrl(me.avatarUrl) } : null;
-      // 同步更新本地缓存，让下次启动时能立刻显示最新信息
-      if (me) wx.setStorageSync('birthday_userinfo', me);
+      const serverAvatar = toAbsUrl(me && me.avatarUrl);
+      // 优先用本次上传成功后记录的永久 URL，防止 loadAll 旧快照覆盖刚上传的头像
+      const avatarForCache = this._lastSavedAvatarUrl || serverAvatar;
+      this._lastSavedAvatarUrl = null;  // 使用一次后清除
+      const meNormalized = me ? { ...me, avatarUrl: avatarForCache } : null;
+      // 同步更新本地缓存——始终用绝对路径写入，确保下次启动能正确加载
+      if (meNormalized) wx.setStorageSync('birthday_userinfo', meNormalized);
       const ann = (events.anniversaries || []).map(e => ({
         ...e,
         anniversaryYear: calcAnniversaryYear(e.eventDate),
@@ -165,6 +168,7 @@ Page({
 
     // ① 仅更新 UI 显示临时图片，不写入缓存（临时路径重启后失效）
     this.setData({ userInfo: { ...(this.data.userInfo || {}), avatarUrl: tempUrl } });
+    this._avatarUploading = true;  // 标记上传中，阻止 loadAll 覆盖缓存
 
     // ② 上传到服务器
     try {
@@ -176,14 +180,18 @@ Page({
       await api.put('api/auth/me', { avatarUrl: serverUrl });
 
       // 上传成功：用服务器永久地址更新 UI 和缓存
-      const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: serverUrl };
+      const base = (this.data.userInfo || {});
+      const finalInfo = { ...base, avatarUrl: serverUrl };
       this.setData({ userInfo: finalInfo });
       wx.setStorageSync('birthday_userinfo', finalInfo);
+      this._lastSavedAvatarUrl = serverUrl;  // 记录最新永久 URL
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch (err) {
       // 上传失败：恢复原头像（避免缓存临时路径）
       this.setData({ userInfo: { ...(this.data.userInfo || {}), avatarUrl: prevAvatarUrl } });
       wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+    } finally {
+      this._avatarUploading = false;
     }
   },
 
