@@ -67,8 +67,12 @@ Page({
       const app = getApp();
       if (app) app.globalData.sessionReady = Promise.resolve(true);
 
-      // 5. 登录成功，直接进入首页
-      wx.reLaunch({ url: '/pages/home/home' });
+      // 5. 新用户或资料不完整 → 先完善资料；否则直接进首页
+      if (res.needsProfile) {
+        this.setData({ step: 'profile', isNewUser: true });
+      } else {
+        wx.reLaunch({ url: '/pages/home/home' });
+      }
     } catch (err) {
       // wx.login fail 回调传的是 { errMsg: '...' } 对象，不是 Error，需兼容两者
       const msg = err.message || err.errMsg || String(err) || '';
@@ -110,10 +114,25 @@ Page({
   async handleSaveProfile() {
     if (this.data.savingProfile) return;
     const nickname = this.data.nickname.trim() || '微信用户';
-    const avatarUrl = this.data.avatarUrl || '';
+    let avatarUrl = this.data.avatarUrl || '';
 
     this.setData({ savingProfile: true });
     try {
+      // 微信 chooseAvatar 返回的是临时路径，需要先上传到服务器
+      if (avatarUrl && !avatarUrl.startsWith('http')) {
+        try {
+          const uploadRes = await api.upload('api/upload', avatarUrl, 'image');
+          if (uploadRes && uploadRes.url) {
+            // 转为绝对 URL
+            const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
+            avatarUrl = uploadRes.url.startsWith('http') ? uploadRes.url : base + uploadRes.url;
+          }
+        } catch {
+          // 上传失败则不保存头像，继续保存昵称
+          avatarUrl = '';
+        }
+      }
+
       const updated = await api.put('api/auth/me', { nickname, avatarUrl });
       wx.setStorageSync('birthday_userinfo', updated);
       wx.reLaunch({ url: '/pages/home/home' });
