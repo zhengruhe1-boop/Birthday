@@ -5,7 +5,7 @@ import { MessageCircle, User, X, Globe, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { detectPlatform, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@/lib/platform";
+import { detectPlatform, detectPlatformAsync, PLATFORM_LABEL, PLATFORM_ICON, PLATFORM_COLOR } from "@/lib/platform";
 
 // ── Legal Content Modal ────────────────────────────────────────────────────────
 interface LegalContent { termsOfService: string; privacyPolicy: string; }
@@ -96,8 +96,8 @@ export default function Login() {
   const [legalContent, setLegalContent] = useState<LegalContent>({ termsOfService: "", privacyPolicy: "" });
   const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
 
-  // Detected platform (auto)
-  const platform = detectPlatform();
+  // Detected platform — 响应式，挂载后额外做一次延迟检测以捕获异步注入的 __wxjs_environment
+  const [platform, setPlatform] = useState(() => detectPlatform());
   const loginMode = wechatConfig?.loginMode ?? "mock";
 
   // ── On mount: handle OAuth callback / mini-program token in URL ───────────
@@ -137,6 +137,10 @@ export default function Login() {
       .then(r => r.json())
       .then((data: LegalContent) => setLegalContent(data))
       .catch(() => {});
+
+    // 延迟再检测一次：小程序 WebView 的 __wxjs_environment 是异步注入的
+    // 避免刷新后检测结果不稳定
+    detectPlatformAsync(400).then(setPlatform);
   }, []);
 
   useEffect(() => {

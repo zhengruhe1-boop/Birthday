@@ -1,26 +1,44 @@
 export type Platform = "miniprogram" | "wechat_mp" | "h5";
 
+const SESSION_KEY = "birthday_platform";
+
 export function detectPlatform(): Platform {
   if (typeof window === "undefined") return "h5";
   const ua = navigator.userAgent.toLowerCase();
   const inWeChat = ua.includes("micromessenger");
 
-  if (inWeChat) {
-    // Mini-program webview sets this global flag
-    try {
-      if (
-        (window as any).__wxjs_environment === "miniprogram" ||
-        (window as any).wx?.miniProgram
-      ) {
-        return "miniprogram";
-      }
-    } catch {
-      // ignore
+  if (!inWeChat) return "h5";
+
+  // 优先使用 sessionStorage 中缓存的结果（同一会话内保持一致）
+  try {
+    const cached = sessionStorage.getItem(SESSION_KEY);
+    if (cached === "miniprogram") return "miniprogram";
+  } catch { /* ignore */ }
+
+  // 检测小程序 WebView 标志
+  try {
+    if (
+      (window as any).__wxjs_environment === "miniprogram" ||
+      (window as any).wx?.miniProgram
+    ) {
+      try { sessionStorage.setItem(SESSION_KEY, "miniprogram"); } catch { /* ignore */ }
+      return "miniprogram";
     }
-    // WeChat browser but not mini-program
-    return "wechat_mp";
-  }
-  return "h5";
+  } catch { /* ignore */ }
+
+  return "wechat_mp";
+}
+
+/**
+ * 异步检测：延迟若干毫秒后再次检测，捕获小程序 WebView 异步注入的 __wxjs_environment。
+ * 返回最终 Platform，如果是 miniprogram 会同时写入 sessionStorage。
+ */
+export function detectPlatformAsync(delayMs = 400): Promise<Platform> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(detectPlatform());
+    }, delayMs);
+  });
 }
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
