@@ -297,58 +297,41 @@
       <scroll-view class="settings-body" scroll-y>
         <view class="settings-inner">
 
-          <!-- 头像展示 -->
+          <!-- 头像 -->
           <view class="profile-section">
             <view class="profile-avatar-display">
               <image class="profile-avatar-img"
                 src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
                 mode="aspectFill" />
             </view>
-            <!-- 两种更换方式 -->
-            <view class="avatar-action-row">
-              <button class="avatar-action-btn wx-avatar-btn"
-                open-type="chooseAvatar"
-                bindchooseavatar="onChooseWxAvatar">
-                <text class="action-btn-icon">👤</text>
-                <text class="action-btn-text">微信头像</text>
-              </button>
-              <button class="avatar-action-btn custom-avatar-btn"
-                bindtap="chooseCustomAvatar">
-                <text class="action-btn-icon">📷</text>
-                <text class="action-btn-text">本地上传</text>
-              </button>
-            </view>
           </view>
 
-          <!-- 昵称 -->
-          <view class="settings-item-group">
-            <text class="settings-group-label">昵称</text>
-            <view class="nickname-row">
-              <input class="nickname-input" type="text"
-                placeholder="输入你的昵称"
-                value="{{editNickname}}" bindinput="onNicknameInput" />
-              <button class="save-nick-btn {{savingProfile ? 'saving' : ''}}"
-                bindtap="saveProfile" disabled="{{savingProfile}}">
-                {{savingProfile ? '…' : '保存'}}
-              </button>
-            </view>
+          <!-- 获取微信昵称 / 获取微信头像 -->
+          <view class="wx-btn-row">
+            <input class="wx-nick-btn" type="nickname"
+              placeholder="获取微信昵称"
+              value="{{editNickname}}"
+              bindblur="onNicknameBlur" />
+            <button class="wx-avatar-btn-new"
+              open-type="chooseAvatar"
+              bindchooseavatar="onChooseWxAvatar">获取微信头像</button>
           </view>
 
           <!-- 提醒偏好 -->
-          <view class="settings-item-group">
+          <view class="settings-item-group" style="margin-top:40rpx">
             <text class="settings-group-label">提醒偏好</text>
             <view class="toggle-row">
               <view class="toggle-info">
                 <text class="toggle-label">邮件提醒</text>
                 <text class="toggle-desc">提前1天和当天发邮件提醒</text>
               </view>
-              <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f43f5e" />
+              <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f97316" />
             </view>
           </view>
 
-          <view style="height:24rpx" />
+          <view style="height:32rpx" />
           <button class="logout-btn" bindtap="handleLogout">退出登录</button>
-          <view style="height:40rpx" />
+          <view style="height:48rpx" />
 
         </view>
       </scroll-view>

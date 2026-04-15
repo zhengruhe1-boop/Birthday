@@ -45,7 +45,6 @@ Page({
 
     // 编辑昵称
     editNickname: '',
-    savingProfile: false,
   },
 
   async onLoad() {
@@ -209,26 +208,19 @@ Page({
     }
   },
 
-  // ── 昵称输入 ─────────────────────────────────────────────────────────────────
-  onNicknameInput(e) {
-    this.setData({ editNickname: e.detail.value });
-  },
-
-  async saveProfile() {
-    const nickname = this.data.editNickname.trim();
-    if (!nickname) {
-      wx.showToast({ title: '昵称不能为空', icon: 'none' }); return;
-    }
-    this.setData({ savingProfile: true });
+  // ── 昵称：微信昵称选择器失焦后自动保存 ──────────────────────────────────────
+  async onNicknameBlur(e) {
+    const nickname = (e.detail.value || '').trim();
+    if (!nickname) return;
+    this.setData({ editNickname: nickname });
     try {
       const updated = await api.put('api/auth/me', { nickname });
       const newInfo = { ...(this.data.userInfo || {}), ...updated };
-      this.setData({ userInfo: newInfo, savingProfile: false });
+      this.setData({ userInfo: newInfo });
       wx.setStorageSync('birthday_userinfo', newInfo);
-      wx.showToast({ title: '昵称已保存', icon: 'success' });
+      wx.showToast({ title: '昵称已更新', icon: 'success' });
     } catch {
-      wx.showToast({ title: '保存失败', icon: 'none' });
-      this.setData({ savingProfile: false });
+      wx.showToast({ title: '昵称保存失败', icon: 'none' });
     }
   },
 
