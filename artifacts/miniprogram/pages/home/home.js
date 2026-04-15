@@ -157,6 +157,7 @@ Page({
 
   // ── 头像：共用上传逻辑 ────────────────────────────────────────────────────────
   async _uploadAndSaveAvatar(tempUrl) {
+    if (!tempUrl) return;
     // ① 立即把选中图片显示到 UI（不等服务器）
     const immediateInfo = { ...(this.data.userInfo || {}), avatarUrl: tempUrl };
     this.setData({ userInfo: immediateInfo });
@@ -166,14 +167,16 @@ Page({
     try {
       const uploadRes = await api.upload('api/upload', tempUrl, 'image');
       const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-      if (rawUrl) {
-        const serverUrl = toAbsUrl(rawUrl);
-        const updated = await api.put('api/auth/me', { avatarUrl: serverUrl });
-        const finalUrl = toAbsUrl(updated.avatarUrl || serverUrl);
-        const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: finalUrl };
-        this.setData({ userInfo: finalInfo });
-        wx.setStorageSync('birthday_userinfo', finalInfo);
+      if (!rawUrl) {
+        wx.showToast({ title: '头像已显示（上传失败，可重试）', icon: 'none' });
+        return;
       }
+      const serverUrl = toAbsUrl(rawUrl);
+      // 保存到服务器；返回值的 avatarUrl 也强制转绝对路径
+      await api.put('api/auth/me', { avatarUrl: serverUrl });
+      const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: serverUrl };
+      this.setData({ userInfo: finalInfo });
+      wx.setStorageSync('birthday_userinfo', finalInfo);
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch {
       wx.showToast({ title: '头像已显示（上传失败，可重试）', icon: 'none' });
@@ -208,14 +211,35 @@ Page({
     }
   },
 
-  // ── 昵称：微信昵称选择器失焦后自动保存 ──────────────────────────────────────
-  async onNicknameBlur(e) {
-    const nickname = (e.detail.value || '').trim();
+  // ── 昵称：微信昵称选择器 bindnicknameverify（用户点"填入微信昵称"时触发）──────
+  async onNicknameVerify(e) {
+    // e.detail.nickname 是微信下发的真实昵称
+    const nickname = (e.detail.nickname || '').trim();
     if (!nickname) return;
     this.setData({ editNickname: nickname });
+    await this._saveNickname(nickname);
+  },
+
+  // ── 昵称：手动输入失焦后保存 ─────────────────────────────────────────────────
+  async onNicknameBlur(e) {
+    const nickname = (e.detail.value || '').trim();
+    if (!nickname || nickname === (this.data.userInfo && this.data.userInfo.nickname)) return;
+    this.setData({ editNickname: nickname });
+    await this._saveNickname(nickname);
+  },
+
+  // ── 昵称：公共保存逻辑 ────────────────────────────────────────────────────────
+  async _saveNickname(nickname) {
     try {
       const updated = await api.put('api/auth/me', { nickname });
-      const newInfo = { ...(this.data.userInfo || {}), ...updated };
+      // 保留当前已有头像（服务端返回的 avatarUrl 可能是相对路径，不要直接覆盖）
+      const currentAvatarUrl = (this.data.userInfo && this.data.userInfo.avatarUrl) || '';
+      const serverAvatarUrl = toAbsUrl(updated.avatarUrl);
+      const newInfo = {
+        ...(this.data.userInfo || {}),
+        ...updated,
+        avatarUrl: serverAvatarUrl || currentAvatarUrl,
+      };
       this.setData({ userInfo: newInfo });
       wx.setStorageSync('birthday_userinfo', newInfo);
       wx.showToast({ title: '昵称已更新', icon: 'success' });
