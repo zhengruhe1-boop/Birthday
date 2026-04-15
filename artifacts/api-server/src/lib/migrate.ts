@@ -30,6 +30,9 @@ export async function runStartupMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mp_subscribe_count" integer NOT NULL DEFAULT 0
     `);
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "union_id" text
+    `);
 
     // 2. contacts table
     await db.execute(sql`
