@@ -1,9 +1,9 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { objectStorageClient } from "./lib/objectStorage.js";
 
 const app: Express = express();
 
@@ -30,8 +30,32 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-app.use("/api/uploads", express.static(uploadsDir));
+// Serve uploaded images from GCS object storage
+app.get("/api/uploads/:filename", async (req: Request, res: Response) => {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) { res.status(503).json({ error: "Storage not configured" }); return; }
+
+  const filename = req.params.filename;
+  if (!filename || filename.includes("..") || filename.includes("/")) {
+    res.status(400).json({ error: "Invalid filename" });
+    return;
+  }
+
+  try {
+    const file = objectStorageClient.bucket(bucketId).file(`uploads/${filename}`);
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ error: "Not found" }); return; }
+
+    const [metadata] = await file.getMetadata();
+    res.setHeader("Content-Type", (metadata.contentType as string) || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    file.createReadStream().pipe(res);
+  } catch (err) {
+    logger.error({ err, filename }, "Failed to serve upload from GCS");
+    res.status(500).json({ error: "Failed to load image" });
+  }
+});
+
 app.use("/api", router);
 
 export default app;

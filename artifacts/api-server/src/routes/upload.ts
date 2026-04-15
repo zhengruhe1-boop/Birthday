@@ -1,27 +1,19 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import crypto from "crypto";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
+import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router: IRouter = Router();
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+function getBucket() {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) throw new Error("DEFAULT_OBJECT_STORAGE_BUCKET_ID not set");
+  return objectStorageClient.bucket(bucketId);
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-    const name = crypto.randomBytes(16).toString("hex") + ext;
-    cb(null, name);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -36,13 +28,28 @@ const upload = multer({
   },
 });
 
-router.post("/", requireAuth, upload.single("image"), (req: AuthRequest, res) => {
+router.post("/", requireAuth, upload.single("image"), async (req: AuthRequest, res) => {
   if (!req.file) {
     res.status(400).json({ error: "请上传图片文件" });
     return;
   }
-  const url = `/api/uploads/${req.file.filename}`;
-  res.json({ url });
+
+  try {
+    const ext = path.extname(req.file.originalname).toLowerCase() || ".jpg";
+    const filename = crypto.randomBytes(16).toString("hex") + ext;
+    const objectPath = `uploads/${filename}`;
+
+    const bucket = getBucket();
+    await bucket.file(objectPath).save(req.file.buffer, {
+      contentType: req.file.mimetype,
+      metadata: { cacheControl: "public, max-age=31536000" },
+    });
+
+    res.json({ url: `/api/uploads/${filename}` });
+  } catch (err) {
+    req.log.error({ err }, "Upload to object storage failed");
+    res.status(500).json({ error: "上传失败，请稍后重试" });
+  }
 });
 
 export default router;
