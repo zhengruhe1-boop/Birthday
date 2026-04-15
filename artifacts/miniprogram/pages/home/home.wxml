@@ -5,11 +5,9 @@
     <view class="header-left" bindtap="openSettings">
       <!-- 头像（点击进入设置） -->
       <view class="avatar-wrap-hd">
-        <image wx:if="{{userInfo && userInfo.avatarUrl}}"
-          class="avatar-img-hd" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
-        <view wx:else class="avatar-fallback-hd">
-          <text class="avatar-logo-emoji">🎂</text>
-        </view>
+        <image class="avatar-img-hd"
+          src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
+          mode="aspectFill" />
       </view>
       <view class="header-text">
         <text class="welcome-text">您好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
@@ -299,17 +297,27 @@
       <scroll-view class="settings-body" scroll-y>
         <view class="settings-inner">
 
-          <!-- 头像（点击换微信头像） -->
+          <!-- 头像展示 -->
           <view class="profile-section">
-            <button class="profile-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-              <image wx:if="{{userInfo && userInfo.avatarUrl}}"
-                class="profile-avatar-img" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
-              <view wx:else class="profile-avatar-fallback">
-                <text class="avatar-logo-emoji">🎂</text>
-              </view>
-              <view class="profile-camera-badge"><text>📷</text></view>
-            </button>
-            <text class="profile-avatar-hint">点击更换头像</text>
+            <view class="profile-avatar-display">
+              <image class="profile-avatar-img"
+                src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
+                mode="aspectFill" />
+            </view>
+            <!-- 两种更换方式 -->
+            <view class="avatar-action-row">
+              <button class="avatar-action-btn wx-avatar-btn"
+                open-type="chooseAvatar"
+                bindchooseavatar="onChooseWxAvatar">
+                <text class="action-btn-icon">👤</text>
+                <text class="action-btn-text">微信头像</text>
+              </button>
+              <button class="avatar-action-btn custom-avatar-btn"
+                bindtap="chooseCustomAvatar">
+                <text class="action-btn-icon">📷</text>
+                <text class="action-btn-text">本地上传</text>
+              </button>
+            </view>
           </view>
 
           <!-- 昵称 -->

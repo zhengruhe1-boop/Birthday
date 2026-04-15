@@ -156,14 +156,12 @@ Page({
     }
   },
 
-  // ── 头像：使用微信 chooseAvatar ──────────────────────────────────────────────
-  async onChooseAvatar(e) {
-    const tempUrl = e.detail.avatarUrl;   // 微信临时路径或 CDN URL
-    if (!tempUrl) return;
-
-    // ① 立即显示选中的头像，不等待上传
-    this.setData({ userInfo: { ...this.data.userInfo, avatarUrl: tempUrl } });
-    wx.setStorageSync('birthday_userinfo', { ...this.data.userInfo, avatarUrl: tempUrl });
+  // ── 头像：共用上传逻辑 ────────────────────────────────────────────────────────
+  async _uploadAndSaveAvatar(tempUrl) {
+    // ① 立即把选中图片显示到 UI（不等服务器）
+    const immediateInfo = { ...(this.data.userInfo || {}), avatarUrl: tempUrl };
+    this.setData({ userInfo: immediateInfo });
+    wx.setStorageSync('birthday_userinfo', immediateInfo);
 
     // ② 后台上传到服务器
     try {
@@ -173,13 +171,41 @@ Page({
         const serverUrl = toAbsUrl(rawUrl);
         const updated = await api.put('api/auth/me', { avatarUrl: serverUrl });
         const finalUrl = toAbsUrl(updated.avatarUrl || serverUrl);
-        this.setData({ userInfo: { ...this.data.userInfo, avatarUrl: finalUrl } });
-        wx.setStorageSync('birthday_userinfo', { ...this.data.userInfo, avatarUrl: finalUrl });
+        const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: finalUrl };
+        this.setData({ userInfo: finalInfo });
+        wx.setStorageSync('birthday_userinfo', finalInfo);
       }
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch {
-      // 上传失败：保留已显示的临时头像，提示用户
-      wx.showToast({ title: '头像已选择（同步中）', icon: 'none' });
+      wx.showToast({ title: '头像已显示（上传失败，可重试）', icon: 'none' });
+    }
+  },
+
+  // ── 头像：使用微信头像（open-type="chooseAvatar"）────────────────────────────
+  onChooseWxAvatar(e) {
+    const tempUrl = e.detail.avatarUrl;
+    if (!tempUrl) return;
+    this._uploadAndSaveAvatar(tempUrl);
+  },
+
+  // ── 头像：从相册/拍照自定义上传 ─────────────────────────────────────────────
+  async chooseCustomAvatar() {
+    try {
+      const res = await new Promise((resolve, reject) => {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+          success: resolve,
+          fail: reject,
+        });
+      });
+      const tempFile = res.tempFiles[0].tempFilePath;
+      if (!tempFile) return;
+      await this._uploadAndSaveAvatar(tempFile);
+    } catch (err) {
+      if (err && err.errMsg && err.errMsg.includes('cancel')) return;
+      wx.showToast({ title: '选择图片失败', icon: 'none' });
     }
   },
 
@@ -196,10 +222,9 @@ Page({
     this.setData({ savingProfile: true });
     try {
       const updated = await api.put('api/auth/me', { nickname });
-      this.setData({
-        userInfo: { ...this.data.userInfo, ...updated },
-        savingProfile: false,
-      });
+      const newInfo = { ...(this.data.userInfo || {}), ...updated };
+      this.setData({ userInfo: newInfo, savingProfile: false });
+      wx.setStorageSync('birthday_userinfo', newInfo);
       wx.showToast({ title: '昵称已保存', icon: 'success' });
     } catch {
       wx.showToast({ title: '保存失败', icon: 'none' });

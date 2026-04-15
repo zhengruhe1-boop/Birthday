@@ -542,65 +542,56 @@
   margin-bottom: 24rpx;
 }
 
-.profile-avatar-btn {
-  width: 120rpx;
-  height: 120rpx;
+.profile-avatar-display {
+  width: 140rpx;
+  height: 140rpx;
   border-radius: 50%;
-  padding: 0;
-  margin: 0 0 12rpx;
-  background: none;
-  border: none;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.12);
 }
-.profile-avatar-btn::after { border: none; }
-.profile-avatar-btn:active { opacity: 0.8; }
 
 .profile-avatar-img {
-  width: 120rpx;
-  height: 120rpx;
+  width: 140rpx;
+  height: 140rpx;
   border-radius: 50%;
   display: block;
 }
 
-.profile-avatar-fallback {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f43f5e, #fb923c);
+/* 头像操作按钮行 */
+.avatar-action-row {
   display: flex;
+  gap: 20rpx;
+}
+
+.avatar-action-btn {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 160rpx;
+  height: 96rpx;
+  border-radius: 20rpx;
+  border: none;
+  font-size: 22rpx;
+  gap: 6rpx;
+  padding: 0;
 }
+.avatar-action-btn::after { border: none; }
+.avatar-action-btn:active { opacity: 0.75; }
 
-.profile-avatar-fallback text {
+.wx-avatar-btn {
+  background: #07c160;
   color: #fff;
-  font-size: 44rpx;
-  font-weight: 700;
-  line-height: 1;
 }
 
-.profile-camera-badge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 44rpx;
-  height: 44rpx;
+.custom-avatar-btn {
   background: #f43f5e;
-  border-radius: 50%;
-  border: 3rpx solid #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  font-weight: 700;
   color: #fff;
-  line-height: 1;
 }
 
-.profile-avatar-hint { font-size: 22rpx; color: #94a3b8; }
+.action-btn-icon { font-size: 34rpx; line-height: 1; }
+.action-btn-text { font-size: 22rpx; font-weight: 600; }
 
 /* 设置分组 */
 .settings-item-group {
