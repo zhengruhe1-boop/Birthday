@@ -45,6 +45,7 @@ Page({
 
     // 编辑昵称
     editNickname: '',
+    nicknameChanged: false,   // 是否有未保存的昵称修改
   },
 
   async onLoad() {
@@ -186,51 +187,48 @@ Page({
     }
   },
 
-  // ── 头像：使用微信头像（open-type="chooseAvatar"）────────────────────────────
-  onChooseWxAvatar(e) {
+  // ── 头像：open-type="chooseAvatar" 回调 ─────────────────────────────────────
+  onChooseAvatar(e) {
     const tempUrl = e.detail.avatarUrl;
     if (!tempUrl) return;
     this._uploadAndSaveAvatar(tempUrl);
   },
 
-  // ── 头像：从相册/拍照自定义上传 ─────────────────────────────────────────────
-  async chooseCustomAvatar() {
-    try {
-      const res = await new Promise((resolve, reject) => {
-        wx.chooseMedia({
-          count: 1,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
-          success: resolve,
-          fail: reject,
-        });
-      });
-      const tempFile = res.tempFiles[0].tempFilePath;
-      if (!tempFile) return;
-      await this._uploadAndSaveAvatar(tempFile);
-    } catch (err) {
-      if (err && err.errMsg && err.errMsg.includes('cancel')) return;
-      wx.showToast({ title: '选择图片失败', icon: 'none' });
-    }
-  },
-
-  // ── 昵称：聚焦时提示用户操作方式 ────────────────────────────────────────────
-  onNicknameFocus() {
-    wx.showToast({
-      title: '请点键盘上方"填入微信昵称"',
-      icon: 'none',
-      duration: 2500,
+  // ── 昵称：bindinput —— 用户手动输入时更新本地 data，标记有未保存改动 ─────────
+  onNicknameInput(e) {
+    const nickname = e.detail.value;
+    const original = (this.data.userInfo && this.data.userInfo.nickname) || '';
+    this.setData({
+      editNickname: nickname,
+      nicknameChanged: nickname.trim() !== original.trim(),
     });
   },
 
-  // ── 昵称：微信昵称选择器成功回调（bindnicknameverify） ───────────────────────
+  // ── 昵称：bindnicknameverify —— 微信授权昵称，直接保存 ───────────────────────
   async onNicknameVerify(e) {
     const nickname = (e.detail.nickname || '').trim();
     if (!nickname) {
       wx.showToast({ title: '未获取到昵称，请重试', icon: 'none' });
       return;
     }
-    this.setData({ editNickname: nickname });
+    this.setData({ editNickname: nickname, nicknameChanged: false });
+    await this._saveNickname(nickname);
+  },
+
+  // ── 昵称：bindblur —— 失去焦点时若有改动则自动保存（手动输入场景）────────────
+  async onNicknameBlur() {
+    if (!this.data.nicknameChanged) return;
+    const nickname = (this.data.editNickname || '').trim();
+    if (!nickname) return;
+    this.setData({ nicknameChanged: false });
+    await this._saveNickname(nickname);
+  },
+
+  // ── 昵称：按钮手动保存（nicknameChanged=true 时显示）────────────────────────
+  async saveNickname() {
+    const nickname = (this.data.editNickname || '').trim();
+    if (!nickname) return;
+    this.setData({ nicknameChanged: false });
     await this._saveNickname(nickname);
   },
 
@@ -238,7 +236,6 @@ Page({
   async _saveNickname(nickname) {
     try {
       const updated = await api.put('api/auth/me', { nickname });
-      // 保留当前已有头像（服务端返回的 avatarUrl 可能是相对路径，不要直接覆盖）
       const currentAvatarUrl = (this.data.userInfo && this.data.userInfo.avatarUrl) || '';
       const serverAvatarUrl = toAbsUrl(updated.avatarUrl);
       const newInfo = {
@@ -268,7 +265,13 @@ Page({
   closeFab()  { this.setData({ showFab: false }); },
 
   // ── 设置 ─────────────────────────────────────────────────────────────────────
-  openSettings() { this.setData({ showSettings: true, editNickname: this.data.userInfo ? this.data.userInfo.nickname : '' }); },
+  openSettings() {
+    this.setData({
+      showSettings: true,
+      editNickname: this.data.userInfo ? this.data.userInfo.nickname : '',
+      nicknameChanged: false,
+    });
+  },
   closeSettings(){ this.setData({ showSettings: false }); },
   goSubscribePage() { this.closeSettings(); wx.navigateTo({ url: '/pages/subscribe/subscribe' }); },
 

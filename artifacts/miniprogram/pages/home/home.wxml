@@ -297,25 +297,30 @@
       <scroll-view class="settings-body" scroll-y>
         <view class="settings-inner">
 
-          <!-- 头像 -->
+          <!-- 头像：点击头像即可更换 -->
           <view class="profile-section">
-            <view class="profile-avatar-display">
+            <button class="avatar-btn"
+              open-type="chooseAvatar"
+              bind:chooseavatar="onChooseAvatar">
               <image class="profile-avatar-img"
                 src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : 'https://shengritong.kuixi.com/shengritong.jpg'}}"
                 mode="aspectFill" />
-            </view>
+            </button>
+            <text class="avatar-hint">点击头像更换</text>
           </view>
 
-          <!-- 获取微信昵称 / 获取微信头像 -->
-          <view class="wx-btn-row">
-            <input class="wx-nick-btn" type="nickname"
-              placeholder="获取微信昵称"
+          <!-- 昵称输入 -->
+          <view class="nickname-section">
+            <input class="nickname-input"
+              type="nickname"
+              placeholder="点击可填入微信昵称或手动输入"
               value="{{editNickname}}"
-              bindfocus="onNicknameFocus"
-              bindnicknameverify="onNicknameVerify" />
-            <button class="wx-avatar-btn-new"
-              open-type="chooseAvatar"
-              bindchooseavatar="onChooseWxAvatar">获取微信头像</button>
+              bindinput="onNicknameInput"
+              bindnicknameverify="onNicknameVerify"
+              bindblur="onNicknameBlur" />
+            <button wx:if="{{nicknameChanged}}"
+              class="nickname-save-btn"
+              bindtap="saveNickname">保存昵称</button>
           </view>
 
           <!-- 提醒偏好 -->

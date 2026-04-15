@@ -537,16 +537,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40rpx 0 32rpx;
+  padding: 40rpx 0 24rpx;
 }
 
-.profile-avatar-display {
+/* 头像按钮：open-type="chooseAvatar" 包裹图片 */
+.avatar-btn {
   width: 160rpx;
   height: 160rpx;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
   border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.14);
 }
+.avatar-btn::after { border: none; }
+.avatar-btn:active { opacity: 0.82; }
 
 .profile-avatar-img {
   width: 160rpx;
@@ -555,44 +562,44 @@
   display: block;
 }
 
-/* 微信昵称 + 头像 并排按钮行 */
-.wx-btn-row {
-  display: flex;
-  gap: 20rpx;
-  padding: 0 4rpx;
+.avatar-hint {
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-top: 12rpx;
 }
 
-.wx-nick-btn {
-  flex: 1;
+/* 昵称输入区 */
+.nickname-section {
+  margin-top: 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.nickname-input {
   height: 88rpx;
   line-height: 88rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 20rpx;
+  padding: 0 32rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+}
+
+.nickname-save-btn {
+  height: 80rpx;
+  line-height: 80rpx;
   background: #f97316;
   color: #fff;
   font-size: 28rpx;
   font-weight: 600;
   border-radius: 20rpx;
-  text-align: center;
-  padding: 0;
-  border: none;
-}
-
-.wx-avatar-btn-new {
-  flex: 1;
-  height: 88rpx;
-  line-height: 88rpx;
-  background: #f97316;
-  color: #fff;
-  font-size: 28rpx;
-  font-weight: 600;
-  border-radius: 20rpx;
   border: none;
   padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.wx-avatar-btn-new::after { border: none; }
-.wx-avatar-btn-new:active { opacity: 0.8; }
+.nickname-save-btn::after { border: none; }
+.nickname-save-btn:active { opacity: 0.82; }
 
 /* 设置分组 */
 .settings-item-group {
