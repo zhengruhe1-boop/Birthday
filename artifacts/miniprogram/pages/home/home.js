@@ -158,28 +158,31 @@ Page({
   // ── 头像：共用上传逻辑 ────────────────────────────────────────────────────────
   async _uploadAndSaveAvatar(tempUrl) {
     if (!tempUrl) return;
-    // ① 立即把选中图片显示到 UI（不等服务器）
-    const immediateInfo = { ...(this.data.userInfo || {}), avatarUrl: tempUrl };
-    this.setData({ userInfo: immediateInfo });
-    wx.setStorageSync('birthday_userinfo', immediateInfo);
 
-    // ② 后台上传到服务器
+    // 记住上传前的头像，失败时可恢复
+    const prevAvatarUrl = (this.data.userInfo && this.data.userInfo.avatarUrl) || '';
+
+    // ① 仅更新 UI 显示临时图片，不写入缓存（临时路径重启后失效）
+    this.setData({ userInfo: { ...(this.data.userInfo || {}), avatarUrl: tempUrl } });
+
+    // ② 上传到服务器
     try {
       const uploadRes = await api.upload('api/upload', tempUrl, 'image');
       const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-      if (!rawUrl) {
-        wx.showToast({ title: '头像已显示（上传失败，可重试）', icon: 'none' });
-        return;
-      }
+      if (!rawUrl) throw new Error('服务器未返回图片地址');
+
       const serverUrl = toAbsUrl(rawUrl);
-      // 保存到服务器；返回值的 avatarUrl 也强制转绝对路径
       await api.put('api/auth/me', { avatarUrl: serverUrl });
+
+      // 上传成功：用服务器永久地址更新 UI 和缓存
       const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: serverUrl };
       this.setData({ userInfo: finalInfo });
       wx.setStorageSync('birthday_userinfo', finalInfo);
       wx.showToast({ title: '头像已更新', icon: 'success' });
-    } catch {
-      wx.showToast({ title: '头像已显示（上传失败，可重试）', icon: 'none' });
+    } catch (err) {
+      // 上传失败：恢复原头像（避免缓存临时路径）
+      this.setData({ userInfo: { ...(this.data.userInfo || {}), avatarUrl: prevAvatarUrl } });
+      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
     }
   },
 
