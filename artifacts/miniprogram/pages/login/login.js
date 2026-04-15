@@ -67,12 +67,8 @@ Page({
       const app = getApp();
       if (app) app.globalData.sessionReady = Promise.resolve(true);
 
-      // 5. 新用户或资料不完整 → 先完善资料；否则直接进首页
-      if (res.needsProfile) {
-        this.setData({ step: 'profile', isNewUser: true });
-      } else {
-        wx.reLaunch({ url: '/pages/home/home' });
-      }
+      // 5. 登录成功，直接进入首页（资料可在首页设置中完善）
+      wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
       // wx.login fail 回调传的是 { errMsg: '...' } 对象，不是 Error，需兼容两者
       const msg = err.message || err.errMsg || String(err) || '';

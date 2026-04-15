@@ -62,6 +62,14 @@ Page({
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
+
+    // 先从本地缓存预填用户信息，避免 API 响应慢时首页空白
+    const cached = wx.getStorageSync('birthday_userinfo');
+    if (cached && cached.nickname) {
+      const cachedNorm = { ...cached, avatarUrl: toAbsUrl(cached.avatarUrl) };
+      this.setData({ userInfo: cachedNorm, editNickname: cached.nickname });
+    }
+
     const emailNotify = wx.getStorageSync(PREF_EMAIL_NOTIFY) !== 'false';
     this.setData({ emailNotify });
     this.loadAll();
@@ -86,6 +94,8 @@ Page({
       ]);
       // 头像 URL 必须是绝对路径，微信小程序不支持相对路径
       const meNormalized = me ? { ...me, avatarUrl: toAbsUrl(me.avatarUrl) } : null;
+      // 同步更新本地缓存，让下次启动时能立刻显示最新信息
+      if (me) wx.setStorageSync('birthday_userinfo', me);
       const ann = (events.anniversaries || []).map(e => ({
         ...e,
         anniversaryYear: calcAnniversaryYear(e.eventDate),

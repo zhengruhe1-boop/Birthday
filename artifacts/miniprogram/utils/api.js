@@ -32,6 +32,14 @@ function request(method, path, data) {
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
+        } else if (res.statusCode === 401) {
+          // token 失效：清除本地凭证，跳回登录页
+          wx.removeStorageSync('birthday_token');
+          wx.removeStorageSync('birthday_userinfo');
+          const app = getApp();
+          if (app) { app.globalData.token = null; app.globalData.sessionReady = Promise.resolve(false); }
+          wx.reLaunch({ url: '/pages/login/login' });
+          reject(new Error('登录已过期，请重新登录'));
         } else {
           const msg = (res.data && res.data.error) ? res.data.error : ('请求失败 ' + res.statusCode);
           reject(new Error(msg));
