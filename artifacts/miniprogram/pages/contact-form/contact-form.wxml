@@ -156,24 +156,20 @@
         </block>
       </view>
 
-      <!-- AI 历史事件（点击展开后，再点"生成"才加载） -->
+      <!-- AI 历史事件 -->
       <block wx:if="{{isEdit}}">
         <view class="form-card">
           <view class="ai-header" bindtap="toggleAiEvents">
             <view class="ai-header-left">
               <text class="ai-icon">🤖</text>
-              <text class="ai-title">出生那天发生的历史事件</text>
+              <text class="ai-title">出生那天发生的历史大事</text>
             </view>
             <text class="expand-arrow">{{showAiEvents ? '∧' : '∨'}}</text>
           </view>
 
           <block wx:if="{{showAiEvents}}">
-            <!-- 未加载：显示"生成"按钮 -->
-            <view wx:if="{{!aiLoading && !aiError && aiEvents.length === 0}}" class="ai-generate-wrap">
-              <button class="ai-generate-btn" bindtap="loadAiEvents">✨ 点击生成历史事件</button>
-            </view>
             <!-- 加载中 -->
-            <view class="ai-loading" wx:elif="{{aiLoading}}">
+            <view class="ai-loading" wx:if="{{aiLoading}}">
               <text>🤖 AI 生成中，请稍候...</text>
             </view>
             <!-- 错误 -->
@@ -181,16 +177,25 @@
               <text>⚠️ {{aiError}}</text>
               <view class="retry-btn" bindtap="loadAiEvents"><text>重试</text></view>
             </view>
-            <!-- 事件列表 -->
-            <view wx:else class="ai-events-list">
-              <view wx:for="{{aiEvents}}" wx:key="index" class="ai-event-item">
-                <view class="ai-event-year">{{item.year}}</view>
-                <view class="ai-event-body">
-                  <text class="ai-event-title">{{item.title}}</text>
-                  <text class="ai-event-content" wx:if="{{item.description}}">{{item.description}}</text>
+            <!-- 未生成过：显示"生成"按钮 -->
+            <view wx:elif="{{aiEvents.length === 0}}" class="ai-generate-wrap">
+              <button class="ai-generate-btn" bindtap="loadAiEvents">✨ 点击生成历史大事</button>
+            </view>
+            <!-- 已有事件：直接展示 + 底部放"重新生成"按钮 -->
+            <block wx:else>
+              <view class="ai-events-list">
+                <view wx:for="{{aiEvents}}" wx:key="index" class="ai-event-item">
+                  <view class="ai-event-year">{{item.year}}</view>
+                  <view class="ai-event-body">
+                    <text class="ai-event-title">{{item.title}}</text>
+                    <text class="ai-event-content" wx:if="{{item.description}}">{{item.description}}</text>
+                  </view>
                 </view>
               </view>
-            </view>
+              <view class="ai-refresh-wrap">
+                <button class="ai-refresh-btn" bindtap="loadAiEvents">↻ 重新生成</button>
+              </view>
+            </block>
           </block>
         </view>
       </block>

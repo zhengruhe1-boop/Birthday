@@ -64,7 +64,7 @@ Page({
     aiEvents: [],
     aiLoading: false,
     aiError: '',
-    showAiEvents: false,
+    showAiEvents: true,
 
     // Test email
     testEmailStatus: 'idle',
@@ -135,6 +135,8 @@ Page({
       const c = await api.get('api/contacts/' + id);
       const m = c.birthdayMonth;
       const d = c.birthdayDay;
+      // 读取已保存的历史事件（服务端已持久化，无需每次重新生成）
+      const savedEvents = Array.isArray(c.birthdayEvents) ? c.birthdayEvents : [];
       this.setData({
         name: c.name || '',
         gender: c.gender || '',
@@ -149,6 +151,8 @@ Page({
         monthIndex: m - 1,
         dayIndex: d - 1,
         zodiac: getZodiac(m, d),
+        aiEvents: savedEvents,
+        showAiEvents: true,
         loading: false,
       });
     } catch {

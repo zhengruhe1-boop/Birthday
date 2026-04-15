@@ -282,6 +282,25 @@
 
 .ai-events-list { margin-top: 24rpx; }
 
+.ai-refresh-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 20rpx 0 8rpx;
+}
+
+.ai-refresh-btn {
+  background: none;
+  border: 1rpx solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 22rpx;
+  border-radius: 100rpx;
+  padding: 0 32rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+}
+.ai-refresh-btn::after { border: none; }
+.ai-refresh-btn:active { opacity: 0.7; }
+
 .ai-event-item {
   display: flex;
   gap: 20rpx;
