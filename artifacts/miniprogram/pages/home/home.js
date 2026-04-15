@@ -211,19 +211,22 @@ Page({
     }
   },
 
-  // ── 昵称：微信昵称选择器 bindnicknameverify（用户点"填入微信昵称"时触发）──────
-  async onNicknameVerify(e) {
-    // e.detail.nickname 是微信下发的真实昵称
-    const nickname = (e.detail.nickname || '').trim();
-    if (!nickname) return;
-    this.setData({ editNickname: nickname });
-    await this._saveNickname(nickname);
+  // ── 昵称：聚焦时提示用户操作方式 ────────────────────────────────────────────
+  onNicknameFocus() {
+    wx.showToast({
+      title: '请点键盘上方"填入微信昵称"',
+      icon: 'none',
+      duration: 2500,
+    });
   },
 
-  // ── 昵称：手动输入失焦后保存 ─────────────────────────────────────────────────
-  async onNicknameBlur(e) {
-    const nickname = (e.detail.value || '').trim();
-    if (!nickname || nickname === (this.data.userInfo && this.data.userInfo.nickname)) return;
+  // ── 昵称：微信昵称选择器成功回调（bindnicknameverify） ───────────────────────
+  async onNicknameVerify(e) {
+    const nickname = (e.detail.nickname || '').trim();
+    if (!nickname) {
+      wx.showToast({ title: '未获取到昵称，请重试', icon: 'none' });
+      return;
+    }
     this.setData({ editNickname: nickname });
     await this._saveNickname(nickname);
   },

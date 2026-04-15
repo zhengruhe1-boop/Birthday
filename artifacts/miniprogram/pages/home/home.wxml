@@ -311,8 +311,8 @@
             <input class="wx-nick-btn" type="nickname"
               placeholder="获取微信昵称"
               value="{{editNickname}}"
-              bindnicknameverify="onNicknameVerify"
-              bindblur="onNicknameBlur" />
+              bindfocus="onNicknameFocus"
+              bindnicknameverify="onNicknameVerify" />
             <button class="wx-avatar-btn-new"
               open-type="chooseAvatar"
               bindchooseavatar="onChooseWxAvatar">获取微信头像</button>
