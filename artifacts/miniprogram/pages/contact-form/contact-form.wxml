@@ -7,7 +7,7 @@
       <view class="avatar-section" bindtap="chooseAvatar">
         <view class="form-avatar-wrap">
           <image class="form-avatar-img"
-            src="{{avatarUrl ? avatarUrl : '/images/logo.jpg'}}"
+            src="{{avatarUrl ? avatarUrl : 'https://shengritong.kuixi.com/shengritong.jpg'}}"
             mode="aspectFill" />
           <view class="avatar-edit-badge" wx:if="{{!avatarUploading}}">
             <text>📷</text>
