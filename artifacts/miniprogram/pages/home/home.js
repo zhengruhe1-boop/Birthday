@@ -381,6 +381,8 @@ Page({
       confirmText: '退出', confirmColor: '#ef4444',
       success: (res) => {
         if (res.confirm) {
+          // 先调服务端使 token 失效，再清本地
+          api.post('api/auth/logout', {}).catch(() => {});
           clearToken();
           const app = getApp();
           if (app) app.globalData.sessionReady = Promise.resolve(false);

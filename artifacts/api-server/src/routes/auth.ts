@@ -271,27 +271,32 @@ router.post("/wechat/login", async (req, res) => {
       req.log.info({ openId }, "WeChat MP not configured – using mock openId");
     }
 
-    const token = generateToken();
     const existingUsers = await db.select().from(usersTable).where(eq(usersTable.openId, openId)).limit(1);
 
     let user;
     const unionIdUpdate = unionId ? { unionId } : {};
+
     if (existingUsers.length > 0) {
+      // 老用户：保留现有 sessionToken（避免多端/冷启动互相覆盖），仅当 token 为空时才生成新的
+      const keepToken = existingUsers[0].sessionToken || generateToken();
       const updated = await db.update(usersTable)
-        .set({ sessionToken: token, ...unionIdUpdate })
+        .set({ sessionToken: keepToken, lastAccessAt: new Date(), ...unionIdUpdate })
         .where(eq(usersTable.openId, openId))
         .returning();
       user = updated[0];
     } else {
+      // 新用户：生成新 token
+      const newToken = generateToken();
       const inserted = await db.insert(usersTable).values({
         openId,
         unionId: unionId || undefined,
         nickname: "微信用户",
-        sessionToken: token,
+        sessionToken: newToken,
       }).returning();
       user = inserted[0];
     }
 
+    const token = user.sessionToken!;
     res.json({
       user:   { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
       token,
@@ -324,7 +329,6 @@ router.post("/mock-login", async (req, res) => {
       return;
     }
 
-    const token    = generateToken();
     const deviceId = (req.body as Record<string, unknown>).deviceId as string | undefined;
     const nickname = body.data.nickname?.trim() ?? "";
 
@@ -337,22 +341,23 @@ router.post("/mock-login", async (req, res) => {
         .limit(1);
 
       if (existing.length > 0) {
-        // Found by nickname.
+        // Found by nickname. Keep existing token (avoid session invalidation on re-login).
         // If we also have a deviceId, re-bind it — but first release it from any
         // other user that currently holds it, to avoid a unique-constraint error.
         if (deviceId) {
           const newOpenId = `mock:${deviceId}`;
           if (existing[0].openId !== newOpenId) {
-            // Clear the old holder (if any) of this deviceId
             await db.update(usersTable)
               .set({ openId: null })
               .where(eq(usersTable.openId, newOpenId));
           }
         }
 
+        const keepToken = existing[0].sessionToken || generateToken();
         const updated = await db.update(usersTable)
           .set({
-            sessionToken: token,
+            sessionToken: keepToken,
+            lastAccessAt: new Date(),
             ...(deviceId ? { openId: `mock:${deviceId}` } : {}),
           })
           .where(eq(usersTable.id, existing[0].id))
@@ -360,7 +365,6 @@ router.post("/mock-login", async (req, res) => {
         user = updated[0];
       } else {
         // New nickname: create user.
-        // Release the deviceId from any existing user first to avoid unique conflict.
         if (deviceId) {
           await db.update(usersTable)
             .set({ openId: null })
@@ -370,7 +374,7 @@ router.post("/mock-login", async (req, res) => {
           openId:       deviceId ? `mock:${deviceId}` : null,
           nickname,
           avatarUrl:    body.data.avatarUrl ?? null,
-          sessionToken: token,
+          sessionToken: generateToken(),
         }).returning();
         user = inserted[0];
       }
@@ -381,8 +385,9 @@ router.post("/mock-login", async (req, res) => {
         .limit(1);
 
       if (existing.length > 0) {
+        const keepToken = existing[0].sessionToken || generateToken();
         const updated = await db.update(usersTable)
-          .set({ sessionToken: token })
+          .set({ sessionToken: keepToken, lastAccessAt: new Date() })
           .where(eq(usersTable.openId, `mock:${deviceId}`))
           .returning();
         user = updated[0];
@@ -391,7 +396,7 @@ router.post("/mock-login", async (req, res) => {
           openId:       `mock:${deviceId}`,
           nickname:     "匿名用户",
           avatarUrl:    body.data.avatarUrl ?? null,
-          sessionToken: token,
+          sessionToken: generateToken(),
         }).returning();
         user = inserted[0];
       }
@@ -401,8 +406,8 @@ router.post("/mock-login", async (req, res) => {
     }
 
     res.json({
-      user: { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
-      token,
+      user:  { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
+      token: user.sessionToken,
     });
   } catch (err) {
     req.log.error({ err }, "Mock login error");
