@@ -2861,7 +2861,16 @@ function Dashboard({
   adminKey: string;
   onLogout: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>("users");
+  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share"];
+  const [tab, setTabState] = useState<Tab>(() => {
+    const saved = localStorage.getItem(ADMIN_TAB_KEY);
+    return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "users";
+  });
+
+  const setTab = (next: Tab) => {
+    localStorage.setItem(ADMIN_TAB_KEY, next);
+    setTabState(next);
+  };
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "users", label: "用户管理", icon: <Users className="w-4 h-4" /> },
@@ -2878,9 +2887,9 @@ function Dashboard({
   ];
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-100 font-sans">
-      {/* Sidebar */}
-      <aside className="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+    <div className="h-screen w-full flex bg-slate-100 font-sans overflow-hidden">
+      {/* Sidebar — 固定高度，不随页面滚动 */}
+      <aside className="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full overflow-y-auto">
         <div className="px-6 py-6 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <img
@@ -2943,6 +2952,7 @@ function Dashboard({
 }
 
 const ADMIN_SESSION_KEY = "birthday_admin_session";
+const ADMIN_TAB_KEY = "birthday_admin_tab";
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function Admin() {
