@@ -234,14 +234,28 @@
   font-size: 28rpx;
 }
 .modal-close:active { background: #f1f5f9; }
-.modal-body { flex: 1; padding: 32rpx 40rpx; }
+.modal-body {
+  flex: 1;
+  padding: 32rpx 40rpx;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+/* 外层 view 约束宽度，防止 text 撑破 scroll-view */
+.modal-text-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 .modal-text {
   font-size: 26rpx;
   color: #475569;
-  line-height: 1.8;
+  line-height: 1.9;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: break-word;
   display: block;
+  width: 100%;
 }
 .modal-loading { display: flex; align-items: center; justify-content: center; padding: 60rpx 0; }
 .modal-loading-text { font-size: 26rpx; color: #94a3b8; }

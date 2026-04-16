@@ -72,7 +72,9 @@
         <view wx:if="{{legalLoading}}" class="modal-loading">
           <text class="modal-loading-text">加载中...</text>
         </view>
-        <text wx:else class="modal-text">{{legalContent}}</text>
+        <view wx:else class="modal-text-wrap">
+          <text class="modal-text" user-select>{{legalContent}}</text>
+        </view>
       </scroll-view>
       <view class="modal-footer">
         <button class="modal-ok-btn" bindtap="closeLegal">我已知晓</button>

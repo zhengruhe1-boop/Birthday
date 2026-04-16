@@ -76,11 +76,20 @@ Page({
     oaChecked: false,
   },
 
-  onLoad(opts) {
-    if (!isLoggedIn()) {
+  async onLoad(opts) {
+    // 等待 app.js 无感知登录完成，避免用旧 token 发请求导致 401
+    const app = getApp();
+    let loggedIn = false;
+    if (app && app.globalData.sessionReady) {
+      loggedIn = await app.globalData.sessionReady;
+    } else {
+      loggedIn = isLoggedIn();
+    }
+    if (!loggedIn) {
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
+
     const id = opts.id;
     if (id && id !== 'new') {
       this.setData({ isEdit: true, contactId: parseInt(id, 10) });
