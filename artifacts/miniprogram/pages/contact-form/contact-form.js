@@ -203,16 +203,32 @@ Page({
       ? this.data.avatarUrl : null;
 
     try {
-      const res = await new Promise((resolve, reject) => {
-        wx.chooseMedia({
-          count: 1,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
-          success: resolve,
-          fail: reject,
+      let tempFile = '';
+      if (wx.chooseMedia) {
+        // 基础库 2.10.0+
+        const res = await new Promise((resolve, reject) => {
+          wx.chooseMedia({
+            count: 1,
+            mediaType: ['image'],
+            sourceType: ['album', 'camera'],
+            success: resolve,
+            fail: reject,
+          });
         });
-      });
-      const tempFile = res.tempFiles[0].tempFilePath;
+        tempFile = res.tempFiles[0].tempFilePath;
+      } else {
+        // 旧版基础库兼容
+        const res = await new Promise((resolve, reject) => {
+          wx.chooseImage({
+            count: 1,
+            sizeType: ['compressed'],
+            sourceType: ['album', 'camera'],
+            success: resolve,
+            fail: reject,
+          });
+        });
+        tempFile = res.tempFilePaths[0];
+      }
 
       // ① 立即显示预览（临时路径仅用于 UI，不写 DB）
       this.setData({ avatarUrl: tempFile, avatarUploading: true });
@@ -233,10 +249,13 @@ Page({
 
       wx.showToast({ title: '头像已选择', icon: 'success' });
     } catch (err) {
+      const msg = (err && (err.errMsg || err.message)) || '';
+      // 用户取消选择：静默处理
+      if (msg.includes('cancel')) return;
       // 上传失败：恢复旧头像，避免临时路径残留被 handleSave 写入 DB
       this.setData({ avatarUrl: prevAvatarUrl, avatarUploading: false });
-      if (err && err.errMsg && err.errMsg.includes('cancel')) return;
-      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+      const hint = (err && err.message && err.message.length <= 14) ? err.message : '头像上传失败，请重试';
+      wx.showToast({ title: hint, icon: 'none' });
     }
   },
 

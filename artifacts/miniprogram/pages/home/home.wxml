@@ -6,8 +6,9 @@
       <!-- 头像（点击进入设置） -->
       <view class="avatar-wrap-hd">
         <image class="avatar-img-hd"
-          src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
-          mode="aspectFill" />
+          src="{{displayAvatarUrl || '/images/logo.jpg'}}"
+          mode="aspectFill"
+          binderror="onAvatarImgError" />
       </view>
       <view class="header-text">
         <text class="welcome-text">{{displayNickname}}</text>
@@ -301,8 +302,9 @@
           <view class="profile-section">
             <view class="avatar-tap-wrap" bindtap="chooseAvatar">
               <image class="profile-avatar-img"
-                src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
-                mode="aspectFill" />
+                src="{{displayAvatarUrl || '/images/logo.jpg'}}"
+                mode="aspectFill"
+                binderror="onAvatarImgError" />
               <view wx:if="{{avatarUploading}}" class="avatar-uploading-mask">
                 <text class="avatar-uploading-text">上传中…</text>
               </view>
@@ -320,10 +322,8 @@
               placeholder-class="nickname-placeholder"
               value="{{editNickname}}"
               bindinput="onNicknameInput"
-              bindblur="onNicknameBlur"
               maxlength="20" />
-            <button wx:if="{{nicknameChanged}}"
-              class="nickname-save-btn"
+            <button class="nickname-save-btn"
               bindtap="saveNickname">保存昵称</button>
           </view>
 

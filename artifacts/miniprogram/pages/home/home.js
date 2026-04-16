@@ -29,10 +29,16 @@ function buildDisplayNickname(nickname) {
 const PREF_EMAIL_NOTIFY = 'birthday_pref_email_notify';
 const DEFAULT_AVATAR = '/images/logo.jpg';
 
+// 只有以 http 开头的才算有效服务器 URL，否则用默认 logo
+function toDisplayAvatar(url) {
+  return (url && url.startsWith('http')) ? url : '';
+}
+
 Page({
   data: {
     userInfo: null,
     displayNickname: '您好！欢迎使用生日通',
+    displayAvatarUrl: '',   // 空串 → wxml 里显示 logo.jpg；http URL → 显示上传头像
     search: '',
 
     upcoming: { imminent: [], soon: [], monthly: [] },
@@ -74,9 +80,11 @@ Page({
     // 先从本地缓存预填用户信息
     const cached = wx.getStorageSync('birthday_userinfo');
     if (cached) {
-      const cachedNorm = { ...cached, avatarUrl: toAbsUrl(cached.avatarUrl) };
+      const cachedAvatarUrl = toAbsUrl(cached.avatarUrl);
+      const cachedNorm = { ...cached, avatarUrl: cachedAvatarUrl };
       this.setData({
         userInfo: cachedNorm,
+        displayAvatarUrl: toDisplayAvatar(cachedAvatarUrl),
         editNickname: cached.nickname || '',
         displayNickname: buildDisplayNickname(cached.nickname),
       });
@@ -121,6 +129,7 @@ Page({
       } : { imminent: [], soon: [], monthly: [] };
       this.setData({
         userInfo: meNormalized,
+        displayAvatarUrl: toDisplayAvatar(meNormalized ? meNormalized.avatarUrl : ''),
         editNickname: me ? (me.nickname || '') : '',
         displayNickname: buildDisplayNickname(me ? me.nickname : ''),
         upcoming: upcomingNorm,
@@ -171,26 +180,41 @@ Page({
     }
   },
 
-  // ── 头像：点击触发相册选图 ────────────────────────────────────────────────────
+  // ── 头像：点击触发相册选图（兼容新旧版微信）────────────────────────────────
   async chooseAvatar() {
-    const prevAvatarUrl = (this.data.userInfo && this.data.userInfo.avatarUrl
-      && this.data.userInfo.avatarUrl.startsWith('http'))
-      ? this.data.userInfo.avatarUrl : null;
+    const prevAvatarUrl = this.data.displayAvatarUrl || null;
 
     try {
-      const res = await new Promise((resolve, reject) => {
-        wx.chooseMedia({
-          count: 1,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
-          success: resolve,
-          fail: reject,
+      let tempUrl = '';
+      if (wx.chooseMedia) {
+        // 基础库 2.10.0+
+        const res = await new Promise((resolve, reject) => {
+          wx.chooseMedia({
+            count: 1,
+            mediaType: ['image'],
+            sourceType: ['album', 'camera'],
+            success: resolve,
+            fail: reject,
+          });
         });
-      });
-      const tempUrl = res.tempFiles[0].tempFilePath;
+        tempUrl = res.tempFiles[0].tempFilePath;
+      } else {
+        // 旧版基础库兼容
+        const res = await new Promise((resolve, reject) => {
+          wx.chooseImage({
+            count: 1,
+            sizeType: ['compressed'],
+            sourceType: ['album', 'camera'],
+            success: resolve,
+            fail: reject,
+          });
+        });
+        tempUrl = res.tempFilePaths[0];
+      }
       await this._uploadAndSaveAvatar(tempUrl, prevAvatarUrl);
     } catch (err) {
-      if (err && err.errMsg && err.errMsg.includes('cancel')) return;
+      const msg = (err && (err.errMsg || err.message)) || '';
+      if (msg.includes('cancel')) return;
       wx.showToast({ title: '选择图片失败', icon: 'none' });
     }
   },
@@ -198,8 +222,10 @@ Page({
   // ── 头像：通用上传保存逻辑 ────────────────────────────────────────────────────
   async _uploadAndSaveAvatar(tempUrl, prevAvatarUrl) {
     if (!tempUrl) return;
+    // 临时路径仅用于预览，不写 DB
     this.setData({
       userInfo: { ...(this.data.userInfo || {}), avatarUrl: tempUrl },
+      displayAvatarUrl: tempUrl,
       avatarUploading: true,
     });
     this._avatarUploading = true;
@@ -213,19 +239,30 @@ Page({
       await api.put('api/auth/me', { avatarUrl: serverUrl });
 
       const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: serverUrl };
-      this.setData({ userInfo: finalInfo, avatarUploading: false });
+      this.setData({
+        userInfo: finalInfo,
+        displayAvatarUrl: toDisplayAvatar(serverUrl),
+        avatarUploading: false,
+      });
       wx.setStorageSync('birthday_userinfo', finalInfo);
       this._lastSavedAvatarUrl = serverUrl;
       wx.showToast({ title: '头像已更新', icon: 'success' });
-    } catch {
+    } catch (err) {
+      const errMsg = (err && err.message) || '头像上传失败，请重试';
       this.setData({
         userInfo: { ...(this.data.userInfo || {}), avatarUrl: prevAvatarUrl || '' },
+        displayAvatarUrl: toDisplayAvatar(prevAvatarUrl || ''),
         avatarUploading: false,
       });
-      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+      wx.showToast({ title: errMsg.length > 14 ? '头像上传失败，请重试' : errMsg, icon: 'none' });
     } finally {
       this._avatarUploading = false;
     }
+  },
+
+  // ── 头像图片加载失败时（URL 过期/失效）回退到 logo ──────────────────────────
+  onAvatarImgError() {
+    this.setData({ displayAvatarUrl: '' });
   },
 
   // ── 昵称：输入时标记有未保存改动 ─────────────────────────────────────────────
@@ -247,10 +284,13 @@ Page({
     await this._saveNickname(nickname);
   },
 
-  // ── 昵称：手动点击保存按钮 ───────────────────────────────────────────────────
+  // ── 昵称：手动点击保存按钮（始终可见）──────────────────────────────────────
   async saveNickname() {
     const nickname = (this.data.editNickname || '').trim();
-    if (!nickname) return;
+    if (!nickname) {
+      wx.showToast({ title: '昵称不能为空', icon: 'none' });
+      return;
+    }
     this.setData({ nicknameChanged: false });
     await this._saveNickname(nickname);
   },
@@ -261,13 +301,15 @@ Page({
       const updated = await api.put('api/auth/me', { nickname });
       const currentAvatarUrl = (this.data.userInfo && this.data.userInfo.avatarUrl) || '';
       const serverAvatarUrl = toAbsUrl(updated.avatarUrl);
+      const finalAvatarUrl = serverAvatarUrl || currentAvatarUrl;
       const newInfo = {
         ...(this.data.userInfo || {}),
         ...updated,
-        avatarUrl: serverAvatarUrl || currentAvatarUrl,
+        avatarUrl: finalAvatarUrl,
       };
       this.setData({
         userInfo: newInfo,
+        displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
         displayNickname: buildDisplayNickname(nickname),
       });
       wx.setStorageSync('birthday_userinfo', newInfo);
