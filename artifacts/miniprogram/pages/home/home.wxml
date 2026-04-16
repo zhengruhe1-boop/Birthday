@@ -290,7 +290,7 @@
   <!-- 设置面板 -->
   <view wx:if="{{showSettings}}" class="modal-mask" bindtap="closeSettings">
     <!-- margin-bottom 随键盘高度动态上移，保证输入框和保存按钮始终可见 -->
-    <view class="modal-sheet" catchtap="" style="margin-bottom:{{keyboardHeight}}px">
+    <view class="modal-sheet" catchtap="noop" style="margin-bottom:{{keyboardHeight}}px">
       <view class="modal-handle" />
       <view class="modal-header">
         <text class="modal-title">设置</text>
