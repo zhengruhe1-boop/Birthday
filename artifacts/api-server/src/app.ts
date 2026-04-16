@@ -1,9 +1,11 @@
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
+import path from "path";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { objectStorageClient } from "./lib/objectStorage.js";
+import { LOCAL_UPLOAD_DIR } from "./routes/upload.js";
 
 const app: Express = express();
 
@@ -30,17 +32,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded images from GCS object storage
+// ── 已上传图片的访问路由 ────────────────────────────────────────────────────────
+// 优先使用对象存储（Replit GCS），不可用时降级到本地磁盘
 app.get("/api/uploads/:filename", async (req: Request, res: Response) => {
-  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-  if (!bucketId) { res.status(503).json({ error: "Storage not configured" }); return; }
-
   const filename = req.params.filename;
   if (!filename || filename.includes("..") || filename.includes("/")) {
     res.status(400).json({ error: "Invalid filename" });
     return;
   }
 
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+
+  if (!bucketId) {
+    // ── 本地磁盘模式（降级） ─────────────────────────────────────────────────
+    const localPath = path.join(LOCAL_UPLOAD_DIR, filename);
+    res.sendFile(localPath, { maxAge: "365d" }, (err) => {
+      if (err) res.status(404).json({ error: "Not found" });
+    });
+    return;
+  }
+
+  // ── 对象存储模式 ─────────────────────────────────────────────────────────────
   try {
     const file = objectStorageClient.bucket(bucketId).file(`uploads/${filename}`);
     const [exists] = await file.exists();
