@@ -61,6 +61,11 @@ Page({
     editNickname: '',
     nicknameChanged: false,
     avatarUploading: false,
+
+    // 键盘高度（px）：用于在昵称输入时把设置弹窗上移，避免被键盘遮挡
+    keyboardHeight: 0,
+    // scroll-into-view 目标 id：键盘弹出时滚动到昵称区域
+    nicknameScrollAnchor: '',
   },
 
   async onLoad() {
@@ -284,6 +289,16 @@ Page({
     await this._saveNickname(nickname);
   },
 
+  // ── 键盘高度变化：弹窗动态上移 + 滚动到昵称区域，保持内容可见 ──────────────────
+  onNicknameKeyboardChange(e) {
+    const h = e.detail.height || 0;
+    this.setData({
+      keyboardHeight: h,
+      // 键盘弹出时滚到昵称区域，键盘收起时清空锚点
+      nicknameScrollAnchor: h > 0 ? 'nickname-anchor' : '',
+    });
+  },
+
   // ── 昵称：手动点击保存按钮（始终可见）──────────────────────────────────────
   async saveNickname() {
     const nickname = (this.data.editNickname || '').trim();
@@ -340,7 +355,7 @@ Page({
       nicknameChanged: false,
     });
   },
-  closeSettings(){ this.setData({ showSettings: false }); },
+  closeSettings(){ this.setData({ showSettings: false, keyboardHeight: 0, nicknameScrollAnchor: '' }); },
   goSubscribePage() { this.closeSettings(); wx.navigateTo({ url: '/pages/subscribe/subscribe' }); },
 
   toggleEmailNotify(e) {

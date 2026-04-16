@@ -289,13 +289,15 @@
 
   <!-- 设置面板 -->
   <view wx:if="{{showSettings}}" class="modal-mask" bindtap="closeSettings">
-    <view class="modal-sheet" catchtap="">
+    <!-- margin-bottom 随键盘高度动态上移，保证输入框和保存按钮始终可见 -->
+    <view class="modal-sheet" catchtap="" style="margin-bottom:{{keyboardHeight}}px">
       <view class="modal-handle" />
       <view class="modal-header">
         <text class="modal-title">设置</text>
         <view class="modal-close" bindtap="closeSettings"><text>✕</text></view>
       </view>
-      <scroll-view class="settings-body" scroll-y>
+      <!-- scroll-into-view：键盘弹出时自动滚动到昵称区域 -->
+      <scroll-view class="settings-body" scroll-y scroll-into-view="{{nicknameScrollAnchor}}">
         <view class="settings-inner">
 
           <!-- 头像：点击上传自定义头像 -->
@@ -313,16 +315,18 @@
             <text class="avatar-hint">点击更换头像</text>
           </view>
 
-          <!-- 昵称区域 -->
-          <view class="nickname-section">
+          <!-- 昵称区域（id 用于键盘弹出时 scroll-into-view 定位） -->
+          <view id="nickname-anchor" class="nickname-section">
             <text class="nickname-label">我的昵称</text>
             <input class="nickname-input"
               type="text"
-              placeholder="请输入昵称"
+              placeholder="输入你的昵称"
               placeholder-class="nickname-placeholder"
               value="{{editNickname}}"
               bindinput="onNicknameInput"
-              maxlength="20" />
+              maxlength="20"
+              adjust-position="{{false}}"
+              bindkeyboardheightchange="onNicknameKeyboardChange" />
             <button class="nickname-save-btn"
               bindtap="saveNickname">保存昵称</button>
           </view>
