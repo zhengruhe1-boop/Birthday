@@ -10,6 +10,10 @@ const TMPL_VAR_TIME = "time24";    // 事件日期时间，e.g. "2026-04-10 08:0
 // ── User's actual template ID (hard-coded as default) ─────────────────────────
 const DEFAULT_TEMPLATE_ID = "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
 
+// ── Mini-program jump config（公众号模板消息跳转小程序）─────────────────────────
+const MP_APPID    = "wx4afbf7c1e3ae97ae";   // 小程序 AppID
+const MP_PAGEPATH = "pages/home/home";       // 跳转页面
+
 // ── In-memory access token cache ──────────────────────────────────────────────
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -142,6 +146,11 @@ async function sendTemplateMsg(
   const payload = {
     touser:      item.openId,
     template_id: templateId,
+    // 跳转小程序（公众号与小程序需在微信平台已绑定）
+    miniprogram: {
+      appid:    MP_APPID,
+      pagepath: MP_PAGEPATH,
+    },
     data: {
       [TMPL_VAR_NAME]: { value: item.nameField },
       [TMPL_VAR_TIME]: { value: item.timeField },
