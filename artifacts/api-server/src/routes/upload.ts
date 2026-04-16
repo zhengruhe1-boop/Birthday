@@ -3,13 +3,17 @@ import multer from "multer";
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
+import { fileURLToPath } from "url";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router: IRouter = Router();
 
-// 本地上传目录（对象存储不可用时的降级存储）
-export const LOCAL_UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
+// 用 import.meta.url 定位构建产物目录，确保无论从哪个目录启动服务，
+// 上传文件始终存放在 <api-server根目录>/uploads/，不随 cwd 变化
+const _dirname = path.dirname(fileURLToPath(import.meta.url));
+// dist/index.mjs → dist/ → ../ → api-server根目录
+export const LOCAL_UPLOAD_DIR = path.resolve(_dirname, "../uploads");
 
 function useObjectStorage(): boolean {
   return !!process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
