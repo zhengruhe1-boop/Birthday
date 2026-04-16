@@ -572,6 +572,7 @@ router.post(
         return;
       }
 
+      // 拉取 OA 用户信息，核心目的是拿到 unionId
       const infoUrl =
         `https://api.weixin.qq.com/cgi-bin/user/info` +
         `?access_token=${oaToken}&openid=${encodeURIComponent(fromUser)}&lang=zh_CN`;
@@ -579,39 +580,53 @@ router.post(
       const info = await infoResp.json() as {
         openid?: string;
         unionid?: string;
-        nickname?: string;
-        headimgurl?: string;
         errcode?: number;
       };
 
-      if (info.errcode || !info.openid) {
+      if (info.errcode) {
         req.log.warn({ errcode: info.errcode, fromUser }, "Webhook: failed to get OA user info");
-        return;
+        // 即使拿不到 user info，也保存 oaOpenId（无 unionId 匹配则等待下次 sync）
       }
 
       const oaUnionId = info.unionid || null;
-      const nickname  = info.nickname || "微信用户";
-      const avatar    = info.headimgurl || null;
 
-      // Upsert OA user record so unionId→OA openId mapping exists in DB
-      const existing = await db.select().from(usersTable)
-        .where(eq(usersTable.openId, fromUser)).limit(1);
+      // ── 优先：通过 unionId 关联已有 MP 用户，写入 oaOpenId ─────────────────
+      if (oaUnionId) {
+        const mpUser = await db.select({ id: usersTable.id })
+          .from(usersTable)
+          .where(and(eq(usersTable.unionId, oaUnionId), isNotNull(usersTable.openId)))
+          .limit(1);
 
-      const unionPatch = oaUnionId ? { unionId: oaUnionId } : {};
-      if (existing.length > 0) {
-        await db.update(usersTable)
-          .set({ ...unionPatch, nickname, avatarUrl: avatar })
-          .where(eq(usersTable.openId, fromUser));
-      } else {
-        await db.insert(usersTable).values({
-          openId:   fromUser,
-          unionId:  oaUnionId || undefined,
-          nickname,
-          avatarUrl: avatar,
-        });
+        if (mpUser.length > 0) {
+          await db.update(usersTable)
+            .set({ oaOpenId: fromUser })
+            .where(eq(usersTable.id, mpUser[0].id));
+          req.log.info({ userId: mpUser[0].id, oaOpenId: fromUser, unionId: oaUnionId },
+            "Webhook: oaOpenId linked to MP user via unionId");
+          return;
+        }
       }
 
-      req.log.info({ fromUser, oaUnionId }, "Webhook: OA subscriber upserted");
+      // ── 兜底：无匹配 MP 用户时，保留 OA 用户记录在 oaOpenId 字段 ───────────
+      const byOa = await db.select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.oaOpenId, fromUser))
+        .limit(1);
+
+      if (byOa.length === 0) {
+        // 插入一个仅有 oaOpenId 的占位行，待 MP 用户登录后 sync 会关联
+        await db.insert(usersTable).values({
+          openId:   null as unknown as string,
+          unionId:  oaUnionId || undefined,
+          nickname: "微信用户",
+          oaOpenId: fromUser,
+        }).onConflictDoNothing();
+        req.log.info({ oaOpenId: fromUser, unionId: oaUnionId }, "Webhook: OA-only user row created");
+      } else if (oaUnionId && !byOa[0]) {
+        await db.update(usersTable)
+          .set({ unionId: oaUnionId })
+          .where(eq(usersTable.oaOpenId, fromUser));
+      }
     } catch (err) {
       req.log.error({ err }, "Webhook: error processing subscribe event");
     }

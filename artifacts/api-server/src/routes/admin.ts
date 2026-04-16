@@ -350,6 +350,116 @@ router.post("/oa-sync", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/oa-diagnostic ─────────────────────────────────────────────
+// 诊断公众号通知链路所有关键步骤，帮助排查问题
+router.get("/oa-diagnostic", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getAccessToken } = await import("../lib/wechat-notify.js");
+    const { usersTable: ut } = await import("@workspace/db");
+
+    const report: Record<string, unknown> = {};
+
+    // 1. 配置检查
+    const oaAppId     = await getSetting("wechat_appid");
+    const oaAppSecret = await getSetting("wechat_appsecret");
+    const templateId  = await getSetting("notify_template_id");
+    const enabled     = await getSetting("notify_enabled");
+    report.config = {
+      oaAppId:          oaAppId   ? oaAppId.slice(0, 6) + "***" : null,
+      oaAppSecretSet:   !!oaAppSecret,
+      templateId:       templateId ?? "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w (default)",
+      notifyEnabled:    enabled !== "false",
+    };
+
+    // 2. Access token
+    const token = await getAccessToken();
+    report.accessToken = token ? "OK (obtained)" : "FAILED (check AppID/AppSecret and IP whitelist)";
+
+    // 3. 用户数据状态
+    const { db } = await import("@workspace/db");
+    const allUsers      = await db.select({ id: ut.id, openId: ut.openId, unionId: ut.unionId, oaOpenId: ut.oaOpenId })
+                            .from(ut);
+    const mpUsers       = allUsers.filter(u => u.openId && !u.openId.startsWith("mock:"));
+    const withUnionId   = mpUsers.filter(u => u.unionId);
+    const withOaOpenId  = allUsers.filter(u => u.oaOpenId);
+    report.users = {
+      totalInDB:           allUsers.length,
+      realMpUsers:         mpUsers.length,
+      mpUsersWithUnionId:  withUnionId.length,
+      usersWithOaOpenId:   withOaOpenId.length,
+      sampleOaOpenIds:     withOaOpenId.slice(0, 3).map(u => ({ id: u.id, oaOpenId: u.oaOpenId?.slice(0, 8) + "…" })),
+    };
+
+    // 4. 如果有 token，尝试拉关注列表（只看第一页）
+    if (token) {
+      try {
+        const url = `https://api.weixin.qq.com/cgi-bin/user/get?access_token=${token}`;
+        const resp = await fetch(url);
+        const data = await resp.json() as { total?: number; count?: number; errcode?: number; errmsg?: string };
+        if (data.errcode) {
+          report.oaFollowerList = { error: `errcode ${data.errcode}: ${data.errmsg}` };
+        } else {
+          report.oaFollowerList = { total: data.total, firstPageCount: data.count };
+        }
+      } catch (e: any) {
+        report.oaFollowerList = { error: String(e?.message) };
+      }
+    } else {
+      report.oaFollowerList = "skipped (no access token)";
+    }
+
+    // 5. 最近一次通知结果
+    const lastRun    = await getSetting("notify_mp_last_run");
+    const lastResult = await getSetting("notify_mp_last_result");
+    report.lastNotifyRun = {
+      at:     lastRun ?? "never",
+      result: lastResult ? JSON.parse(lastResult) : null,
+    };
+
+    res.json(report);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message), stack: String(err?.stack).slice(0, 500) });
+  }
+});
+
+// ── POST /api/admin/oa-send-test ──────────────────────────────────────────────
+// 直接向指定 OA openId 发一条测试模板消息
+router.post("/oa-send-test", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { oaOpenId, name, date } = req.body as { oaOpenId?: string; name?: string; date?: string };
+    if (!oaOpenId) {
+      res.status(400).json({ error: "oaOpenId is required" });
+      return;
+    }
+    const { getAccessToken } = await import("../lib/wechat-notify.js");
+    const token = await getAccessToken();
+    if (!token) {
+      res.status(400).json({ error: "无法获取 OA access_token" });
+      return;
+    }
+    const templateId = (await getSetting("notify_template_id")) ?? "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
+    const payload = {
+      touser:      oaOpenId,
+      template_id: templateId,
+      miniprogram: { appid: "wx4afbf7c1e3ae97ae", pagepath: "pages/home/home" },
+      data: {
+        thing19: { value: name  ?? "测试用户 · 生日" },
+        time24:  { value: date  ?? new Date().toISOString().slice(0, 10) },
+      },
+    };
+    const res2 = await fetch(
+      `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+    );
+    const data = await res2.json();
+    res.json({ payload: { touser: oaOpenId, templateId }, wechatResponse: data });
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message) });
+  }
+});
+
 // ── GET /api/admin/mp-notify-config ───────────────────────────────────────────
 router.get("/mp-notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
