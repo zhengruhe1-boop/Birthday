@@ -20,9 +20,16 @@ function normalizeContacts(list) {
   }));
 }
 
+// 清理微信系统占位文字，视为未设置昵称
+const INVALID_NICKNAMES = ['获取微信昵称', '微信昵称', '用户昵称'];
+function cleanNickname(nickname) {
+  const s = (nickname || '').trim();
+  return INVALID_NICKNAMES.includes(s) ? '' : s;
+}
+
 // 构建显示用的问候语
 function buildDisplayNickname(nickname) {
-  const name = (nickname || '').trim();
+  const name = cleanNickname(nickname);
   return name ? '您好！' + name : '您好！欢迎使用生日通';
 }
 
@@ -90,7 +97,7 @@ Page({
       this.setData({
         userInfo: cachedNorm,
         displayAvatarUrl: toDisplayAvatar(cachedAvatarUrl),
-        editNickname: cached.nickname || '',
+        editNickname: cleanNickname(cached.nickname),
         displayNickname: buildDisplayNickname(cached.nickname),
       });
     }
@@ -135,7 +142,7 @@ Page({
       this.setData({
         userInfo: meNormalized,
         displayAvatarUrl: toDisplayAvatar(meNormalized ? meNormalized.avatarUrl : ''),
-        editNickname: me ? (me.nickname || '') : '',
+        editNickname: cleanNickname(me ? me.nickname : ''),
         displayNickname: buildDisplayNickname(me ? me.nickname : ''),
         upcoming: upcomingNorm,
         anniversaries: ann,
@@ -351,7 +358,7 @@ Page({
   openSettings() {
     this.setData({
       showSettings: true,
-      editNickname: (this.data.userInfo && this.data.userInfo.nickname) || '',
+      editNickname: cleanNickname(this.data.userInfo && this.data.userInfo.nickname),
       nicknameChanged: false,
     });
   },
