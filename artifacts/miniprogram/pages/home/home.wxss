@@ -587,6 +587,20 @@
   color: #1e293b;
 }
 
+/* 获取微信昵称：伪装成按钮的 type=nickname input */
+.wx-nick-picker {
+  height: 80rpx;
+  line-height: 80rpx;
+  background: #f97316;
+  border-radius: 20rpx;
+  padding: 0 32rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  border: none;
+}
+
 .nickname-save-btn {
   height: 80rpx;
   line-height: 80rpx;

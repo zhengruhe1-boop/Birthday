@@ -309,15 +309,24 @@
             <text class="avatar-hint">点击头像更换</text>
           </view>
 
-          <!-- 昵称输入 -->
+          <!-- 昵称区域 -->
           <view class="nickname-section">
+
+            <!-- ① 普通文本框：显示 & 手动编辑当前昵称 -->
             <input class="nickname-input"
-              type="nickname"
-              placeholder="点击可填入微信昵称或手动输入"
+              type="text"
+              placeholder="输入昵称"
               value="{{editNickname}}"
               bindinput="onNicknameInput"
-              bindnicknameverify="onNicknameVerify"
               bindblur="onNicknameBlur" />
+
+            <!-- ② 获取微信昵称（type=nickname，不绑定 value，WeChat 控制） -->
+            <input class="wx-nick-picker"
+              type="nickname"
+              placeholder="点击获取微信昵称"
+              bindnicknameverify="onNicknameVerify" />
+
+            <!-- 手动输入后出现保存按钮 -->
             <button wx:if="{{nicknameChanged}}"
               class="nickname-save-btn"
               bindtap="saveNickname">保存昵称</button>
