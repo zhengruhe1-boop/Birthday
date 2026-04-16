@@ -6,8 +6,8 @@
     <text class="checking-text">生日通</text>
   </view>
 
-  <!-- ═══════════════ 第一步：授权登录 ═══════════════ -->
-  <block wx:if="{{!checkingSession && step === 'login'}}">
+  <!-- ═══════════════ 授权登录 ═══════════════ -->
+  <block wx:if="{{!checkingSession}}">
 
     <!-- 背景装饰 -->
     <view class="login-bg">
