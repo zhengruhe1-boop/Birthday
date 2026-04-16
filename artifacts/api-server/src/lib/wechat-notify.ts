@@ -1,6 +1,6 @@
 import { db, contactsTable, usersTable, settingsTable, eventsTable } from "@workspace/db";
-import { isNotNull, eq, and } from "drizzle-orm";
-import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
+import { isNotNull, eq, and, isNull } from "drizzle-orm";
+import { calcDaysUntilBirthday } from "./birthday.js";
 import { logger } from "./logger.js";
 
 // ── Fixed template variable keys (must match the WeChat template) ─────────────
@@ -86,8 +86,8 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
     ]);
 
   return {
-    enabled:       enabled !== "false",   // 未配置时默认开启（与 public-config 保持一致）
-    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],  // 默认：当天+提前1天
+    enabled:       enabled !== "false",   // 未配置时默认开启
+    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],
     sendHour:      sendHour ? parseInt(sendHour, 10) : 8,
     templateId:    templateId ?? DEFAULT_TEMPLATE_ID,
     lastRunAt,
@@ -97,7 +97,6 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
 
 // ── Format helpers ────────────────────────────────────────────────────────────
 function toDateTimeStr(dateStr: string): string {
-  // dateStr is YYYY-MM-DD; return only the date portion for time24 template var
   return dateStr.slice(0, 10);
 }
 
@@ -132,9 +131,9 @@ function daysUntilAnniversary(dateStr: string): { days: number; targetDate: stri
 // ── Notification item ─────────────────────────────────────────────────────────
 interface NotifyItem {
   openId:    string;
-  nameField: string;   // thing19 value
-  timeField: string;   // time24 value
-  label:     string;   // for logging
+  nameField: string;
+  timeField: string;
+  label:     string;
 }
 
 // ── Send single template message ──────────────────────────────────────────────
@@ -146,11 +145,7 @@ async function sendTemplateMsg(
   const payload = {
     touser:      item.openId,
     template_id: templateId,
-    // 跳转小程序（公众号与小程序需在微信平台已绑定）
-    miniprogram: {
-      appid:    MP_APPID,
-      pagepath: MP_PAGEPATH,
-    },
+    miniprogram: { appid: MP_APPID, pagepath: MP_PAGEPATH },
     data: {
       [TMPL_VAR_NAME]: { value: item.nameField },
       [TMPL_VAR_TIME]: { value: item.timeField },
@@ -173,35 +168,33 @@ async function sendTemplateMsg(
 // ── Build notification items for a user ──────────────────────────────────────
 async function buildItems(
   userId: number,
-  openId: string,
+  oaOpenId: string,
   daysBefore: number[],
 ): Promise<NotifyItem[]> {
   const items: NotifyItem[] = [];
 
-  // ── 1. Contacts → 生日 ──────────────────────────────────────────────────────
+  // 1. Contacts → 生日
   const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
-
   for (const c of contacts) {
     const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay);
     if (!daysBefore.includes(days)) continue;
     const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
     items.push({
-      openId,
+      openId:    oaOpenId,
       nameField: `${c.name} · 生日`,
       timeField: toDateTimeStr(dateStr),
       label:     `contact:${c.id} 生日`,
     });
   }
 
-  // ── 2. Events ───────────────────────────────────────────────────────────────
+  // 2. Events（纪念日 / 倒数日 / 其它）
   const events = await db.select().from(eventsTable).where(eq(eventsTable.userId, userId));
-
   for (const e of events) {
     if (e.type === "anniversary" && e.eventDate) {
       const { days, targetDate } = daysUntilAnniversary(e.eventDate);
       if (!daysBefore.includes(days)) continue;
       items.push({
-        openId,
+        openId:    oaOpenId,
         nameField: `${e.name}${e.person ? ` (${e.person})` : ""} · 纪念日`,
         timeField: toDateTimeStr(targetDate),
         label:     `event:${e.id} 纪念日`,
@@ -210,18 +203,17 @@ async function buildItems(
       const days = daysUntilDate(e.eventDate);
       if (!daysBefore.includes(days)) continue;
       items.push({
-        openId,
+        openId:    oaOpenId,
         nameField: `${e.name} · 倒数日`,
         timeField: toDateTimeStr(e.eventDate),
         label:     `event:${e.id} 倒数日`,
       });
     } else if (e.type === "other" && e.reminderTime) {
-      // reminderTime is "YYYY-MM-DD HH:mm" or "YYYY-MM-DDTHH:mm"
       const dateStr = e.reminderTime.replace("T", " ").slice(0, 10);
       const days    = daysUntilDate(dateStr);
       if (!daysBefore.includes(days)) continue;
       items.push({
-        openId,
+        openId:    oaOpenId,
         nameField: `${e.name} · 其它`,
         timeField: dateStr,
         label:     `event:${e.id} 其它`,
@@ -232,16 +224,133 @@ async function buildItems(
   return items;
 }
 
+// ── 通过 OA 关注列表 + unionId 自动回填 oaOpenId ──────────────────────────────
+// 适用场景：OA 与 MP 同属一个微信开放平台，历史关注者 oaOpenId 尚未写入。
+// 每次通知前调用，最多页次 = ceil(关注人数 / 10000)，耗时秒级。
+export async function syncOaOpenIds(token: string): Promise<{ synced: number; errors: number }> {
+  const result = { synced: 0, errors: 0 };
+
+  try {
+    // 第一步：遍历关注列表，拿到所有 OA openId
+    const allOaOpenIds: string[] = [];
+    let nextOpenId = "";
+    let pageNum = 0;
+
+    do {
+      pageNum++;
+      const url = `https://api.weixin.qq.com/cgi-bin/user/get?access_token=${token}` +
+        (nextOpenId ? `&next_openid=${encodeURIComponent(nextOpenId)}` : "");
+
+      const resp = await fetch(url);
+      const page = await resp.json() as {
+        count?: number;
+        data?: { openid?: string[] };
+        next_openid?: string;
+        errcode?: number;
+        errmsg?: string;
+      };
+
+      if (page.errcode) {
+        logger.error({ errcode: page.errcode, errmsg: page.errmsg }, "syncOaOpenIds: follower list error");
+        result.errors++;
+        break;
+      }
+
+      const ids = page.data?.openid ?? [];
+      allOaOpenIds.push(...ids);
+
+      // 下一页游标为空 or 与当前相同时，停止翻页
+      const next = page.next_openid ?? "";
+      nextOpenId = (next && next !== nextOpenId) ? next : "";
+    } while (nextOpenId && pageNum < 100);  // 最多 100 页（1000 万关注者）
+
+    if (allOaOpenIds.length === 0) {
+      logger.info("syncOaOpenIds: no OA followers found");
+      return result;
+    }
+
+    logger.info({ total: allOaOpenIds.length }, "syncOaOpenIds: fetched follower list");
+
+    // 第二步：批量获取关注者的 unionId（每批最多 100 个）
+    for (let i = 0; i < allOaOpenIds.length; i += 100) {
+      const batch = allOaOpenIds.slice(i, i + 100);
+      try {
+        const batchResp = await fetch(
+          `https://api.weixin.qq.com/cgi-bin/user/info/batchget?access_token=${token}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_list: batch.map(openid => ({ openid, lang: "zh_CN" })) }),
+          },
+        );
+        const batchData = await batchResp.json() as {
+          user_info_list?: Array<{
+            openid:   string;
+            unionid?: string;
+            subscribe?: number;
+          }>;
+          errcode?: number;
+          errmsg?: string;
+        };
+
+        if (batchData.errcode) {
+          logger.error({ errcode: batchData.errcode }, "syncOaOpenIds: batchget error");
+          result.errors++;
+          continue;
+        }
+
+        for (const info of batchData.user_info_list ?? []) {
+          if (!info.unionid || !info.openid) continue;
+
+          // 找到 DB 中 unionId 匹配、oaOpenId 为空的 MP 用户
+          const mp = await db.select({ id: usersTable.id, oaOpenId: usersTable.oaOpenId })
+            .from(usersTable)
+            .where(and(
+              eq(usersTable.unionId, info.unionid),
+              isNotNull(usersTable.openId),   // MP 用户必须有 openId
+            ))
+            .limit(1);
+
+          if (mp.length === 0) continue;
+          const user = mp[0];
+
+          // 如果已经设置了正确的 oaOpenId，跳过
+          if (user.oaOpenId === info.openid) continue;
+
+          await db.update(usersTable)
+            .set({ oaOpenId: info.openid })
+            .where(eq(usersTable.id, user.id));
+
+          result.synced++;
+          logger.info({ userId: user.id, oaOpenId: info.openid, unionid: info.unionid },
+            "syncOaOpenIds: oaOpenId populated via unionId");
+        }
+      } catch (err) {
+        logger.error({ err, batchIndex: i }, "syncOaOpenIds: batch processing error");
+        result.errors++;
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "syncOaOpenIds: unexpected error");
+    result.errors++;
+  }
+
+  logger.info(result, "syncOaOpenIds: sync complete");
+  return result;
+}
+
 // ── Main notification runner ──────────────────────────────────────────────────
-export async function runWechatBirthdayNotifications(): Promise<{ sent: number; skipped: number; errors: number }> {
+export async function runWechatBirthdayNotifications(): Promise<{
+  sent: number; skipped: number; errors: number; syncResult?: { synced: number; errors: number };
+}> {
   logger.info("Running WeChat notification check (birthday + events)...");
-  const result = { sent: 0, skipped: 0, errors: 0 };
+  const result: { sent: number; skipped: number; errors: number; syncResult?: { synced: number; errors: number } } =
+    { sent: 0, skipped: 0, errors: 0 };
 
   const config = await getNotifyConfig();
 
   // Ensure default template ID is persisted if DB has nothing
-  const storedId = await getSettingLocal("notify_template_id");
-  if (!storedId) {
+  if (!(await getSettingLocal("notify_template_id"))) {
     await setSettingLocal("notify_template_id", DEFAULT_TEMPLATE_ID);
   }
 
@@ -263,9 +372,22 @@ export async function runWechatBirthdayNotifications(): Promise<{ sent: number; 
     return result;
   }
 
-  // 只向已有公众号 oaOpenId 的用户发送（oaOpenId 由关注事件 webhook 写入）
-  const users = await db.select().from(usersTable)
-    .where(isNotNull(usersTable.oaOpenId));
+  // ── 发送前先同步 OA 关注者 → oaOpenId（利用 unionId 匹配）────────────────────
+  // 确保历史关注者和新关注者都能收到消息，无需重新关注触发 webhook
+  try {
+    const syncResult = await syncOaOpenIds(token);
+    result.syncResult = syncResult;
+    if (syncResult.synced > 0) {
+      logger.info({ synced: syncResult.synced }, "Pre-notification OA sync completed");
+    }
+  } catch (err) {
+    logger.error({ err }, "Pre-notification OA sync failed (will still attempt sending)");
+  }
+
+  // 查询所有已有 OA openId 的用户
+  const users = await db.select().from(usersTable).where(isNotNull(usersTable.oaOpenId));
+
+  logger.info({ userCount: users.length }, "WeChat notification: users with oaOpenId");
 
   for (const user of users) {
     try {
@@ -293,8 +415,8 @@ export async function runWechatBirthdayNotifications(): Promise<{ sent: number; 
   }
 
   await setSettingLocal("notify_mp_last_run",    new Date().toISOString());
-  await setSettingLocal("notify_mp_last_result", JSON.stringify(result));
-  logger.info(result, "WeChat notification check complete");
+  await setSettingLocal("notify_mp_last_result", JSON.stringify({ sent: result.sent, skipped: result.skipped, errors: result.errors }));
+  logger.info({ sent: result.sent, skipped: result.skipped, errors: result.errors }, "WeChat notification check complete");
   return result;
 }
 

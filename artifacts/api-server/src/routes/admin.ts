@@ -332,6 +332,24 @@ router.post("/notify-run", async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/admin/oa-sync ───────────────────────────────────────────────────
+// 手动触发：扫描公众号关注列表，通过 unionId 回填 oaOpenId（适合历史关注者）
+router.post("/oa-sync", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getAccessToken, syncOaOpenIds } = await import("../lib/wechat-notify.js");
+    const token = await getAccessToken();
+    if (!token) {
+      res.status(400).json({ error: "无法获取公众号 access_token，请检查 AppID / AppSecret 配置" });
+      return;
+    }
+    const result = await syncOaOpenIds(token);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/admin/mp-notify-config ───────────────────────────────────────────
 router.get("/mp-notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
