@@ -84,6 +84,11 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_email" text
     `);
 
+    // oa_open_id: 公众号 OpenID，由 OA 事件 webhook 写入，用于发送 OA 模板消息
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oa_open_id" text
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

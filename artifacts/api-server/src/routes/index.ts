@@ -7,6 +7,7 @@ import remindersRouter from "./reminders.js";
 import adminRouter from "./admin.js";
 import eventsRouter from "./events.js";
 import shareRouter from "./share.js";
+import wechatOaRouter from "./wechat-oa.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/reminders", remindersRouter);
 router.use("/admin", adminRouter);
 router.use("/events", eventsRouter);
 router.use("/share", shareRouter);
+router.use("/wechat/oa", wechatOaRouter);
 
 export default router;

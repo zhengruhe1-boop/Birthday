@@ -13,6 +13,7 @@ export const usersTable = pgTable("users", {
   lastAccessAt: timestamp("last_access_at"),
   mpSubscribed: boolean("mp_subscribed").default(false).notNull(),
   mpSubscribeCount: integer("mp_subscribe_count").default(0).notNull(),
+  oaOpenId: text("oa_open_id"),   // 公众号 OpenID（关注事件 webhook 写入，用于发 OA 模板消息）
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });

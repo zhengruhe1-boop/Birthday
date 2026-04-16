@@ -71,9 +71,9 @@ export async function getMpNotifyConfig(): Promise<MpNotifyConfig> {
   ]);
 
   return {
-    enabled:       enabled === "true",
+    enabled:       enabled !== "false",   // 未配置时默认开启
     templateId:    templateId ?? DEFAULT_MP_TEMPLATE_ID,
-    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [1],
+    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],  // 默认当天+提前1天
     sendHour:      sendHour ? parseInt(sendHour, 10) : 8,
     tipText:       tipText ?? "Ta的生日快到了，记得送上生日祝福！",
     lastRunAt:     lastRunAt ?? null,
@@ -162,8 +162,8 @@ async function buildMpItems(userId: number, openId: string, daysBefore: number[]
     const days = calcDaysUntilBirthday(
       c.birthdayMonth,
       c.birthdayDay,
-      c.birthdayYear ?? undefined,
-      c.isLunar ?? false
+      c.birthYear ?? undefined,
+      c.birthdayLunar ?? false
     );
     if (!daysBefore.includes(days)) continue;
     const dateDisplay = thisYearDate(c.birthdayMonth, c.birthdayDay);

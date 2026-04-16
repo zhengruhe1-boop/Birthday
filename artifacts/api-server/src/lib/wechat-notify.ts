@@ -1,5 +1,5 @@
 import { db, contactsTable, usersTable, settingsTable, eventsTable } from "@workspace/db";
-import { isNotNull, eq, and, not, like } from "drizzle-orm";
+import { isNotNull, eq, and } from "drizzle-orm";
 import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
 import { logger } from "./logger.js";
 
@@ -86,8 +86,8 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
     ]);
 
   return {
-    enabled:       enabled === "true",
-    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [1],
+    enabled:       enabled !== "false",   // 未配置时默认开启（与 public-config 保持一致）
+    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],  // 默认：当天+提前1天
     sendHour:      sendHour ? parseInt(sendHour, 10) : 8,
     templateId:    templateId ?? DEFAULT_TEMPLATE_ID,
     lastRunAt,
@@ -263,13 +263,13 @@ export async function runWechatBirthdayNotifications(): Promise<{ sent: number; 
     return result;
   }
 
-  // Only real WeChat users (openId exists and is not a mock)
+  // 只向已有公众号 oaOpenId 的用户发送（oaOpenId 由关注事件 webhook 写入）
   const users = await db.select().from(usersTable)
-    .where(and(isNotNull(usersTable.openId), not(like(usersTable.openId, "mock:%"))));
+    .where(isNotNull(usersTable.oaOpenId));
 
   for (const user of users) {
     try {
-      const items = await buildItems(user.id, user.openId!, config.daysBefore);
+      const items = await buildItems(user.id, user.oaOpenId!, config.daysBefore);
 
       if (items.length === 0) {
         result.skipped++;
