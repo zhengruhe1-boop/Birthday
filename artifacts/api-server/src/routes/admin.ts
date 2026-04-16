@@ -445,8 +445,8 @@ router.post("/oa-send-test", async (req: Request, res: Response) => {
       template_id: templateId,
       miniprogram: { appid: "wx4afbf7c1e3ae97ae", pagepath: "pages/home/home" },
       data: {
-        thing19: { value: name  ?? "测试用户 · 生日" },
-        time24:  { value: date  ?? new Date().toISOString().slice(0, 10) },
+        thing19: { value: (name ?? "测试用户 · 生日").slice(0, 20) },
+        time24:  { value: (date ?? new Date().toISOString().slice(0, 10)) + " 00:00" },
       },
     };
     const res2 = await fetch(

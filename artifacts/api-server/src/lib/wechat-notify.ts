@@ -96,8 +96,18 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
 }
 
 // ── Format helpers ────────────────────────────────────────────────────────────
-function toDateTimeStr(dateStr: string): string {
-  return dateStr.slice(0, 10);
+
+// WeChat time24 类型要求格式：YYYY-MM-DD HH:mm（必须含时分，否则 errcode 47001）
+function toDateTimeStr(dateStr: string, hour = 0, minute = 0): string {
+  const date = dateStr.slice(0, 10);
+  const hh   = String(hour).padStart(2, "0");
+  const mm   = String(minute).padStart(2, "0");
+  return `${date} ${hh}:${mm}`;
+}
+
+// WeChat thing19 类型最多 20 字，超长截断加省略号
+function truncateThing(str: string, max = 20): string {
+  return str.length <= max ? str : str.slice(0, max - 1) + "…";
 }
 
 function thisYearDate(month: number, day: number): string {
@@ -141,7 +151,7 @@ async function sendTemplateMsg(
   token: string,
   templateId: string,
   item: NotifyItem,
-): Promise<boolean> {
+): Promise<{ ok: boolean; errcode?: number; errmsg?: string }> {
   const payload = {
     touser:      item.openId,
     template_id: templateId,
@@ -152,17 +162,21 @@ async function sendTemplateMsg(
     },
   };
 
+  logger.info({ label: item.label, nameField: item.nameField, timeField: item.timeField },
+    "Sending WeChat template message");
+
   const res = await fetch(
     `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
   );
   const data = await res.json() as { errcode?: number; errmsg?: string };
   if (data.errcode === 0 || data.errmsg === "ok") {
-    logger.info({ label: item.label, openId: item.openId }, "WeChat template message sent");
-    return true;
+    logger.info({ label: item.label }, "WeChat template message sent OK");
+    return { ok: true };
   }
-  logger.error({ data, label: item.label, openId: item.openId }, "Failed to send WeChat template message");
-  return false;
+  logger.error({ errcode: data.errcode, errmsg: data.errmsg, label: item.label, nameField: item.nameField, timeField: item.timeField },
+    "Failed to send WeChat template message");
+  return { ok: false, errcode: data.errcode, errmsg: data.errmsg };
 }
 
 // ── Build notification items for a user ──────────────────────────────────────
@@ -181,8 +195,8 @@ async function buildItems(
     const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
     items.push({
       openId:    oaOpenId,
-      nameField: `${c.name} · 生日`,
-      timeField: toDateTimeStr(dateStr),
+      nameField: truncateThing(`${c.name} · 生日`),
+      timeField: toDateTimeStr(dateStr, 0, 0),
       label:     `contact:${c.id} 生日`,
     });
   }
@@ -193,10 +207,11 @@ async function buildItems(
     if (e.type === "anniversary" && e.eventDate) {
       const { days, targetDate } = daysUntilAnniversary(e.eventDate);
       if (!daysBefore.includes(days)) continue;
+      const rawName = `${e.name}${e.person ? `(${e.person})` : ""} · 纪念日`;
       items.push({
         openId:    oaOpenId,
-        nameField: `${e.name}${e.person ? ` (${e.person})` : ""} · 纪念日`,
-        timeField: toDateTimeStr(targetDate),
+        nameField: truncateThing(rawName),
+        timeField: toDateTimeStr(targetDate, 0, 0),
         label:     `event:${e.id} 纪念日`,
       });
     } else if (e.type === "countdown" && e.eventDate) {
@@ -204,18 +219,18 @@ async function buildItems(
       if (!daysBefore.includes(days)) continue;
       items.push({
         openId:    oaOpenId,
-        nameField: `${e.name} · 倒数日`,
-        timeField: toDateTimeStr(e.eventDate),
+        nameField: truncateThing(`${e.name} · 倒数日`),
+        timeField: toDateTimeStr(e.eventDate, 0, 0),
         label:     `event:${e.id} 倒数日`,
       });
     } else if (e.type === "other" && e.reminderTime) {
-      const dateStr = e.reminderTime.replace("T", " ").slice(0, 10);
+      const dateStr = e.reminderTime.slice(0, 10);
       const days    = daysUntilDate(dateStr);
       if (!daysBefore.includes(days)) continue;
       items.push({
         openId:    oaOpenId,
-        nameField: `${e.name} · 其它`,
-        timeField: dateStr,
+        nameField: truncateThing(`${e.name} · 其它`),
+        timeField: toDateTimeStr(dateStr, 0, 0),
         label:     `event:${e.id} 其它`,
       });
     }
@@ -341,11 +356,16 @@ export async function syncOaOpenIds(token: string): Promise<{ synced: number; er
 
 // ── Main notification runner ──────────────────────────────────────────────────
 export async function runWechatBirthdayNotifications(): Promise<{
-  sent: number; skipped: number; errors: number; syncResult?: { synced: number; errors: number };
+  sent: number; skipped: number; errors: number;
+  errorSamples?: Array<{ label: string; errcode?: number; errmsg?: string }>;
+  syncResult?: { synced: number; errors: number };
 }> {
   logger.info("Running WeChat notification check (birthday + events)...");
-  const result: { sent: number; skipped: number; errors: number; syncResult?: { synced: number; errors: number } } =
-    { sent: 0, skipped: 0, errors: 0 };
+  const result: {
+    sent: number; skipped: number; errors: number;
+    errorSamples: Array<{ label: string; errcode?: number; errmsg?: string }>;
+    syncResult?: { synced: number; errors: number };
+  } = { sent: 0, skipped: 0, errors: 0, errorSamples: [] };
 
   const config = await getNotifyConfig();
 
@@ -384,10 +404,12 @@ export async function runWechatBirthdayNotifications(): Promise<{
     logger.error({ err }, "Pre-notification OA sync failed (will still attempt sending)");
   }
 
-  // 查询所有已有 OA openId 的用户
-  const users = await db.select().from(usersTable).where(isNotNull(usersTable.oaOpenId));
+  // 查询已有 OA openId 的真实 MP 用户（排除 OA-only 占位行，这些行没有 openId）
+  const users = await db.select().from(usersTable).where(
+    and(isNotNull(usersTable.oaOpenId), isNotNull(usersTable.openId))
+  );
 
-  logger.info({ userCount: users.length }, "WeChat notification: users with oaOpenId");
+  logger.info({ userCount: users.length }, "WeChat notification: real users with oaOpenId");
 
   for (const user of users) {
     try {
@@ -400,9 +422,18 @@ export async function runWechatBirthdayNotifications(): Promise<{
 
       for (const item of items) {
         try {
-          const ok = await sendTemplateMsg(token, templateId, item);
-          if (ok) result.sent++;
-          else    result.errors++;
+          const { ok, errcode, errmsg } = await sendTemplateMsg(token, templateId, item);
+          if (ok) {
+            result.sent++;
+          } else {
+            result.errors++;
+            // 保留前 5 条错误样本，供管理员诊断
+            if (result.errorSamples.length < 5) {
+              result.errorSamples.push({ label: item.label, errcode, errmsg });
+            }
+            logger.error({ errcode, errmsg, label: item.label, userId: user.id },
+              "WeChat template send failed");
+          }
         } catch (err) {
           result.errors++;
           logger.error({ err, label: item.label }, "Error sending WeChat notification item");
@@ -415,7 +446,12 @@ export async function runWechatBirthdayNotifications(): Promise<{
   }
 
   await setSettingLocal("notify_mp_last_run",    new Date().toISOString());
-  await setSettingLocal("notify_mp_last_result", JSON.stringify({ sent: result.sent, skipped: result.skipped, errors: result.errors }));
+  await setSettingLocal("notify_mp_last_result", JSON.stringify({
+    sent:         result.sent,
+    skipped:      result.skipped,
+    errors:       result.errors,
+    errorSamples: result.errorSamples.slice(0, 5),
+  }));
   logger.info({ sent: result.sent, skipped: result.skipped, errors: result.errors }, "WeChat notification check complete");
   return result;
 }

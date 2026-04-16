@@ -1918,9 +1918,12 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
     </div>
   );
 
-  const RunRecord = ({ lastRunAt, lastRunResult }: { lastRunAt: string | null; lastRunResult: { sent: number; skipped: number; errors: number } | null }) => (
+  const RunRecord = ({ lastRunAt, lastRunResult }: {
+    lastRunAt: string | null;
+    lastRunResult: { sent: number; skipped: number; errors: number; errorSamples?: Array<{ label: string; errcode?: number; errmsg?: string }> } | null;
+  }) => (
     lastRunAt ? (
-      <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-1.5">
+      <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-2">
         <div className="flex items-center gap-2 text-gray-600">
           <Clock className="w-4 h-4 text-gray-400" />
           <span>上次运行：{new Date(lastRunAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
@@ -1930,6 +1933,15 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
             <span className="text-green-600">✓ 发送 {lastRunResult.sent} 条</span>
             <span>跳过 {lastRunResult.skipped} 条</span>
             {lastRunResult.errors > 0 && <span className="text-red-500">✗ 失败 {lastRunResult.errors} 条</span>}
+          </div>
+        )}
+        {lastRunResult?.errorSamples && lastRunResult.errorSamples.length > 0 && (
+          <div className="mt-1 pl-6 space-y-1">
+            {lastRunResult.errorSamples.map((e, i) => (
+              <div key={i} className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 font-mono">
+                [{e.errcode ?? "?"}] {e.errmsg ?? "unknown"} — {e.label}
+              </div>
+            ))}
           </div>
         )}
       </div>
