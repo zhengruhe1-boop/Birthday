@@ -540,26 +540,52 @@
   padding: 40rpx 0 24rpx;
 }
 
-/* 头像按钮：open-type="chooseAvatar" 包裹图片 */
-.avatar-btn {
+/* 头像点击区域（普通 view 替代 open-type button） */
+.avatar-tap-wrap {
+  position: relative;
   width: 160rpx;
   height: 160rpx;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
   border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.14);
 }
-.avatar-btn::after { border: none; }
-.avatar-btn:active { opacity: 0.82; }
+.avatar-tap-wrap:active { opacity: 0.82; }
 
 .profile-avatar-img {
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
   display: block;
+}
+
+/* 相机角标 */
+.avatar-camera-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0,0,0,0.45);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+}
+
+/* 上传中遮罩 */
+.avatar-uploading-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.avatar-uploading-text {
+  font-size: 20rpx;
+  color: #fff;
 }
 
 .avatar-hint {
@@ -576,6 +602,13 @@
   gap: 16rpx;
 }
 
+.nickname-label {
+  font-size: 24rpx;
+  color: #64748b;
+  font-weight: 500;
+  display: block;
+}
+
 .nickname-input {
   height: 88rpx;
   line-height: 88rpx;
@@ -587,19 +620,7 @@
   color: #1e293b;
 }
 
-/* 获取微信昵称：伪装成按钮的 type=nickname input */
-.wx-nick-picker {
-  height: 80rpx;
-  line-height: 80rpx;
-  background: #f97316;
-  border-radius: 20rpx;
-  padding: 0 32rpx;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #fff;
-  text-align: center;
-  border: none;
-}
+.nickname-placeholder { color: #cbd5e1; }
 
 .nickname-save-btn {
   height: 80rpx;

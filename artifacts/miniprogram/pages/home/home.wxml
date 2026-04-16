@@ -6,11 +6,11 @@
       <!-- 头像（点击进入设置） -->
       <view class="avatar-wrap-hd">
         <image class="avatar-img-hd"
-          src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : 'https://shengritong.kuixi.com/shengritong.jpg'}}"
+          src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
           mode="aspectFill" />
       </view>
       <view class="header-text">
-        <text class="welcome-text">您好，{{userInfo ? userInfo.nickname : '朋友'}}</text>
+        <text class="welcome-text">{{displayNickname}}</text>
         <text class="welcome-sub">记住每一个重要的日子</text>
       </view>
     </view>
@@ -297,36 +297,31 @@
       <scroll-view class="settings-body" scroll-y>
         <view class="settings-inner">
 
-          <!-- 头像：点击头像即可更换 -->
+          <!-- 头像：点击上传自定义头像 -->
           <view class="profile-section">
-            <button class="avatar-btn"
-              open-type="chooseAvatar"
-              bind:chooseavatar="onChooseAvatar">
+            <view class="avatar-tap-wrap" bindtap="chooseAvatar">
               <image class="profile-avatar-img"
-                src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : 'https://shengritong.kuixi.com/shengritong.jpg'}}"
+                src="{{(userInfo && userInfo.avatarUrl) ? userInfo.avatarUrl : '/images/logo.jpg'}}"
                 mode="aspectFill" />
-            </button>
-            <text class="avatar-hint">点击头像更换</text>
+              <view wx:if="{{avatarUploading}}" class="avatar-uploading-mask">
+                <text class="avatar-uploading-text">上传中…</text>
+              </view>
+              <view wx:else class="avatar-camera-badge"><text>📷</text></view>
+            </view>
+            <text class="avatar-hint">点击更换头像</text>
           </view>
 
           <!-- 昵称区域 -->
           <view class="nickname-section">
-
-            <!-- ① 普通文本框：显示 & 手动编辑当前昵称 -->
+            <text class="nickname-label">我的昵称</text>
             <input class="nickname-input"
               type="text"
-              placeholder="输入昵称"
+              placeholder="请输入昵称"
+              placeholder-class="nickname-placeholder"
               value="{{editNickname}}"
               bindinput="onNicknameInput"
-              bindblur="onNicknameBlur" />
-
-            <!-- ② 获取微信昵称（type=nickname，不绑定 value，WeChat 控制） -->
-            <input class="wx-nick-picker"
-              type="nickname"
-              placeholder="点击获取微信昵称"
-              bindnicknameverify="onNicknameVerify" />
-
-            <!-- 手动输入后出现保存按钮 -->
+              bindblur="onNicknameBlur"
+              maxlength="20" />
             <button wx:if="{{nicknameChanged}}"
               class="nickname-save-btn"
               bindtap="saveNickname">保存昵称</button>

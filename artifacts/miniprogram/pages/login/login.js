@@ -1,23 +1,11 @@
 const api = require('../../utils/api');
-const { setToken, getOrCreateDeviceId, isLoggedIn } = require('../../utils/auth');
+const { setToken, isLoggedIn } = require('../../utils/auth');
 
 Page({
   data: {
-    // step: 'login' | 'profile'
-    step: 'login',
-
-    // 等待 sessionReady 期间显示 loading，避免闪烁
     checkingSession: true,
-
-    // login step
     loading: false,
     networkError: '',
-
-    // profile step
-    avatarUrl: '',
-    nickname: '',
-    savingProfile: false,
-    isNewUser: false,
 
     // legal modal
     showLegal: false,
@@ -27,7 +15,6 @@ Page({
   },
 
   async onLoad() {
-    // 等待 app.js 的无感知自动登录完成，期间显示 loading 避免登录页闪烁
     const app = getApp();
     let loggedIn = false;
     if (app && app.globalData.sessionReady) {
@@ -39,38 +26,31 @@ Page({
       wx.reLaunch({ url: '/pages/home/home' });
       return;
     }
-    // 未登录：显示登录页
     this.setData({ checkingSession: false });
   },
 
-  // ── 微信一键授权登录（点击即视为同意协议）─────────────────────────────────
+  // ── 微信一键授权登录 ──────────────────────────────────────────────────────────
   async handleWxLogin() {
     if (this.data.loading) return;
 
     this.setData({ loading: true, networkError: '' });
     try {
-      // 1. 获取微信 code
       const loginRes = await new Promise((resolve, reject) => {
         wx.login({ timeout: 10000, success: resolve, fail: reject });
       });
 
-      // 2. 换取 token
       const res = await api.post('api/auth/wechat/login', { code: loginRes.code });
       setToken(res.token);
 
-      // 3. 保存用户信息
       if (res.user) {
         wx.setStorageSync('birthday_userinfo', res.user);
       }
 
-      // 4. 同步更新 sessionReady，让首页 onLoad 拿到 true，避免被踢回登录页
       const app = getApp();
       if (app) app.globalData.sessionReady = Promise.resolve(true);
 
-      // 5. 登录成功，直接进入首页（资料可在首页设置中完善）
       wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
-      // wx.login fail 回调传的是 { errMsg: '...' } 对象，不是 Error，需兼容两者
       const msg = err.message || err.errMsg || String(err) || '';
       if (msg.includes('timeout')) {
         this.setData({ networkError: '⚠️ 网络超时，请检查网络连接后重试' });
@@ -94,56 +74,7 @@ Page({
     }
   },
 
-  // ── 资料步骤：选微信头像 ────────────────────────────────────────────────
-  onChooseAvatar(e) {
-    const url = e.detail.avatarUrl;
-    if (!url) return;
-    this.setData({ avatarUrl: url });
-  },
-
-  // ── 资料步骤：输入昵称 ──────────────────────────────────────────────────
-  onNicknameInput(e) {
-    this.setData({ nickname: e.detail.value });
-  },
-
-  // ── 资料步骤：完成 ──────────────────────────────────────────────────────
-  async handleSaveProfile() {
-    if (this.data.savingProfile) return;
-    const nickname = this.data.nickname.trim() || '微信用户';
-    let avatarUrl = this.data.avatarUrl || '';
-
-    this.setData({ savingProfile: true });
-    try {
-      // 微信 chooseAvatar 返回的是临时路径，需要先上传到服务器
-      if (avatarUrl && !avatarUrl.startsWith('http')) {
-        try {
-          const uploadRes = await api.upload('api/upload', avatarUrl, 'image');
-          if (uploadRes && uploadRes.url) {
-            // 转为绝对 URL
-            const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
-            avatarUrl = uploadRes.url.startsWith('http') ? uploadRes.url : base + uploadRes.url;
-          }
-        } catch {
-          // 上传失败则不保存头像，继续保存昵称
-          avatarUrl = '';
-        }
-      }
-
-      const updated = await api.put('api/auth/me', { nickname, avatarUrl });
-      wx.setStorageSync('birthday_userinfo', updated);
-      wx.reLaunch({ url: '/pages/home/home' });
-    } catch (err) {
-      // 即使保存失败也放行，资料可以在设置里改
-      wx.reLaunch({ url: '/pages/home/home' });
-    }
-  },
-
-  // ── 跳过资料 ────────────────────────────────────────────────────────────
-  handleSkipProfile() {
-    wx.reLaunch({ url: '/pages/home/home' });
-  },
-
-  // ── 用户协议（从管理后台获取）──────────────────────────────────────────
+  // ── 用户协议 ──────────────────────────────────────────────────────────────────
   async showTerms() {
     this.setData({ showLegal: true, legalTitle: '用户协议', legalContent: '', legalLoading: true });
     try {
@@ -157,7 +88,7 @@ Page({
     }
   },
 
-  // ── 隐私政策（从管理后台获取）──────────────────────────────────────────
+  // ── 隐私政策 ──────────────────────────────────────────────────────────────────
   async showPrivacy() {
     this.setData({ showLegal: true, legalTitle: '隐私政策', legalContent: '', legalLoading: true });
     try {
