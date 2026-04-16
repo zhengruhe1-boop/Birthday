@@ -1,11 +1,7 @@
 .form-page {
   min-height: 100vh;
   background: #f8fafc;
-  display: flex;
-  flex-direction: column;
 }
-
-.form-scroll { height: 100vh; }
 
 .form-body { padding: 24rpx 32rpx; }
 
@@ -109,6 +105,7 @@
   font-size: 28rpx;
   color: #1e293b;
   background: #fafafa;
+  box-sizing: border-box;
 }
 
 .field-hint {
@@ -222,12 +219,11 @@
 .test-email-btn.error { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 .test-email-btn:active { opacity: 0.75; }
 
-/* AI events */
+/* ── AI 历史大事区块 ── */
 .ai-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer;
 }
 .ai-header:active { opacity: 0.75; }
 
@@ -235,13 +231,51 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
+  flex: 1;
 }
 
-.ai-icon { font-size: 40rpx; }
-.ai-title { font-size: 28rpx; font-weight: 600; display: block; }
-.ai-desc { font-size: 22rpx; color: #94a3b8; display: block; }
+/* 渐变徽标替换机器人 emoji */
+.ai-badge {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 14rpx;
+  background: linear-gradient(135deg, #f43f5e, #fb923c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
-.expand-arrow { font-size: 32rpx; color: #94a3b8; }
+.ai-badge-text {
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+.ai-title { font-size: 28rpx; font-weight: 600; color: #1e293b; }
+
+/* CSS 三角形箭头替换 ∧∨ */
+.chevron-wrap {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chevron {
+  width: 18rpx;
+  height: 18rpx;
+  border-right: 4rpx solid #94a3b8;
+  border-bottom: 4rpx solid #94a3b8;
+  border-radius: 2rpx;
+  transition: transform 0.2s;
+}
+
+.chevron-down { transform: rotate(45deg) translateY(-4rpx); }
+.chevron-up   { transform: rotate(-135deg) translateY(-4rpx); }
 
 /* 点击生成按钮 */
 .ai-generate-wrap {
@@ -368,9 +402,7 @@
   line-height: 1.5;
 }
 
-.notify-switch {
-  flex-shrink: 0;
-}
+.notify-switch { flex-shrink: 0; }
 
 .notify-tip {
   margin-top: 20rpx;
@@ -384,13 +416,13 @@
   color: #d97706;
 }
 
-/* Footer */
+/* ── Footer ── */
 .form-footer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20rpx);
   border-top: 1rpx solid rgba(0,0,0,0.06);
   padding: 24rpx 32rpx;
@@ -402,6 +434,38 @@
 .delete-btn-wrap { flex-shrink: 0; }
 
 .flex-btn { flex: 1; }
+
+/* 删除按钮：文字风格，替换垃圾桶 emoji */
+.btn-danger-text {
+  height: 88rpx;
+  min-width: 120rpx;
+  padding: 0 24rpx;
+  border-radius: 20rpx;
+  background: #fff1f2;
+  border: 1rpx solid #fecdd3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.btn-danger-text:active { opacity: 0.75; }
+
+.delete-icon-line {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #f43f5e;
+  line-height: 1;
+  display: block;
+  margin-bottom: 2rpx;
+}
+
+.delete-label {
+  font-size: 20rpx;
+  color: #f43f5e;
+  display: block;
+  line-height: 1;
+}
 
 .loading-wrap {
   display: flex;

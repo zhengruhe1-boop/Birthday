@@ -1,215 +1,227 @@
 <view class="form-page" wx:if="{{!loading}}">
 
-  <scroll-view class="form-scroll" scroll-y>
-    <view class="form-body">
+  <!-- 表单内容区（页面原生滚动，避免 scroll-view 光标偏移 bug） -->
+  <view class="form-body">
 
-      <!-- 头像 -->
-      <view class="avatar-section" bindtap="chooseAvatar">
-        <view class="form-avatar-wrap">
-          <image class="form-avatar-img"
-            src="{{avatarUrl ? avatarUrl : '/images/logo.jpg'}}"
-            mode="aspectFill" />
-          <view class="avatar-edit-badge" wx:if="{{!avatarUploading}}">
-            <text>📷</text>
-          </view>
-          <view class="avatar-loading" wx:if="{{avatarUploading}}">
-            <text>…</text>
-          </view>
+    <!-- 头像 -->
+    <view class="avatar-section" bindtap="chooseAvatar">
+      <view class="form-avatar-wrap">
+        <image class="form-avatar-img"
+          src="{{avatarUrl ? avatarUrl : '/images/logo.jpg'}}"
+          mode="aspectFill" />
+        <view class="avatar-edit-badge" wx:if="{{!avatarUploading}}">
+          <text>📷</text>
         </view>
-        <text class="avatar-hint">点击更换头像</text>
-      </view>
-
-      <!-- 基本信息 -->
-      <view class="form-card">
-        <view class="field-group">
-          <text class="label">姓名<text class="label-required">*</text></text>
-          <input class="input-field" placeholder="请输入姓名" value="{{name}}" bindinput="onNameInput" />
-        </view>
-
-        <!-- 性别 -->
-        <view class="field-group">
-          <text class="label">性别<text class="label-optional">（选填）</text></text>
-          <view class="gender-row">
-            <view class="gender-btn {{gender === 'male' ? 'active-male' : ''}}" data-val="male" bindtap="setGender">
-              <text>👦 男</text>
-            </view>
-            <view class="gender-btn {{gender === 'female' ? 'active-female' : ''}}" data-val="female" bindtap="setGender">
-              <text>👧 女</text>
-            </view>
-            <view class="gender-btn {{!gender ? 'active-neutral' : ''}}" data-val="" bindtap="setGender">
-              <text>不填</text>
-            </view>
-          </view>
+        <view class="avatar-loading" wx:if="{{avatarUploading}}">
+          <text>…</text>
         </view>
       </view>
+      <text class="avatar-hint">点击更换头像</text>
+    </view>
 
-      <!-- 生日 -->
-      <view class="form-card">
-        <!-- 日历类型切换 -->
-        <view class="field-group">
-          <text class="label">日历类型</text>
-          <view class="cal-toggle">
-            <view class="cal-tab {{!birthdayLunar ? 'active' : ''}}" bindtap="toggleLunar">
-              <text>🌍 公历</text>
-            </view>
-            <view class="cal-tab {{birthdayLunar ? 'active' : ''}}" bindtap="toggleLunar">
-              <text>🌙 农历</text>
-            </view>
+    <!-- 基本信息 -->
+    <view class="form-card">
+      <view class="field-group">
+        <text class="label">姓名<text class="label-required">*</text></text>
+        <input class="input-field" placeholder="请输入姓名" value="{{name}}" bindinput="onNameInput"
+          cursor-spacing="120" adjust-position="{{true}}" />
+      </view>
+
+      <!-- 性别 -->
+      <view class="field-group">
+        <text class="label">性别<text class="label-optional">（选填）</text></text>
+        <view class="gender-row">
+          <view class="gender-btn {{gender === 'male' ? 'active-male' : ''}}" data-val="male" bindtap="setGender">
+            <text>👦 男</text>
+          </view>
+          <view class="gender-btn {{gender === 'female' ? 'active-female' : ''}}" data-val="female" bindtap="setGender">
+            <text>👧 女</text>
+          </view>
+          <view class="gender-btn {{!gender ? 'active-neutral' : ''}}" data-val="" bindtap="setGender">
+            <text>不填</text>
           </view>
         </view>
+      </view>
+    </view>
 
-        <!-- 月份和日 -->
-        <view class="birthday-row">
-          <view class="birthday-col">
-            <text class="label">月份<text class="label-required">*</text></text>
-            <picker mode="selector" range="{{months}}" value="{{monthIndex}}"
-              bindchange="onMonthChange">
-              <view class="picker-field">
-                <text>{{birthdayMonth}} 月</text>
-                <text class="picker-arrow">›</text>
-              </view>
-            </picker>
+    <!-- 生日 -->
+    <view class="form-card">
+      <!-- 日历类型切换 -->
+      <view class="field-group">
+        <text class="label">日历类型</text>
+        <view class="cal-toggle">
+          <view class="cal-tab {{!birthdayLunar ? 'active' : ''}}" bindtap="toggleLunar">
+            <text>🌍 公历</text>
           </view>
-          <view class="birthday-col">
-            <text class="label">日<text class="label-required">*</text></text>
-            <picker mode="selector" range="{{days}}" value="{{dayIndex}}"
-              bindchange="onDayChange">
-              <view class="picker-field">
-                <text>{{birthdayDay}} 日</text>
-                <text class="picker-arrow">›</text>
-              </view>
-            </picker>
+          <view class="cal-tab {{birthdayLunar ? 'active' : ''}}" bindtap="toggleLunar">
+            <text>🌙 农历</text>
           </view>
-        </view>
-
-        <!-- 出生年份 -->
-        <view class="field-group" style="margin-top:24rpx">
-          <text class="label">出生年份<text class="label-optional">（选填）</text></text>
-          <input class="input-field" type="number" placeholder="例如：1990"
-            value="{{birthYear}}" bindinput="onBirthYearInput" maxlength="4" />
-        </view>
-
-        <!-- 星座 -->
-        <view wx:if="{{zodiac && !birthdayLunar}}" class="zodiac-tag">
-          <text>⭐ {{zodiac}}</text>
         </view>
       </view>
 
-      <!-- 关系和籍贯 -->
-      <view class="form-card">
-        <view class="field-group">
-          <text class="label">关系<text class="label-optional">（选填）</text></text>
-          <picker mode="selector" range="{{relationOptions}}" bindchange="onRelationChange">
+      <!-- 月份和日 -->
+      <view class="birthday-row">
+        <view class="birthday-col">
+          <text class="label">月份<text class="label-required">*</text></text>
+          <picker mode="selector" range="{{months}}" value="{{monthIndex}}"
+            bindchange="onMonthChange">
             <view class="picker-field">
-              <text>{{relation || '请选择关系'}}</text>
+              <text>{{birthdayMonth}} 月</text>
               <text class="picker-arrow">›</text>
             </view>
           </picker>
         </view>
-
-        <view class="field-group">
-          <text class="label">籍贯<text class="label-optional">（选填）</text></text>
-          <input class="input-field" placeholder="例如：北京"
-            value="{{hometown}}" bindinput="onHometownInput" />
+        <view class="birthday-col">
+          <text class="label">日<text class="label-required">*</text></text>
+          <picker mode="selector" range="{{days}}" value="{{dayIndex}}"
+            bindchange="onDayChange">
+            <view class="picker-field">
+              <text>{{birthdayDay}} 日</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
         </view>
       </view>
 
-      <!-- 消息通知开关 -->
-      <view class="form-card notify-card">
-        <view class="notify-row">
-          <view class="notify-left">
-            <text class="notify-label">消息通知</text>
-            <text class="notify-sub">
-              {{oaSubscribed ? '已关注公众号，生日前将推送微信提醒' : '关注生日通公众号后可开启'}}
-            </text>
+      <!-- 出生年份 -->
+      <view class="field-group" style="margin-top:24rpx">
+        <text class="label">出生年份<text class="label-optional">（选填）</text></text>
+        <input class="input-field" type="number" placeholder="例如：1990"
+          value="{{birthYear}}" bindinput="onBirthYearInput" maxlength="4"
+          cursor-spacing="120" adjust-position="{{true}}" />
+      </view>
+
+      <!-- 星座 -->
+      <view wx:if="{{zodiac && !birthdayLunar}}" class="zodiac-tag">
+        <text>⭐ {{zodiac}}</text>
+      </view>
+    </view>
+
+    <!-- 关系和籍贯 -->
+    <view class="form-card">
+      <view class="field-group">
+        <text class="label">关系<text class="label-optional">（选填）</text></text>
+        <picker mode="selector" range="{{relationOptions}}" bindchange="onRelationChange">
+          <view class="picker-field">
+            <text>{{relation || '请选择关系'}}</text>
+            <text class="picker-arrow">›</text>
           </view>
-          <switch
-            class="notify-switch"
-            checked="{{notifyEnabled}}"
-            bindchange="onNotifyToggle"
-            color="#f43f5e"
-          />
-        </view>
-        <view wx:if="{{!oaSubscribed}}" class="notify-tip" bindtap="goFollowOa">
-          <text class="notify-tip-text">👆 点此了解如何关注公众号开通提醒</text>
-        </view>
+        </picker>
       </view>
 
-      <!-- 邮件提醒 -->
+      <view class="field-group">
+        <text class="label">籍贯<text class="label-optional">（选填）</text></text>
+        <input class="input-field" placeholder="例如：北京"
+          value="{{hometown}}" bindinput="onHometownInput"
+          cursor-spacing="120" adjust-position="{{true}}" />
+      </view>
+    </view>
+
+    <!-- 消息通知开关 -->
+    <view class="form-card notify-card">
+      <view class="notify-row">
+        <view class="notify-left">
+          <text class="notify-label">消息通知</text>
+          <text class="notify-sub">
+            {{oaSubscribed ? '已关注公众号，生日前将推送微信提醒' : '关注生日通公众号后可开启'}}
+          </text>
+        </view>
+        <switch
+          class="notify-switch"
+          checked="{{notifyEnabled}}"
+          bindchange="onNotifyToggle"
+          color="#f43f5e"
+        />
+      </view>
+      <view wx:if="{{!oaSubscribed}}" class="notify-tip" bindtap="goFollowOa">
+        <text class="notify-tip-text">👆 点此了解如何关注公众号开通提醒</text>
+      </view>
+    </view>
+
+    <!-- 邮件提醒 -->
+    <view class="form-card">
+      <view class="field-group">
+        <text class="label">输入邮箱消息提醒</text>
+        <input class="input-field" type="email" placeholder="输入邮箱（选填）"
+          value="{{reminderEmail}}" bindinput="onEmailInput"
+          cursor-spacing="120" adjust-position="{{true}}" />
+        <text class="field-hint">系统提前1天和当天8点发送邮件和公众号消息提醒您。</text>
+      </view>
+
+      <!-- 测试邮件按钮（编辑模式且有邮箱）-->
+      <block wx:if="{{isEdit && reminderEmail}}">
+        <button class="test-email-btn {{testEmailStatus === 'success' ? 'success' : testEmailStatus === 'error' ? 'error' : ''}}"
+          bindtap="sendTestEmail" disabled="{{testEmailStatus === 'sending'}}">
+          <text wx:if="{{testEmailStatus === 'idle'}}">📧 发送测试邮件</text>
+          <text wx:elif="{{testEmailStatus === 'sending'}}">发送中...</text>
+          <text wx:elif="{{testEmailStatus === 'success'}}">✓ {{testEmailMsg}}</text>
+          <text wx:else>✗ {{testEmailMsg}}</text>
+        </button>
+      </block>
+    </view>
+
+    <!-- AI 历史事件 -->
+    <block wx:if="{{isEdit}}">
       <view class="form-card">
-        <view class="field-group">
-          <text class="label">输入邮箱消息提醒</text>
-          <input class="input-field" type="email" placeholder="输入邮箱（选填）"
-            value="{{reminderEmail}}" bindinput="onEmailInput" />
-          <text class="field-hint">系统提前1天和当天8点发送邮件和公众号消息提醒您。</text>
+        <view class="ai-header" bindtap="toggleAiEvents">
+          <view class="ai-header-left">
+            <!-- 渐变 AI 徽标（替换机器人 emoji） -->
+            <view class="ai-badge">
+              <text class="ai-badge-text">历史</text>
+            </view>
+            <text class="ai-title">出生那天发生的历史大事</text>
+          </view>
+          <!-- CSS 箭头替换文字 ∧∨ -->
+          <view class="chevron-wrap">
+            <view class="chevron {{showAiEvents ? 'chevron-up' : 'chevron-down'}}"></view>
+          </view>
         </view>
 
-        <!-- 测试邮件按钮（编辑模式且有邮箱）-->
-        <block wx:if="{{isEdit && reminderEmail}}">
-          <button class="test-email-btn {{testEmailStatus === 'success' ? 'success' : testEmailStatus === 'error' ? 'error' : ''}}"
-            bindtap="sendTestEmail" disabled="{{testEmailStatus === 'sending'}}">
-            <text wx:if="{{testEmailStatus === 'idle'}}">📧 发送测试邮件</text>
-            <text wx:elif="{{testEmailStatus === 'sending'}}">发送中...</text>
-            <text wx:elif="{{testEmailStatus === 'success'}}">✓ {{testEmailMsg}}</text>
-            <text wx:else>✗ {{testEmailMsg}}</text>
-          </button>
-        </block>
-      </view>
-
-      <!-- AI 历史事件 -->
-      <block wx:if="{{isEdit}}">
-        <view class="form-card">
-          <view class="ai-header" bindtap="toggleAiEvents">
-            <view class="ai-header-left">
-              <text class="ai-icon">🤖</text>
-              <text class="ai-title">出生那天发生的历史大事</text>
-            </view>
-            <text class="expand-arrow">{{showAiEvents ? '∧' : '∨'}}</text>
+        <block wx:if="{{showAiEvents}}">
+          <!-- 加载中 -->
+          <view class="ai-loading" wx:if="{{aiLoading}}">
+            <text>AI 生成中，请稍候...</text>
           </view>
-
-          <block wx:if="{{showAiEvents}}">
-            <!-- 加载中 -->
-            <view class="ai-loading" wx:if="{{aiLoading}}">
-              <text>🤖 AI 生成中，请稍候...</text>
-            </view>
-            <!-- 错误 -->
-            <view class="ai-error" wx:elif="{{aiError}}">
-              <text>⚠️ {{aiError}}</text>
-              <view class="retry-btn" bindtap="loadAiEvents"><text>重试</text></view>
-            </view>
-            <!-- 未生成过：显示"生成"按钮 -->
-            <view wx:elif="{{aiEvents.length === 0}}" class="ai-generate-wrap">
-              <button class="ai-generate-btn" bindtap="loadAiEvents">✨ 点击生成历史大事</button>
-            </view>
-            <!-- 已有事件：直接展示 + 底部放"重新生成"按钮 -->
-            <block wx:else>
-              <view class="ai-events-list">
-                <view wx:for="{{aiEvents}}" wx:key="index" class="ai-event-item">
-                  <view class="ai-event-year">{{item.year}}</view>
-                  <view class="ai-event-body">
-                    <text class="ai-event-title">{{item.title}}</text>
-                    <text class="ai-event-content" wx:if="{{item.description}}">{{item.description}}</text>
-                  </view>
+          <!-- 错误 -->
+          <view class="ai-error" wx:elif="{{aiError}}">
+            <text>⚠️ {{aiError}}</text>
+            <view class="retry-btn" bindtap="loadAiEvents"><text>重试</text></view>
+          </view>
+          <!-- 未生成过：显示"生成"按钮 -->
+          <view wx:elif="{{aiEvents.length === 0}}" class="ai-generate-wrap">
+            <button class="ai-generate-btn" bindtap="loadAiEvents">✨ 点击生成历史大事</button>
+          </view>
+          <!-- 已有事件：直接展示 + 底部放"重新生成"按钮 -->
+          <block wx:else>
+            <view class="ai-events-list">
+              <view wx:for="{{aiEvents}}" wx:key="index" class="ai-event-item">
+                <view class="ai-event-year">{{item.year}}</view>
+                <view class="ai-event-body">
+                  <text class="ai-event-title">{{item.title}}</text>
+                  <text class="ai-event-content" wx:if="{{item.description}}">{{item.description}}</text>
                 </view>
               </view>
-              <view class="ai-refresh-wrap">
-                <button class="ai-refresh-btn" bindtap="loadAiEvents">↻ 重新生成</button>
-              </view>
-            </block>
+            </view>
+            <view class="ai-refresh-wrap">
+              <button class="ai-refresh-btn" bindtap="loadAiEvents">↻ 重新生成</button>
+            </view>
           </block>
-        </view>
-      </block>
+        </block>
+      </view>
+    </block>
 
-    </view>
-    <view style="height:180rpx" />
-  </scroll-view>
+  </view>
+  <!-- 底部留白，避免被固定 footer 遮住 -->
+  <view style="height:180rpx" />
 
   <!-- Bottom actions -->
   <view class="form-footer">
     <view wx:if="{{isEdit}}" class="delete-btn-wrap">
-      <button class="btn btn-danger {{deleting ? 'btn-disabled' : ''}}"
+      <!-- 删除按钮：用文字替代垃圾桶 emoji -->
+      <button class="btn btn-danger-text {{deleting ? 'btn-disabled' : ''}}"
         bindtap="handleDelete" disabled="{{deleting || saving}}">
-        <text>🗑️</text>
+        <text class="delete-icon-line">—</text>
+        <text class="delete-label">删除</text>
       </button>
     </view>
     <button class="btn btn-primary flex-btn {{(saving || deleting) ? 'btn-disabled' : ''}}"
