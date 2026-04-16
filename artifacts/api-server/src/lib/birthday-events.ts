@@ -88,6 +88,24 @@ async function buildAiClient(): Promise<{ client: OpenAI; model: string; tempera
   };
 }
 
+// ── 不吉利关键词列表：title/description 含有任意一词则丢弃该条事件 ──────────
+const NEGATIVE_KEYWORDS = [
+  "枪击", "刺杀", "暗杀", "遇刺", "行刺",
+  "死亡", "去世", "逝世", "殉难", "殉职", "牺牲", "阵亡", "遇难",
+  "自杀", "被杀", "被害", "被刺", "被暗杀",
+  "战争", "战役", "战斗", "交战", "炮击", "轰炸", "屠杀", "屠城", "大屠杀",
+  "沉没", "坠毁", "撞机", "空难", "坠落", "失事",
+  "灭亡", "覆灭", "亡国", "灭国",
+  "处决", "行刑", "绞刑", "斩首",
+  "地震", "海啸", "洪水", "灾难", "瘟疫", "鼠疫",
+  "爆炸", "恐怖",
+];
+
+function isNegativeEvent(event: BirthdayEvent): boolean {
+  const text = `${event.title} ${event.description}`;
+  return NEGATIVE_KEYWORDS.some(kw => text.includes(kw));
+}
+
 // ── Main generator: historical events on a specific month/day ─────────────────
 export async function generateBirthdayEvents(
   month: number,
@@ -108,7 +126,12 @@ export async function generateBirthdayEvents(
 2. 年代尽量跨度大（包含古代、近代、现代）
 3. 至少2件中国历史事件，至少2件世界历史事件
 4. year字段填写具体年份（如"1949年"），title不超过20字，description不超过60字（须含具体月日）
-5. 【重要】禁止包含任何人物逝世、去世、死亡、遇刺、殉难等负面内容；只选取积极、建设性或中性的历史事件（如：发明、建国、条约签订、重大发现、战争胜利、重要会议等）
+5. 【严格禁止】绝对不能包含以下类型的事件：
+   - 任何人物的死亡、去世、逝世、遇刺、刺杀、暗杀、枪击、被害、被杀、自杀、处决、殉难
+   - 任何战争、战役、战斗、炮击、轰炸、屠杀
+   - 任何灾难：撞机、空难、沉没、坠毁、爆炸、地震、海啸、瘟疫
+   - 任何政权灭亡、覆灭、亡国
+   - 只选取积极、振奋人心或中性的历史事件，例如：科技发明、建国立邦、条约签订、重大发现、重要会议、体育竞赛、文化艺术成就、经济建设等
 
 只返回JSON数组，不加任何说明：
 [
@@ -124,7 +147,7 @@ export async function generateBirthdayEvents(
       messages: [
         {
           role:    "system",
-          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。严禁出现任何人物逝世、去世、死亡、遇刺、殉难等负面死亡内容。",
+          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。【严禁】出现以下任何内容：死亡、去世、逝世、遇刺、刺杀、枪击、暗杀、被害、被杀、自杀、处决、殉难、战争、战役、战斗、炮击、轰炸、屠杀、撞机、空难、沉没、坠毁、爆炸、地震、海啸、瘟疫、灭亡、覆灭、亡国。只选择积极、建设性或中性的历史大事。",
         },
         { role: "user", content: prompt },
       ],
@@ -133,9 +156,17 @@ export async function generateBirthdayEvents(
     const content = response.choices[0]?.message?.content ?? "";
     logger.debug({ content: content.slice(0, 400) }, "AI birthday events raw response");
 
-    const events = extractJsonArray(content);
-    logger.info({ month, day, count: events.length }, "Birthday events generated via AI");
-    return events.slice(0, 5);
+    const rawEvents = extractJsonArray(content);
+
+    // 第三道防线：后端关键词过滤，确保任何漏网的负面事件被移除
+    const filtered = rawEvents.filter(e => !isNegativeEvent(e));
+    const removed  = rawEvents.length - filtered.length;
+    if (removed > 0) {
+      logger.warn({ month, day, removed }, "Filtered out negative birthday events");
+    }
+
+    logger.info({ month, day, count: filtered.length }, "Birthday events generated via AI");
+    return filtered.slice(0, 5);
   } catch (err) {
     logger.error({ err, month, day }, "Failed to generate birthday events via AI");
     return [];
