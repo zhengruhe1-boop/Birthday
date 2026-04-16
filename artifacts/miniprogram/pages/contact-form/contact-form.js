@@ -189,7 +189,7 @@ Page({
   },
 
   async chooseAvatar() {
-    // 记住上传前已有的服务器 URL，失败时恢复，避免临时路径残留
+    // 记住上传前已有的服务器 URL，失败时恢复
     const prevAvatarUrl = (this.data.avatarUrl && this.data.avatarUrl.startsWith('http'))
       ? this.data.avatarUrl : null;
 
@@ -205,45 +205,29 @@ Page({
       });
       const tempFile = res.tempFiles[0].tempFilePath;
 
-      // ① 仅更新 UI 预览，不写入缓存（临时路径重启后失效）
+      // ① 立即显示预览（临时路径仅用于 UI，不写 DB）
       this.setData({ avatarUrl: tempFile, avatarUploading: true });
 
-      // ② 新联系人先保存基础信息，再上传头像
-      if (!this.data.contactId) {
-        const saved = await this.saveContactForAvatar();
-        if (!saved) {
-          this.setData({ avatarUrl: prevAvatarUrl, avatarUploading: false });
-          return;
-        }
-      }
-
-      // ③ 上传到服务器
+      // ② 上传图片到服务器（不依赖 contactId，任何时候均可上传）
       const uploadRes = await api.upload('api/upload', tempFile, 'image');
       if (!uploadRes || !uploadRes.url) throw new Error('服务器未返回图片地址');
 
       const absUrl = toAbsUrl(uploadRes.url);
-      // ④ 直接写入联系人记录（与 handleSave 独立，不依赖 buildBody）
-      await api.put('api/contacts/' + this.data.contactId, { avatarUrl: absUrl });
+
+      // ③ 将服务器永久 URL 写入 data（buildBody 会把它带入最终保存请求）
       this.setData({ avatarUrl: absUrl, avatarUploading: false });
-      wx.showToast({ title: '头像已更新', icon: 'success' });
+
+      // ④ 若是编辑模式，额外 PUT 立即持久化（新建联系人在 handleSave 时统一保存）
+      if (this.data.contactId) {
+        await api.put('api/contacts/' + this.data.contactId, { avatarUrl: absUrl });
+      }
+
+      wx.showToast({ title: '头像已选择', icon: 'success' });
     } catch (err) {
-      // 上传失败：恢复旧头像，避免临时路径留在 data 里被 handleSave 写入 DB
+      // 上传失败：恢复旧头像，避免临时路径残留被 handleSave 写入 DB
       this.setData({ avatarUrl: prevAvatarUrl, avatarUploading: false });
       if (err && err.errMsg && err.errMsg.includes('cancel')) return;
       wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
-    }
-  },
-
-  async saveContactForAvatar() {
-    const body = this.buildBody();
-    if (!body.name) { wx.showToast({ title: '请先填写姓名', icon: 'none' }); return null; }
-    try {
-      const res = await api.post('api/contacts', body);
-      this.setData({ isEdit: true, contactId: res.id });
-      return res;
-    } catch {
-      wx.showToast({ title: '保存失败', icon: 'none' });
-      return null;
     }
   },
 
