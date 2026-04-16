@@ -1,6 +1,6 @@
 import express, { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
-import { eq, and, ne, isNotNull } from "drizzle-orm";
+import { eq, and, ne, isNotNull, isNull } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
@@ -296,6 +296,32 @@ router.post("/wechat/login", async (req, res) => {
       user = inserted[0];
     }
 
+    // ── 登录后关联 OA 占位行 ──────────────────────────────────────────────────
+    // 如果 MP 用户有 unionId 但尚无 oaOpenId，尝试从占位行中查找并合并
+    // 这可以修复「用户先关注 OA（token 失败无 unionId 的占位行）后登录小程序」的场景
+    if (!isMock && unionId && !user.oaOpenId) {
+      try {
+        // 查找 unionId 匹配的 OA 占位行
+        const oaPlaceholder = await db.select({ id: usersTable.id, oaOpenId: usersTable.oaOpenId })
+          .from(usersTable)
+          .where(and(eq(usersTable.unionId, unionId), isNull(usersTable.openId)))
+          .limit(1);
+
+        if (oaPlaceholder.length > 0 && oaPlaceholder[0].oaOpenId) {
+          // 将 oaOpenId 写入真实 MP 用户行，并删除占位行
+          await db.update(usersTable)
+            .set({ oaOpenId: oaPlaceholder[0].oaOpenId })
+            .where(eq(usersTable.id, user.id));
+          await db.delete(usersTable).where(eq(usersTable.id, oaPlaceholder[0].id));
+          user.oaOpenId = oaPlaceholder[0].oaOpenId;
+          req.log.info({ userId: user.id, oaOpenId: oaPlaceholder[0].oaOpenId, unionId },
+            "MP login: oaOpenId linked from placeholder row");
+        }
+      } catch (linkErr) {
+        req.log.warn({ linkErr }, "MP login: failed to link OA placeholder row");
+      }
+    }
+
     const token = user.sessionToken!;
     res.json({
       user:   { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
@@ -567,35 +593,36 @@ router.post(
 
     req.log.info({ event, fromUser }, "WeChat OA event received");
 
-    // Handle subscribe (新关注) and re-subscribe (取消后再关注)
+    // 只处理关注事件（新关注 + 取消后再关注）
     if (event !== "subscribe") return;
 
     try {
+      // ── Step 1: 无论 token 是否可用，先尝试通过 unionId 精确关联 ──────────────
+      // token 失败（如 IP 白名单未配置）时，直接跳到 Step 2 保存占位行
+      let oaUnionId: string | null = null;
+
       const oaToken = await getAccessToken();
-      if (!oaToken) {
-        req.log.warn("Webhook: could not obtain OA access token");
-        return;
+      if (oaToken) {
+        // 拉取 OA 用户信息，核心目的是拿到 unionId
+        try {
+          const infoUrl =
+            `https://api.weixin.qq.com/cgi-bin/user/info` +
+            `?access_token=${oaToken}&openid=${encodeURIComponent(fromUser)}&lang=zh_CN`;
+          const infoResp = await fetch(infoUrl);
+          const info = await infoResp.json() as { openid?: string; unionid?: string; errcode?: number };
+          if (info.errcode) {
+            req.log.warn({ errcode: info.errcode, fromUser }, "Webhook: failed to get OA user info");
+          } else {
+            oaUnionId = info.unionid || null;
+          }
+        } catch (err) {
+          req.log.warn({ err }, "Webhook: error fetching OA user info");
+        }
+      } else {
+        req.log.warn({ fromUser }, "Webhook: no OA access token (IP whitelist?), will save oaOpenId without unionId");
       }
 
-      // 拉取 OA 用户信息，核心目的是拿到 unionId
-      const infoUrl =
-        `https://api.weixin.qq.com/cgi-bin/user/info` +
-        `?access_token=${oaToken}&openid=${encodeURIComponent(fromUser)}&lang=zh_CN`;
-      const infoResp = await fetch(infoUrl);
-      const info = await infoResp.json() as {
-        openid?: string;
-        unionid?: string;
-        errcode?: number;
-      };
-
-      if (info.errcode) {
-        req.log.warn({ errcode: info.errcode, fromUser }, "Webhook: failed to get OA user info");
-        // 即使拿不到 user info，也保存 oaOpenId（无 unionId 匹配则等待下次 sync）
-      }
-
-      const oaUnionId = info.unionid || null;
-
-      // ── 优先：通过 unionId 关联已有 MP 用户，写入 oaOpenId ─────────────────
+      // ── Step 2: 优先通过 unionId 直接更新已有 MP 用户行 ──────────────────────
       if (oaUnionId) {
         const mpUser = await db.select({ id: usersTable.id })
           .from(usersTable)
@@ -612,25 +639,30 @@ router.post(
         }
       }
 
-      // ── 兜底：无匹配 MP 用户时，保留 OA 用户记录在 oaOpenId 字段 ───────────
-      const byOa = await db.select({ id: usersTable.id })
+      // ── Step 3: 无法精确匹配时，写占位行（保存 oaOpenId，等 sync 或 MP 登录来关联）
+      // 检查占位行是否已存在
+      const byOa = await db.select({ id: usersTable.id, unionId: usersTable.unionId })
         .from(usersTable)
         .where(eq(usersTable.oaOpenId, fromUser))
         .limit(1);
 
       if (byOa.length === 0) {
-        // 插入一个仅有 oaOpenId 的占位行，待 MP 用户登录后 sync 会关联
+        // 全新占位行：oaOpenId 已知，unionId 若有则一并写入
         await db.insert(usersTable).values({
           openId:   null as unknown as string,
           unionId:  oaUnionId || undefined,
           nickname: "微信用户",
           oaOpenId: fromUser,
         }).onConflictDoNothing();
-        req.log.info({ oaOpenId: fromUser, unionId: oaUnionId }, "Webhook: OA-only user row created");
-      } else if (oaUnionId && !byOa[0]) {
+        req.log.info({ oaOpenId: fromUser, unionId: oaUnionId }, "Webhook: OA-only placeholder row created");
+      } else if (oaUnionId && !byOa[0].unionId) {
+        // 占位行已存在但 unionId 还是空，现在补上
         await db.update(usersTable)
           .set({ unionId: oaUnionId })
           .where(eq(usersTable.oaOpenId, fromUser));
+        req.log.info({ oaOpenId: fromUser, unionId: oaUnionId }, "Webhook: OA placeholder unionId updated");
+      } else {
+        req.log.info({ oaOpenId: fromUser }, "Webhook: OA placeholder already exists, no change needed");
       }
     } catch (err) {
       req.log.error({ err }, "Webhook: error processing subscribe event");

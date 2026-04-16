@@ -1758,6 +1758,56 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   const [mpSaveMsg, setMpSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [mpRunMsg, setMpRunMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // OA 诊断状态
+  interface OaDiag {
+    tokenOk: boolean;
+    readyToNotify: number;
+    totalMp: number;
+    withUnionId: number;
+    oaOnlyPlaceholders: number;
+    lastRunAt: string | null;
+    lastResult: { sent: number; skipped: number; errors: number } | null;
+  }
+  const [oaDiag, setOaDiag] = useState<OaDiag | null>(null);
+  const [oaDiagLoading, setOaDiagLoading] = useState(false);
+  const [oaSyncing, setOaSyncing] = useState(false);
+  const [oaSyncMsg, setOaSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const loadOaDiag = async () => {
+    setOaDiagLoading(true);
+    try {
+      const [diagRes, usersRes] = await Promise.all([
+        fetch(`${BASE}api/admin/oa-diagnostic`, { headers: { "x-admin-key": adminKey } }).then(r => r.json()),
+        fetch(`${BASE}api/admin/oa-users`, { headers: { "x-admin-key": adminKey } }).then(r => r.json()),
+      ]);
+      setOaDiag({
+        tokenOk: diagRes.accessToken === "OK (obtained)",
+        readyToNotify: usersRes.stats?.readyToNotify ?? 0,
+        totalMp: usersRes.stats?.realMpUsers ?? 0,
+        withUnionId: usersRes.stats?.withUnionId ?? 0,
+        oaOnlyPlaceholders: usersRes.stats?.oaOnlyPlaceholders ?? 0,
+        lastRunAt: diagRes.lastNotifyRun?.at ?? null,
+        lastResult: diagRes.lastNotifyRun?.result ?? null,
+      });
+    } catch { /* ignore */ }
+    setOaDiagLoading(false);
+  };
+
+  const runOaSync = async () => {
+    setOaSyncing(true); setOaSyncMsg(null);
+    try {
+      const res = await fetch(`${BASE}api/admin/oa-sync`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json() as { synced?: number; errors?: number; error?: string };
+      if (res.ok && !data.error) {
+        setOaSyncMsg({ ok: true, text: `同步完成：新关联 ${data.synced} 人，失败 ${data.errors} 条` });
+        loadOaDiag(); // 刷新诊断数据
+      } else {
+        setOaSyncMsg({ ok: false, text: data.error ?? "同步失败" });
+      }
+    } catch { setOaSyncMsg({ ok: false, text: "网络错误" }); }
+    setOaSyncing(false);
+  };
+
   const DAY_OPTIONS = [
     { value: 0, label: "生日当天" },
     { value: 1, label: "提前 1 天" },
@@ -1775,6 +1825,8 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
       setMp(mpData as MpNotifyConfig);
       setLoading(false);
     }).catch(() => setLoading(false));
+    // 初始化时自动加载 OA 诊断
+    loadOaDiag();
   }, [adminKey]);
 
   const toggleOaDay = (day: number) => setOa(c => ({
@@ -1937,6 +1989,109 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
       {/* ── 公众号模板消息配置 ── */}
       {channel === "oa" && (
         <>
+          {/* ── OA 通知链路诊断卡片 ── */}
+          <div className={`rounded-xl border shadow-sm overflow-hidden ${
+            oaDiag === null ? "bg-white border-gray-200" :
+            !oaDiag.tokenOk ? "bg-red-50 border-red-200" :
+            oaDiag.readyToNotify === 0 ? "bg-amber-50 border-amber-200" :
+            "bg-green-50 border-green-200"
+          }`}>
+            <div className="px-6 py-4 border-b border-opacity-20 flex items-center justify-between"
+              style={{ borderColor: "inherit" }}>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className={`w-4 h-4 ${
+                  oaDiag === null ? "text-gray-400" :
+                  !oaDiag.tokenOk ? "text-red-500" :
+                  oaDiag.readyToNotify === 0 ? "text-amber-500" : "text-green-600"
+                }`} />
+                <h2 className="text-sm font-semibold text-gray-700">通知链路诊断</h2>
+              </div>
+              <button onClick={loadOaDiag} disabled={oaDiagLoading}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                <RefreshCw className={`w-3.5 h-3.5 ${oaDiagLoading ? "animate-spin" : ""}`} />
+                刷新
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              {oaDiag === null ? (
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <RefreshCw className="w-4 h-4 animate-spin" /> 加载诊断信息...
+                </div>
+              ) : (
+                <>
+                  {/* 状态指标 */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className={`rounded-lg px-3 py-2 text-center ${oaDiag.tokenOk ? "bg-green-100" : "bg-red-100"}`}>
+                      <p className={`text-lg font-bold ${oaDiag.tokenOk ? "text-green-700" : "text-red-600"}`}>
+                        {oaDiag.tokenOk ? "✓" : "✗"}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-0.5">AccessToken</p>
+                    </div>
+                    <div className={`rounded-lg px-3 py-2 text-center ${oaDiag.readyToNotify > 0 ? "bg-green-100" : "bg-amber-100"}`}>
+                      <p className={`text-lg font-bold ${oaDiag.readyToNotify > 0 ? "text-green-700" : "text-amber-600"}`}>
+                        {oaDiag.readyToNotify}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-0.5">可收通知人数</p>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 text-center bg-gray-100">
+                      <p className="text-lg font-bold text-gray-700">{oaDiag.totalMp}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">小程序用户数</p>
+                    </div>
+                  </div>
+
+                  {/* 问题诊断 & 操作指引 */}
+                  {!oaDiag.tokenOk && (
+                    <div className="bg-red-100 rounded-xl px-4 py-3 space-y-2">
+                      <p className="text-sm font-semibold text-red-700">❌ 无法获取公众号 Access Token</p>
+                      <p className="text-xs text-red-600">最常见原因：服务器 IP 未加入公众号 IP 白名单</p>
+                      <ol className="text-xs text-red-700 space-y-1 list-decimal list-inside">
+                        <li>登录微信公众平台 → 设置与开发 → 基本配置</li>
+                        <li>在「IP 白名单」中添加服务器公网 IP（可 SSH 后运行 <code className="bg-red-200 px-1 rounded">curl ifconfig.me</code>）</li>
+                        <li>保存后等待 1 分钟再刷新此诊断</li>
+                      </ol>
+                    </div>
+                  )}
+
+                  {oaDiag.tokenOk && oaDiag.readyToNotify === 0 && (
+                    <div className="bg-amber-100 rounded-xl px-4 py-3 space-y-2">
+                      <p className="text-sm font-semibold text-amber-700">⚠️ 还没有用户关联了公众号</p>
+                      <p className="text-xs text-amber-700">
+                        共 {oaDiag.totalMp} 个小程序用户，其中 {oaDiag.withUnionId} 个有 UnionID，但无人关联 OA
+                        {oaDiag.oaOnlyPlaceholders > 0 && `（有 ${oaDiag.oaOnlyPlaceholders} 个公众号关注占位行待匹配）`}
+                      </p>
+                      <p className="text-xs text-amber-700">点击下方「同步关注者」以自动关联。</p>
+                    </div>
+                  )}
+
+                  {oaDiag.tokenOk && oaDiag.readyToNotify > 0 && (
+                    <div className="bg-green-100 rounded-xl px-4 py-3">
+                      <p className="text-sm font-semibold text-green-700">✅ 通知链路正常</p>
+                      <p className="text-xs text-green-700 mt-0.5">
+                        {oaDiag.readyToNotify} 位用户已关联公众号，将按配置在生日/纪念日前收到通知
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 同步按钮 */}
+                  {oaDiag.tokenOk && (
+                    <div className="flex items-center gap-3">
+                      <button onClick={runOaSync} disabled={oaSyncing}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:opacity-60">
+                        {oaSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                        {oaSyncing ? "同步中..." : "同步关注者（关联 OA）"}
+                      </button>
+                      {oaSyncMsg && (
+                        <span className={`text-xs px-2 py-1 rounded-lg ${oaSyncMsg.ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                          {oaSyncMsg.text}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>

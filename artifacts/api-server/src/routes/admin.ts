@@ -460,6 +460,72 @@ router.post("/oa-send-test", async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/admin/oa-link-user ──────────────────────────────────────────────
+// 手动将一个 OA openId 关联到指定用户（当自动 sync 无法运行时的备用方案）
+router.post("/oa-link-user", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { userId, oaOpenId } = req.body as { userId?: number; oaOpenId?: string };
+    if (!userId || !oaOpenId) {
+      res.status(400).json({ error: "userId and oaOpenId are required" });
+      return;
+    }
+    const updated = await db.update(usersTable)
+      .set({ oaOpenId: oaOpenId.trim() })
+      .where(eq(usersTable.id, userId))
+      .returning({ id: usersTable.id, oaOpenId: usersTable.oaOpenId });
+    if (updated.length === 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ success: true, userId: updated[0].id, oaOpenId: updated[0].oaOpenId });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── GET /api/admin/oa-users ───────────────────────────────────────────────────
+// 返回所有真实微信用户及其 OA 关联状态（用于排查发不出通知的问题）
+router.get("/oa-users", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const users = await db.select({
+      id: usersTable.id,
+      nickname: usersTable.nickname,
+      openId: usersTable.openId,
+      unionId: usersTable.unionId,
+      oaOpenId: usersTable.oaOpenId,
+      createdAt: usersTable.createdAt,
+      lastAccessAt: usersTable.lastAccessAt,
+    }).from(usersTable);
+
+    const result = users.map(u => ({
+      id: u.id,
+      nickname: u.nickname,
+      isMock: !u.openId || u.openId.startsWith("mock:"),
+      isOaOnly: !u.openId,
+      hasUnionId: !!u.unionId,
+      hasOaOpenId: !!u.oaOpenId,
+      oaOpenIdPreview: u.oaOpenId ? u.oaOpenId.slice(0, 8) + "…" : null,
+      createdAt: u.createdAt,
+      lastAccessAt: u.lastAccessAt,
+    }));
+
+    const stats = {
+      total: result.length,
+      realMpUsers: result.filter(u => !u.isMock && !u.isOaOnly).length,
+      oaOnlyPlaceholders: result.filter(u => u.isOaOnly).length,
+      withUnionId: result.filter(u => u.hasUnionId && !u.isMock).length,
+      withOaOpenId: result.filter(u => u.hasOaOpenId && !u.isOaOnly).length,
+      readyToNotify: result.filter(u => u.hasOaOpenId && !u.isOaOnly).length,
+    };
+
+    res.json({ stats, users: result });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/admin/mp-notify-config ───────────────────────────────────────────
 router.get("/mp-notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
