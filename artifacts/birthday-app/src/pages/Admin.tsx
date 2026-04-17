@@ -38,6 +38,9 @@ interface ContactRecord {
 interface UserRecord {
   id: number;
   openId: string | null;
+  oaOpenId: string | null;
+  mpSubscribed: boolean;
+  unionId: string | null;
   nickname: string;
   avatarUrl: string | null;
   createdAt: string;
@@ -51,6 +54,7 @@ interface StatsData {
   totalUsers: number;
   totalContacts: number;
   totalEvents: number;
+  totalEntries: number;
   page: number;
   pageSize: number;
   totalPages: number;
@@ -94,11 +98,21 @@ function formatDate(iso: string) {
   });
 }
 
-function accountLabel(openId: string | null) {
-  if (!openId) return { label: "早期用户", color: "bg-gray-100 text-gray-500" };
-  if (openId.startsWith("mock:"))
-    return { label: "测试账号", color: "bg-amber-50 text-amber-600" };
-  return { label: "微信用户", color: "bg-green-50 text-green-600" };
+function accountLabel(user: Pick<UserRecord, "openId" | "oaOpenId" | "mpSubscribed">) {
+  const { openId, oaOpenId } = user;
+  const isMock = openId?.startsWith("mock:");
+  const hasMp = !!openId && !isMock;
+  const hasOa = !!oaOpenId;
+
+  if (isMock)
+    return { label: "测试账号", color: "bg-amber-50 text-amber-600", icon: "🧪" };
+  if (hasMp && hasOa)
+    return { label: "小程序+公众号", color: "bg-blue-50 text-blue-600", icon: "🔗" };
+  if (hasMp)
+    return { label: "微信小程序", color: "bg-green-50 text-green-600", icon: "📱" };
+  if (hasOa)
+    return { label: "微信公众号", color: "bg-rose-50 text-rose-600", icon: "📢" };
+  return { label: "早期用户", color: "bg-gray-100 text-gray-500", icon: "👤" };
 }
 
 // ─── Login page ───────────────────────────────────────────────────────────────
@@ -993,9 +1007,16 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                {data.totalContacts}
+                {data.totalEntries ?? (data.totalContacts + data.totalEvents)}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">生日记录总数</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                录入总条数
+                {data.totalEvents > 0 && (
+                  <span className="ml-1 text-gray-300">
+                    ({data.totalContacts} 生日 · {data.totalEvents} 事件)
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -1053,7 +1074,7 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {data.users.map((user) => {
-                  const acct = accountLabel(user.openId);
+                  const acct = accountLabel(user);
                   return (
                     <tr
                       key={user.id}
@@ -1071,8 +1092,9 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                       </td>
                       <td className="px-4 py-4">
                         <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${acct.color}`}
                         >
+                          <span>{acct.icon}</span>
                           {acct.label}
                         </span>
                       </td>

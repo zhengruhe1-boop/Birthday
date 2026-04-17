@@ -73,6 +73,9 @@ router.get("/stats", async (req: Request, res: Response) => {
       return {
         id: u.id,
         openId: u.openId,
+        oaOpenId: u.oaOpenId,
+        mpSubscribed: u.mpSubscribed,
+        unionId: u.unionId,
         nickname: u.nickname,
         avatarUrl: u.avatarUrl,
         createdAt: u.createdAt,
@@ -87,6 +90,7 @@ router.get("/stats", async (req: Request, res: Response) => {
       totalUsers,
       totalContacts,
       totalEvents,
+      totalEntries: totalContacts + totalEvents,
       page,
       pageSize: PAGE_SIZE,
       totalPages: Math.ceil(totalUsers / PAGE_SIZE),
