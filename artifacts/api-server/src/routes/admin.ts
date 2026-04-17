@@ -302,17 +302,19 @@ router.get("/notify-config", async (req: Request, res: Response) => {
 router.put("/notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { enabled, daysBefore, sendHour, templateId } = req.body as {
+    const { enabled, daysBefore, sendHour, templateId, h5Url } = req.body as {
       enabled?:    boolean;
       daysBefore?: number[];
       sendHour?:   number;
       templateId?: string;
+      h5Url?:      string;
     };
 
     if (enabled !== undefined)    await setSetting("notify_enabled",     String(enabled));
     if (daysBefore !== undefined) await setSetting("notify_days_before", daysBefore.map(String).join(","));
     if (sendHour !== undefined)   await setSetting("notify_send_hour",   String(sendHour));
     if (templateId !== undefined) await setSetting("notify_template_id", templateId.trim());
+    if (h5Url !== undefined)      await setSetting("notify_h5_url",      h5Url.trim());
 
     res.json({ success: true });
   } catch (err) {
@@ -440,15 +442,17 @@ router.post("/oa-send-test", async (req: Request, res: Response) => {
       return;
     }
     const templateId = (await getSetting("notify_template_id")) ?? "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
-    const payload = {
+    const h5Url = await getSetting("notify_h5_url");
+    const payload: Record<string, unknown> = {
       touser:      oaOpenId,
       template_id: templateId,
-      miniprogram: { appid: "wx4afbf7c1e3ae97ae", pagepath: "pages/home/home" },
+      // miniprogram 字段已移除：小程序与公众号未绑定时 WeChat 返回 40165 拒绝整条消息
       data: {
         thing19: { value: (name ?? "测试用户 · 生日").slice(0, 20) },
         time24:  { value: (date ?? new Date().toISOString().slice(0, 10)) + " 00:00" },
       },
     };
+    if (h5Url) payload.url = h5Url;
     const res2 = await fetch(
       `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },

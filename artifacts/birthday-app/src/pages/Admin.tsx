@@ -1716,6 +1716,7 @@ interface NotifyConfig {
   daysBefore: number[];
   sendHour: number;
   templateId: string;
+  h5Url: string;
   lastRunAt: string | null;
   lastRunResult: { sent: number; skipped: number; errors: number } | null;
 }
@@ -1740,6 +1741,7 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   const [oa, setOa] = useState<NotifyConfig>({
     enabled: false, daysBefore: [1], sendHour: 8,
     templateId: "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w",
+    h5Url: "",
     lastRunAt: null, lastRunResult: null,
   });
   const [oaSaving, setOaSaving] = useState(false);
@@ -1846,7 +1848,7 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
     try {
       const res = await fetch(`${BASE}api/admin/notify-config`, {
         method: "PUT", headers: H,
-        body: JSON.stringify({ enabled: oa.enabled, daysBefore: oa.daysBefore, sendHour: oa.sendHour, templateId: oa.templateId }),
+        body: JSON.stringify({ enabled: oa.enabled, daysBefore: oa.daysBefore, sendHour: oa.sendHour, templateId: oa.templateId, h5Url: oa.h5Url }),
       });
       setOaSaveMsg(res.ok ? { ok: true, text: "✓ 保存成功" } : { ok: false, text: "保存失败" });
     } catch { setOaSaveMsg({ ok: false, text: "网络错误" }); }
@@ -2153,10 +2155,21 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
                   placeholder="例：T1234567890abcdef"
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono" />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  点击通知跳转链接 <span className="text-gray-400 font-normal">（选填）</span>
+                </label>
+                <input type="url" value={oa.h5Url}
+                  onChange={e => setOa(c => ({ ...c, h5Url: e.target.value }))}
+                  placeholder="https://your-domain.com/"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono" />
+                <p className="mt-1.5 text-xs text-gray-400">用户点击通知后打开此网址（公众号 H5 或网站），留空则不添加跳转</p>
+              </div>
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-700 space-y-1.5">
                 <p className="font-semibold">模板变量说明（固定字段）</p>
                 <p><span className="font-mono bg-gray-100 px-1 rounded">{"{{thing19.DATA}}"}</span> — 姓名 · 事件类型（如「张伟 · 生日」）</p>
                 <p><span className="font-mono bg-gray-100 px-1 rounded">{"{{time24.DATA}}"}</span> — 事件日期时间（如「2026-04-10 08:00」）</p>
+                <p className="text-amber-600 font-medium mt-1">⚠ 小程序跳转已暂时禁用（需在微信开放平台完成公众号与小程序绑定后再开启）</p>
               </div>
               <MsgBox msg={oaSaveMsg} />
               <button onClick={saveOa} disabled={oaSaving}
