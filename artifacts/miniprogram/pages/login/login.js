@@ -6,6 +6,7 @@ Page({
     checkingSession: true,
     loading: false,
     networkError: '',
+    agreed: false,        // 是否已勾选同意协议
 
     // legal modal
     showLegal: false,
@@ -29,9 +30,18 @@ Page({
     this.setData({ checkingSession: false });
   },
 
+  // ── 同意协议勾选切换 ─────────────────────────────────────────────────────────
+  toggleAgree() {
+    this.setData({ agreed: !this.data.agreed, networkError: '' });
+  },
+
   // ── 微信一键授权登录 ──────────────────────────────────────────────────────────
   async handleWxLogin() {
     if (this.data.loading) return;
+    if (!this.data.agreed) {
+      wx.showToast({ title: '请先阅读并同意用户协议及隐私政策', icon: 'none', duration: 2000 });
+      return;
+    }
 
     this.setData({ loading: true, networkError: '' });
     try {

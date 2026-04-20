@@ -45,12 +45,17 @@
         </view>
       </button>
 
-      <!-- 协议说明（点击登录即视为同意，无需勾选）-->
-      <view class="agree-row">
-        <text class="agree-text">登录即同意 </text>
-        <text class="agree-link" catchtap="showTerms">用户协议</text>
-        <text class="agree-text"> 和 </text>
-        <text class="agree-link" catchtap="showPrivacy">隐私政策</text>
+      <!-- 协议勾选 -->
+      <view class="agree-row" catchtap="toggleAgree">
+        <view class="agree-checkbox {{agreed ? 'checked' : ''}}">
+          <text wx:if="{{agreed}}" class="agree-check-icon">✓</text>
+        </view>
+        <view class="agree-texts">
+          <text class="agree-text">我已阅读并同意</text>
+          <text class="agree-link" catchtap="showTerms">《用户协议》</text>
+          <text class="agree-text">和</text>
+          <text class="agree-link" catchtap="showPrivacy">《隐私政策》</text>
+        </view>
       </view>
 
     </view>
