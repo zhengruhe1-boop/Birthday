@@ -27,7 +27,7 @@ H5 mobile birthday reminder app. Features:
 - Contact list grouped by birthday proximity (即将过生日/近期过生日/一个月后生日)
 - Chinese lunar/solar calendar support
 - Add/Edit contacts with fields: name, gender, birthday, relation, hometown, reminder email, avatar (local upload)
-- Local avatar upload (POST /api/upload, 5MB limit, served at /api/uploads/)
+- Local avatar upload (POST /api/upload, 12MB limit, served at /api/uploads/)
 - Email notification (remind 1 day before birthday via QQ SMTP, 991067346@qq.com)
 - Daily scheduler at 08:00 to send birthday reminders
 - Test reminder email button in contact edit form
@@ -80,7 +80,7 @@ Express 5 API server. Routes:
 - `PUT /api/contacts/:id` — update contact (re-generates events if birthday changed)
 - `DELETE /api/contacts/:id` — delete contact
 - `POST /api/contacts/:id/birthday-events` — regenerate AI birthday events
-- `POST /api/upload` — upload avatar image (multer, 5MB limit)
+- `POST /api/upload` — upload avatar image (multer, 12MB limit)
 - `GET /api/reminders/verify-email` — verify QQ email config
 - `POST /api/reminders/test/:contactId` — send test birthday email
 - `POST /api/reminders/run` — manually trigger birthday reminder check

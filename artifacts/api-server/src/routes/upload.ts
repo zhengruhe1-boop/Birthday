@@ -49,7 +49,7 @@ function resolveMime(originalname: string, declaredMime: string): string {
 // ── 内存存储（用于对象存储模式：buffer 上传到 GCS）─────────────────────────────
 const memoryUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 12 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = file.mimetype.startsWith("image/") || file.mimetype === "application/octet-stream";
     cb(ok ? null : new Error("只支持 JPG、PNG、GIF、WEBP 格式图片"), ok);
@@ -68,7 +68,7 @@ const diskUpload = multer({
       cb(null, crypto.randomBytes(16).toString("hex") + ext);
     },
   }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 12 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = file.mimetype.startsWith("image/") || file.mimetype === "application/octet-stream";
     cb(ok ? null : new Error("只支持 JPG、PNG、GIF、WEBP 格式图片"), ok);

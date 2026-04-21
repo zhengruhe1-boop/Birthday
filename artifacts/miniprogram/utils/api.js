@@ -69,7 +69,7 @@ function uploadFile(path, filePath, name) {
       url,
       filePath,
       name: name || 'image',
-      timeout: 30000,
+      timeout: 60000,
       header: {
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
       },
