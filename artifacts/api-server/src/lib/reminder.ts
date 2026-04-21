@@ -51,7 +51,7 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
 
     for (const contact of contacts) {
       try {
-        const daysUntil = calcDaysUntilBirthday(contact.birthdayMonth, contact.birthdayDay);
+        const daysUntil = calcDaysUntilBirthday(contact.birthdayMonth, contact.birthdayDay, contact.birthYear ?? undefined, contact.birthdayLunar);
         if (!cfg.daysBefore.includes(daysUntil)) continue;
 
         const birthdayDisplay = formatBirthdayDisplay(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar);

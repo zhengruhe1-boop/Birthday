@@ -204,7 +204,7 @@ async function buildItems(
   // 1. Contacts → 生日
   const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
   for (const c of contacts) {
-    const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay);
+    const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
     if (!daysBefore.includes(days)) continue;
     const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
     items.push({

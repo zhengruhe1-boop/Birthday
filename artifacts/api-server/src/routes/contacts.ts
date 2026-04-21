@@ -19,7 +19,7 @@ function parseBirthdayEvents(raw: string | null): BirthdayEvent[] {
 }
 
 function formatContact(c: typeof contactsTable.$inferSelect) {
-  const daysUntil = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay);
+  const daysUntil = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
   const birthdayDisplay = formatBirthdayDisplay(c.birthdayMonth, c.birthdayDay, c.birthdayLunar);
   
   const today = new Date();
