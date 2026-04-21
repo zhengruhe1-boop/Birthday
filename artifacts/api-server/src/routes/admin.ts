@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, contactsTable, settingsTable, eventsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -41,7 +41,7 @@ router.get("/stats", async (req: Request, res: Response) => {
     const offset   = (page - 1) * PAGE_SIZE;
 
     // Total count
-    const allUsers = await db.select().from(usersTable).orderBy(usersTable.createdAt);
+    const allUsers = await db.select().from(usersTable).orderBy(desc(usersTable.createdAt));
     const totalUsers = allUsers.length;
 
     // Paginated users
@@ -505,7 +505,7 @@ router.get("/oa-users", async (req: Request, res: Response) => {
       oaOpenId: usersTable.oaOpenId,
       createdAt: usersTable.createdAt,
       lastAccessAt: usersTable.lastAccessAt,
-    }).from(usersTable);
+    }).from(usersTable).orderBy(desc(usersTable.createdAt));
 
     const result = users.map(u => ({
       id: u.id,
