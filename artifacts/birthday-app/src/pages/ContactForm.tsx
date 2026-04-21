@@ -122,11 +122,20 @@ export default function ContactForm() {
     fileInputRef.current?.click();
   };
 
+  const MAX_AVATAR_SIZE = 12 * 1024 * 1024; // 12MB
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setAvatarError(null);
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      setAvatarError("图片太大，请选择 12MB 以内的图片");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setAvatarUploading(true);
 
     try {
@@ -409,7 +418,7 @@ export default function ContactForm() {
             )}
 
             <p className="text-xs text-muted-foreground mt-2">
-              {displayAvatar ? "点击头像可重新上传" : "点击上传头像（选填）"}
+              {displayAvatar ? "点击头像可重新上传" : "点击上传头像（选填，最大 12MB）"}
             </p>
 
             <input
