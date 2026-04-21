@@ -43,6 +43,7 @@ function toDisplayAvatar(url) {
 
 Page({
   data: {
+    loggedIn: false,
     userInfo: null,
     displayNickname: '您好！欢迎使用生日通',
     displayAvatarUrl: '',   // 空串 → wxml 里显示 logo.jpg；http URL → 显示上传头像
@@ -84,10 +85,9 @@ Page({
       loggedIn = isLoggedIn();
     }
 
-    if (!loggedIn) {
-      wx.reLaunch({ url: '/pages/login/login' });
-      return;
-    }
+    this.setData({ loggedIn });
+
+    if (!loggedIn) return;  // 游客模式：不加载数据，等用户手动登录
 
     // 先从本地缓存预填用户信息
     const cached = wx.getStorageSync('birthday_userinfo');
@@ -108,7 +108,9 @@ Page({
   },
 
   onShow() {
-    if (!isLoggedIn()) return;
+    const loggedIn = isLoggedIn();
+    this.setData({ loggedIn });
+    if (!loggedIn) return;
     this.loadAll();
   },
 
@@ -194,6 +196,7 @@ Page({
 
   // ── 头像：点击触发相册选图（兼容新旧版微信）────────────────────────────────
   async chooseAvatar() {
+    if (!this.data.loggedIn) { this._requireLogin('上传头像'); return; }
     const prevAvatarUrl = this.data.displayAvatarUrl || null;
 
     try {
@@ -289,7 +292,7 @@ Page({
 
   // ── 昵称：失去焦点自动保存 ────────────────────────────────────────────────────
   async onNicknameBlur() {
-    if (!this.data.nicknameChanged) return;
+    if (!this.data.loggedIn || !this.data.nicknameChanged) return;
     const nickname = (this.data.editNickname || '').trim();
     if (!nickname) return;
     this.setData({ nicknameChanged: false });
@@ -308,6 +311,7 @@ Page({
 
   // ── 昵称：手动点击保存按钮（始终可见）──────────────────────────────────────
   async saveNickname() {
+    if (!this.data.loggedIn) { this._requireLogin('设置昵称'); return; }
     const nickname = (this.data.editNickname || '').trim();
     if (!nickname) {
       wx.showToast({ title: '昵称不能为空', icon: 'none' });
@@ -341,14 +345,42 @@ Page({
     }
   },
 
+  // ── 登录引导（未登录时统一弹窗提示）────────────────────────────────────────────
+  _requireLogin(hint) {
+    wx.showModal({
+      title: '需要登录',
+      content: hint + '需要先登录，是否前往登录？',
+      confirmText: '去登录',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) wx.navigateTo({ url: '/pages/login/login' });
+      },
+    });
+  },
+
   // ── 导航 ─────────────────────────────────────────────────────────────────────
-  goAddContact()    { wx.navigateTo({ url: '/pages/contact-form/contact-form?id=new' }); this.closeFab(); },
-  goAddAnniversary(){ wx.navigateTo({ url: '/pages/event-form/event-form?type=anniversary' }); this.closeFab(); },
-  goAddCountdown()  { wx.navigateTo({ url: '/pages/event-form/event-form?type=countdown' }); this.closeFab(); },
-  goAddOther()      { wx.navigateTo({ url: '/pages/event-form/event-form?type=other' }); this.closeFab(); },
+  goAddContact() {
+    if (!this.data.loggedIn) { this._requireLogin('添加生日'); return; }
+    wx.navigateTo({ url: '/pages/contact-form/contact-form?id=new' }); this.closeFab();
+  },
+  goAddAnniversary() {
+    if (!this.data.loggedIn) { this._requireLogin('添加纪念日'); return; }
+    wx.navigateTo({ url: '/pages/event-form/event-form?type=anniversary' }); this.closeFab();
+  },
+  goAddCountdown() {
+    if (!this.data.loggedIn) { this._requireLogin('添加倒数日'); return; }
+    wx.navigateTo({ url: '/pages/event-form/event-form?type=countdown' }); this.closeFab();
+  },
+  goAddOther() {
+    if (!this.data.loggedIn) { this._requireLogin('添加其它提醒'); return; }
+    wx.navigateTo({ url: '/pages/event-form/event-form?type=other' }); this.closeFab();
+  },
 
   goContact(e) { wx.navigateTo({ url: '/pages/contact-form/contact-form?id=' + e.currentTarget.dataset.id }); },
   goEvent(e)   { wx.navigateTo({ url: '/pages/event-form/event-form?id=' + e.currentTarget.dataset.id }); },
+
+  // ── 前往登录页 ───────────────────────────────────────────────────────────────
+  goLogin() { wx.navigateTo({ url: '/pages/login/login' }); },
 
   // ── FAB ──────────────────────────────────────────────────────────────────────
   toggleFab() { this.setData({ showFab: !this.data.showFab }); },

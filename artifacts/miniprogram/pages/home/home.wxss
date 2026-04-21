@@ -14,6 +14,49 @@
   border-bottom: 1rpx solid rgba(244,63,94,0.08);
 }
 
+/* 未登录时顶部登录按钮 */
+.login-btn-hd {
+  background: linear-gradient(135deg, #f43f5e, #fb923c);
+  border-radius: 32rpx;
+  padding: 12rpx 32rpx;
+  flex-shrink: 0;
+}
+.login-btn-hd:active { opacity: 0.8; }
+.login-btn-hd-text {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 游客引导横幅 */
+.guest-banner {
+  margin: 20rpx 32rpx 0;
+  background: linear-gradient(135deg, #fff1f2, #fff7ed);
+  border: 1rpx solid rgba(244,63,94,0.15);
+  border-radius: 20rpx;
+  padding: 28rpx 32rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+.guest-banner:active { opacity: 0.8; }
+.guest-banner-icon { font-size: 48rpx; flex-shrink: 0; }
+.guest-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+}
+.guest-banner-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+.guest-banner-sub {
+  font-size: 24rpx;
+  color: #f43f5e;
+}
+
 .header-left {
   display: flex;
   align-items: center;

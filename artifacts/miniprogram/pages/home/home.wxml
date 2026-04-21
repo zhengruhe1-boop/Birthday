@@ -2,7 +2,7 @@
 
   <!-- 顶部 Header -->
   <view class="home-header">
-    <view class="header-left" bindtap="openSettings">
+    <view class="header-left" bindtap="{{loggedIn ? 'openSettings' : 'goLogin'}}">
       <!-- 头像（点击进入设置） -->
       <view class="avatar-wrap-hd">
         <image class="avatar-img-hd"
@@ -15,8 +15,21 @@
         <text class="welcome-sub">记住每一个重要的日子</text>
       </view>
     </view>
-    <view class="icon-btn" bindtap="openSettings">
+    <!-- 已登录：设置按钮；未登录：登录按钮 -->
+    <view wx:if="{{loggedIn}}" class="icon-btn" bindtap="openSettings">
       <text>⚙️</text>
+    </view>
+    <view wx:else class="login-btn-hd" bindtap="goLogin">
+      <text class="login-btn-hd-text">登录</text>
+    </view>
+  </view>
+
+  <!-- 未登录引导横幅 -->
+  <view wx:if="{{!loggedIn}}" class="guest-banner" bindtap="goLogin">
+    <text class="guest-banner-icon">🔑</text>
+    <view class="guest-banner-text">
+      <text class="guest-banner-title">登录后查看和管理您的生日提醒</text>
+      <text class="guest-banner-sub">点击此处快速登录 →</text>
     </view>
   </view>
 
