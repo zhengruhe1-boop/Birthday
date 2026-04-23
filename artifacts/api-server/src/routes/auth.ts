@@ -204,11 +204,13 @@ router.get("/wechat/oauth/callback", async (req, res) => {
 
     const unionIdUpdate = oaUnionId ? { unionId: oaUnionId } : {};
     if (existing.length > 0) {
+      // 同时回填 oaOpenId（旧用户可能只有 openId 没有 oaOpenId）
+      const oaOpenIdUpdate = existing[0].oaOpenId ? {} : { oaOpenId: openId };
       await db.update(usersTable)
-        .set({ sessionToken: token, nickname, avatarUrl: avatar, ...unionIdUpdate })
+        .set({ sessionToken: token, nickname, avatarUrl: avatar, ...unionIdUpdate, ...oaOpenIdUpdate })
         .where(eq(usersTable.openId, openId));
     } else {
-      await db.insert(usersTable).values({ openId, unionId: oaUnionId || undefined, nickname, avatarUrl: avatar, sessionToken: token });
+      await db.insert(usersTable).values({ openId, oaOpenId: openId, unionId: oaUnionId || undefined, nickname, avatarUrl: avatar, sessionToken: token });
     }
 
     // 4. Redirect to frontend LOGIN page with token in URL.
