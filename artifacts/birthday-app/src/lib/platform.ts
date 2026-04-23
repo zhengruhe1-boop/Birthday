@@ -15,12 +15,9 @@ export function detectPlatform(): Platform {
     if (cached === "miniprogram") return "miniprogram";
   } catch { /* ignore */ }
 
-  // 检测小程序 WebView 标志
+  // 检测小程序 WebView 标志（仅 __wxjs_environment，wx.miniProgram 在公众号 H5 也存在，不可用于区分）
   try {
-    if (
-      (window as any).__wxjs_environment === "miniprogram" ||
-      (window as any).wx?.miniProgram
-    ) {
+    if ((window as any).__wxjs_environment === "miniprogram") {
       try { sessionStorage.setItem(SESSION_KEY, "miniprogram"); } catch { /* ignore */ }
       return "miniprogram";
     }
