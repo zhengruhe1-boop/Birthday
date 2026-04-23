@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, contactsTable, settingsTable, eventsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, and, not, like } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -351,6 +351,36 @@ router.post("/oa-sync", async (req: Request, res: Response) => {
     }
     const result = await syncOaOpenIds(token);
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/oa-backfill ───────────────────────────────────────────────
+// 将 openId 回填到 oaOpenId（仅针对公众号 H5 OAuth 老用户，他们的 OA openId 存在 openId 列而非 oaOpenId 列）
+router.post("/oa-backfill", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    // 找到有 openId（非 mock）但没有 oaOpenId 的用户
+    const targets = await db.select({ id: usersTable.id, openId: usersTable.openId })
+      .from(usersTable)
+      .where(
+        and(
+          isNotNull(usersTable.openId),
+          isNull(usersTable.oaOpenId),
+          not(like(usersTable.openId, "mock:%")),
+        )
+      );
+
+    let backfilled = 0;
+    for (const u of targets) {
+      await db.update(usersTable)
+        .set({ oaOpenId: u.openId })
+        .where(eq(usersTable.id, u.id));
+      backfilled++;
+    }
+
+    res.json({ backfilled, total: targets.length });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }

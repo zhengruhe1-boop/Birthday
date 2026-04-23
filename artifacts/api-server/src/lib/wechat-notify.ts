@@ -418,9 +418,9 @@ export async function runWechatBirthdayNotifications(): Promise<{
     logger.error({ err }, "Pre-notification OA sync failed (will still attempt sending)");
   }
 
-  // 查询已有 OA openId 的真实 MP 用户（排除 OA-only 占位行，这些行没有 openId）
+  // 查询所有有 oaOpenId 的用户（含纯 OA 关注者 + H5 OA 登录用户）
   const users = await db.select().from(usersTable).where(
-    and(isNotNull(usersTable.oaOpenId), isNotNull(usersTable.openId))
+    isNotNull(usersTable.oaOpenId)
   );
 
   logger.info({ userCount: users.length }, "WeChat notification: real users with oaOpenId");

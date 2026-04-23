@@ -1796,6 +1796,8 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
   const [oaDiagLoading, setOaDiagLoading] = useState(false);
   const [oaSyncing, setOaSyncing] = useState(false);
   const [oaSyncMsg, setOaSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [oaBackfilling, setOaBackfilling] = useState(false);
+  const [oaBackfillMsg, setOaBackfillMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const loadOaDiag = async () => {
     setOaDiagLoading(true);
@@ -1830,6 +1832,21 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
       }
     } catch { setOaSyncMsg({ ok: false, text: "网络错误" }); }
     setOaSyncing(false);
+  };
+
+  const runOaBackfill = async () => {
+    setOaBackfilling(true); setOaBackfillMsg(null);
+    try {
+      const res = await fetch(`${BASE}api/admin/oa-backfill`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json() as { backfilled?: number; total?: number; error?: string };
+      if (res.ok && !data.error) {
+        setOaBackfillMsg({ ok: true, text: `回填完成：${data.backfilled} 个用户已关联` });
+        loadOaDiag();
+      } else {
+        setOaBackfillMsg({ ok: false, text: data.error ?? "回填失败" });
+      }
+    } catch { setOaBackfillMsg({ ok: false, text: "网络错误" }); }
+    setOaBackfilling(false);
   };
 
   const DAY_OPTIONS = [
@@ -2108,19 +2125,33 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
                     </div>
                   )}
 
-                  {/* 同步按钮 */}
+                  {/* 同步 & 回填按钮 */}
                   {oaDiag.tokenOk && (
-                    <div className="flex items-center gap-3">
-                      <button onClick={runOaSync} disabled={oaSyncing}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:opacity-60">
-                        {oaSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                        {oaSyncing ? "同步中..." : "同步关注者（关联 OA）"}
-                      </button>
-                      {oaSyncMsg && (
-                        <span className={`text-xs px-2 py-1 rounded-lg ${oaSyncMsg.ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                          {oaSyncMsg.text}
-                        </span>
-                      )}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <button onClick={runOaSync} disabled={oaSyncing}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:opacity-60">
+                          {oaSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                          {oaSyncing ? "同步中..." : "同步关注者（关联 OA）"}
+                        </button>
+                        {oaSyncMsg && (
+                          <span className={`text-xs px-2 py-1 rounded-lg ${oaSyncMsg.ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                            {oaSyncMsg.text}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button onClick={runOaBackfill} disabled={oaBackfilling}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors disabled:opacity-60">
+                          {oaBackfilling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                          {oaBackfilling ? "回填中..." : "回填历史登录用户（一键修复）"}
+                        </button>
+                        {oaBackfillMsg && (
+                          <span className={`text-xs px-2 py-1 rounded-lg ${oaBackfillMsg.ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                            {oaBackfillMsg.text}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>
