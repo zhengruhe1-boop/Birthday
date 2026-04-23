@@ -424,4 +424,21 @@ Page({
       },
     });
   },
+
+  // ── 分享给好友 ─────────────────────────────────────────────────────────────
+  onShareAppMessage() {
+    return {
+      title: '生日通 — 再也不错过重要纪念日',
+      path: '/pages/home/home',
+      imageUrl: '/images/logo.jpg',
+    };
+  },
+
+  // ── 分享到朋友圈 ───────────────────────────────────────────────────────────
+  onShareTimeline() {
+    return {
+      title: '生日通 — 再也不错过重要纪念日',
+      imageUrl: '/images/logo.jpg',
+    };
+  },
 });

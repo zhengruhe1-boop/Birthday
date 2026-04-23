@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "生日通",
   "navigationBarBackgroundColor": "#ffffff",
-  "navigationBarTextStyle": "black"
+  "navigationBarTextStyle": "black",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

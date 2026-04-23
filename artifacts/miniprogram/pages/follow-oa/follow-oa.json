@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "开通微信提醒",
   "navigationBarBackgroundColor": "#ffffff",
-  "navigationBarTextStyle": "black"
+  "navigationBarTextStyle": "black",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

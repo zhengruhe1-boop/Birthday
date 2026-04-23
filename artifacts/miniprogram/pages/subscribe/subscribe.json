@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "生日提醒订阅",
   "navigationStyle": "custom",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
   "usingComponents": {}
 }
