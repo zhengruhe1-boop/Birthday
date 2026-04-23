@@ -1347,11 +1347,12 @@ function ContentConfigPanel({ adminKey }: { adminKey: string }) {
 
 // ─── AiConfigPanel ────────────────────────────────────────────────────────────
 interface AiConfig {
-  enabled: boolean;
-  provider: string;
-  model: string;
-  apiKeySet: boolean;
-  temperature: number;
+  enabled:        boolean;
+  provider:       string;
+  model:          string;
+  apiKeySet:      boolean;
+  temperature:    number;
+  filterKeywords: string[];
 }
 
 const PROVIDERS = [
@@ -1371,8 +1372,10 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
     model: "deepseek-chat",
     apiKeySet: false,
     temperature: 0.3,
+    filterKeywords: [],
   });
   const [apiKey, setApiKey] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -1389,7 +1392,7 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
     })
       .then((r) => r.json())
       .then((d: AiConfig) => {
-        setCfg(d);
+        setCfg({ ...d, filterKeywords: Array.isArray(d.filterKeywords) ? d.filterKeywords : [] });
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -1416,6 +1419,7 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
             model: cfg.model,
             apiKeyCustom: apiKey,
             temperature: cfg.temperature,
+            filterKeywords: cfg.filterKeywords,
           }),
         },
       );
@@ -1705,6 +1709,75 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
             )}
             {testing ? "测试中..." : "测试连接"}
           </button>
+        </div>
+      </div>
+
+      {/* ── 过滤关键词 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">内容过滤关键词</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            含有以下关键词的历史事件将被过滤，不会展示给用户
+          </p>
+        </div>
+        <div className="p-6 space-y-4">
+          {/* 现有标签 */}
+          <div className="flex flex-wrap gap-2 min-h-[40px]">
+            {cfg.filterKeywords.length === 0 && (
+              <span className="text-xs text-gray-400">加载中或使用系统默认过滤词...</span>
+            )}
+            {cfg.filterKeywords.map((kw) => (
+              <span
+                key={kw}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-xs font-medium border border-red-100"
+              >
+                {kw}
+                <button
+                  type="button"
+                  onClick={() => setCfg(c => ({ ...c, filterKeywords: c.filterKeywords.filter(k => k !== kw) }))}
+                  className="ml-0.5 hover:text-red-800 transition-colors leading-none"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* 新增关键词输入 */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newKeyword}
+              onChange={e => setNewKeyword(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && newKeyword.trim()) {
+                  const kw = newKeyword.trim();
+                  if (!cfg.filterKeywords.includes(kw)) {
+                    setCfg(c => ({ ...c, filterKeywords: [...c.filterKeywords, kw] }));
+                  }
+                  setNewKeyword("");
+                }
+              }}
+              placeholder="输入关键词，按 Enter 添加"
+              className="flex-1 px-3.5 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const kw = newKeyword.trim();
+                if (kw && !cfg.filterKeywords.includes(kw)) {
+                  setCfg(c => ({ ...c, filterKeywords: [...c.filterKeywords, kw] }));
+                }
+                setNewKeyword("");
+              }}
+              className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors"
+            >
+              + 添加
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            修改后点击「保存配置」生效。过滤同时作用于 AI 提示词和后端校验，双重拦截。
+          </p>
         </div>
       </div>
 

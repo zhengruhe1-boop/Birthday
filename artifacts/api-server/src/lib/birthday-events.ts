@@ -41,29 +41,38 @@ function extractJsonArray(text: string): BirthdayEvent[] {
 
 // ── AI client factory (reads config from DB, falls back to env var) ───────────
 export interface AiConfig {
-  enabled:     boolean;
-  provider:    string;
-  model:       string;
-  apiKeySet:   boolean;
-  temperature: number;
+  enabled:        boolean;
+  provider:       string;
+  model:          string;
+  apiKeySet:      boolean;
+  temperature:    number;
+  filterKeywords: string[];
 }
 
 export async function getAiConfig(): Promise<AiConfig> {
-  const [enabled, provider, model, customKey, temperature] = await Promise.all([
+  const [enabled, provider, model, customKey, temperature, filterKw] = await Promise.all([
     getSettingLocal("ai_enabled"),
     getSettingLocal("ai_provider"),
     getSettingLocal("ai_model"),
     getSettingLocal("ai_api_key_custom"),
     getSettingLocal("ai_temperature"),
+    getSettingLocal("ai_filter_keywords"),
   ]);
 
   const apiKeySet = !!(customKey || process.env.DEEPSEEK_API_KEY);
+
+  // 若 DB 尚未配置过滤词，返回内置默认列表
+  const filterKeywords: string[] = filterKw !== null
+    ? filterKw.split(",").map(s => s.trim()).filter(Boolean)
+    : DEFAULT_FILTER_KEYWORDS;
+
   return {
     enabled:     enabled !== "false",
     provider:    provider    ?? "deepseek",
     model:       model       ?? "deepseek-chat",
     apiKeySet,
     temperature: parseFloat(temperature ?? "0.3") || 0.3,
+    filterKeywords,
   };
 }
 
@@ -88,8 +97,8 @@ async function buildAiClient(): Promise<{ client: OpenAI; model: string; tempera
   };
 }
 
-// ── 不吉利关键词列表：title/description 含有任意一词则丢弃该条事件 ──────────
-const NEGATIVE_KEYWORDS = [
+// ── 内置默认过滤关键词（管理员未自定义时使用）────────────────────────────────
+export const DEFAULT_FILTER_KEYWORDS = [
   "枪击", "刺杀", "暗杀", "遇刺", "行刺",
   "死亡", "去世", "逝世", "殉难", "殉职", "牺牲", "阵亡", "遇难",
   "自杀", "被杀", "被害", "被刺", "被暗杀",
@@ -101,9 +110,9 @@ const NEGATIVE_KEYWORDS = [
   "爆炸", "恐怖",
 ];
 
-function isNegativeEvent(event: BirthdayEvent): boolean {
+function isNegativeEvent(event: BirthdayEvent, keywords: string[]): boolean {
   const text = `${event.title} ${event.description}`;
-  return NEGATIVE_KEYWORDS.some(kw => text.includes(kw));
+  return keywords.some(kw => kw && text.includes(kw));
 }
 
 // ── Main generator: historical events on a specific month/day ─────────────────
@@ -111,12 +120,14 @@ export async function generateBirthdayEvents(
   month: number,
   day:   number,
 ): Promise<BirthdayEvent[]> {
-  const ai = await buildAiClient();
+  const [ai, cfg] = await Promise.all([buildAiClient(), getAiConfig()]);
   if (!ai) {
     logger.warn("AI not configured or disabled, skipping birthday events generation");
     return [];
   }
 
+  const filterKeywords = cfg.filterKeywords.length > 0 ? cfg.filterKeywords : DEFAULT_FILTER_KEYWORDS;
+  const kwStr = filterKeywords.join("、");
   const dateLabel = `${month}月${day}日`;
 
   const prompt = `历史上的${dateLabel}：请从古代到现代中，找出不同年代真实发生在${month}月${day}日（允许±1天）的5件重大历史事件。
@@ -126,11 +137,7 @@ export async function generateBirthdayEvents(
 2. 年代尽量跨度大（包含古代、近代、现代）
 3. 至少2件中国历史事件，至少2件世界历史事件
 4. year字段填写具体年份（如"1949年"），title不超过20字，description不超过60字（须含具体月日）
-5. 【严格禁止】绝对不能包含以下类型的事件：
-   - 任何人物的死亡、去世、逝世、遇刺、刺杀、暗杀、枪击、被害、被杀、自杀、处决、殉难
-   - 任何战争、战役、战斗、炮击、轰炸、屠杀
-   - 任何灾难：撞机、空难、沉没、坠毁、爆炸、地震、海啸、瘟疫
-   - 任何政权灭亡、覆灭、亡国
+5. 【严格禁止】绝对不能包含任何涉及以下内容的事件：${kwStr}
    - 只选取积极、振奋人心或中性的历史事件，例如：科技发明、建国立邦、条约签订、重大发现、重要会议、体育竞赛、文化艺术成就、经济建设等
 
 只返回JSON数组，不加任何说明：
@@ -147,7 +154,7 @@ export async function generateBirthdayEvents(
       messages: [
         {
           role:    "system",
-          content: "你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。【严禁】出现以下任何内容：死亡、去世、逝世、遇刺、刺杀、枪击、暗杀、被害、被杀、自杀、处决、殉难、战争、战役、战斗、炮击、轰炸、屠杀、撞机、空难、沉没、坠毁、爆炸、地震、海啸、瘟疫、灭亡、覆灭、亡国。只选择积极、建设性或中性的历史大事。",
+          content: `你是严谨的历史学家。只返回JSON数组，绝不返回任何其他内容。所有事件必须是真实存在的历史事实。【严禁】出现以下任何关键词：${kwStr}。只选择积极、建设性或中性的历史大事。`,
         },
         { role: "user", content: prompt },
       ],
@@ -158,8 +165,8 @@ export async function generateBirthdayEvents(
 
     const rawEvents = extractJsonArray(content);
 
-    // 第三道防线：后端关键词过滤，确保任何漏网的负面事件被移除
-    const filtered = rawEvents.filter(e => !isNegativeEvent(e));
+    // 后端关键词过滤（使用动态关键词列表）
+    const filtered = rawEvents.filter(e => !isNegativeEvent(e, filterKeywords));
     const removed  = rawEvents.length - filtered.length;
     if (removed > 0) {
       logger.warn({ month, day, removed }, "Filtered out negative birthday events");

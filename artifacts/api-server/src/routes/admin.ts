@@ -257,12 +257,13 @@ router.get("/ai-config", async (req: Request, res: Response) => {
 router.put("/ai-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { enabled, provider, model, apiKeyCustom, temperature } = req.body as {
-      enabled?:      boolean;
-      provider?:     string;
-      model?:        string;
-      apiKeyCustom?: string;
-      temperature?:  number;
+    const { enabled, provider, model, apiKeyCustom, temperature, filterKeywords } = req.body as {
+      enabled?:        boolean;
+      provider?:       string;
+      model?:          string;
+      apiKeyCustom?:   string;
+      temperature?:    number;
+      filterKeywords?: string[];
     };
 
     if (enabled    !== undefined) await setSetting("ai_enabled",        String(enabled));
@@ -272,6 +273,9 @@ router.put("/ai-config", async (req: Request, res: Response) => {
       await setSetting("ai_api_key_custom", apiKeyCustom.trim());
     }
     if (temperature !== undefined) await setSetting("ai_temperature",   String(temperature));
+    if (filterKeywords !== undefined) {
+      await setSetting("ai_filter_keywords", filterKeywords.map(k => k.trim()).filter(Boolean).join(","));
+    }
 
     res.json({ success: true });
   } catch (err) {
