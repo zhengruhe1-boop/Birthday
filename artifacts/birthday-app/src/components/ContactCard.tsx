@@ -14,7 +14,7 @@ interface ContactCardProps {
 export function ContactCard({ contact, index }: ContactCardProps) {
   const isImminent = contact.daysUntilBirthday <= 7;
   const isSoon = contact.daysUntilBirthday > 7 && contact.daysUntilBirthday <= 30;
-  const zodiac = getZodiacSign(contact.birthdayMonth, contact.birthdayDay);
+  const zodiac = contact.birthdayLunar ? null : getZodiacSign(contact.birthdayMonth, contact.birthdayDay);
   
   return (
     <motion.div

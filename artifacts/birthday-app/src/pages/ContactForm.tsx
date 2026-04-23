@@ -332,7 +332,7 @@ export default function ContactForm() {
     ? `${formLunar ? "农历" : ""}${formBirthYear}年${formMonth}月${formDay}日`
     : null;
 
-  const zodiac = getZodiacSign(Number(formMonth), Number(formDay));
+  const zodiac = formLunar ? null : getZodiacSign(Number(formMonth), Number(formDay));
 
   const displayAvatar = avatarUrl;
 
