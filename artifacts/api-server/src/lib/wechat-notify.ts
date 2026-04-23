@@ -101,7 +101,11 @@ export async function getNotifyConfig(): Promise<NotifyConfig> {
 
 // ── Format helpers ────────────────────────────────────────────────────────────
 
-// WeChat time24 类型要求格式：YYYY-MM-DD HH:mm（必须含时分，否则 errcode 47001）
+// WeChat time24 类型：日期事件只传 YYYY-MM-DD，其它提醒（有具体时分）传 YYYY-MM-DD HH:mm
+function toDateStr(dateStr: string): string {
+  return dateStr.slice(0, 10);
+}
+
 function toDateTimeStr(dateStr: string, hour = 0, minute = 0): string {
   const date = dateStr.slice(0, 10);
   const hh   = String(hour).padStart(2, "0");
@@ -201,7 +205,7 @@ async function buildItems(
 ): Promise<NotifyItem[]> {
   const items: NotifyItem[] = [];
 
-  // 1. Contacts → 生日
+  // 1. Contacts → 生日（只显示日期，不显示 00:00）
   const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
   for (const c of contacts) {
     const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
@@ -210,7 +214,7 @@ async function buildItems(
     items.push({
       openId:    oaOpenId,
       nameField: truncateThing(`${c.name} · 生日`),
-      timeField: toDateTimeStr(dateStr, 0, 0),
+      timeField: toDateStr(dateStr),
       label:     `contact:${c.id} 生日`,
     });
   }
@@ -225,7 +229,7 @@ async function buildItems(
       items.push({
         openId:    oaOpenId,
         nameField: truncateThing(rawName),
-        timeField: toDateTimeStr(targetDate, 0, 0),
+        timeField: toDateStr(targetDate),   // 纪念日只显示日期
         label:     `event:${e.id} 纪念日`,
       });
     } else if (e.type === "countdown" && e.eventDate) {
@@ -234,17 +238,20 @@ async function buildItems(
       items.push({
         openId:    oaOpenId,
         nameField: truncateThing(`${e.name} · 倒数日`),
-        timeField: toDateTimeStr(e.eventDate, 0, 0),
+        timeField: toDateStr(e.eventDate),  // 倒数日只显示日期
         label:     `event:${e.id} 倒数日`,
       });
     } else if (e.type === "other" && e.reminderTime) {
+      // 其它提醒有具体时分，完整显示
       const dateStr = e.reminderTime.slice(0, 10);
       const days    = daysUntilDate(dateStr);
       if (!daysBefore.includes(days)) continue;
+      const hh = e.reminderTime.slice(11, 13);
+      const mm = e.reminderTime.slice(14, 16);
       items.push({
         openId:    oaOpenId,
         nameField: truncateThing(`${e.name} · 其它`),
-        timeField: toDateTimeStr(dateStr, 0, 0),
+        timeField: toDateTimeStr(dateStr, parseInt(hh, 10) || 0, parseInt(mm, 10) || 0),
         label:     `event:${e.id} 其它`,
       });
     }
