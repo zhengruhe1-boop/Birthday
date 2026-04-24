@@ -317,9 +317,10 @@
       <scroll-view class="settings-body" scroll-y scroll-into-view="{{nicknameScrollAnchor}}">
         <view class="settings-inner">
 
-          <!-- 头像：点击上传自定义头像 -->
+          <!-- 头像 + 昵称 + 微信获取按钮 -->
           <view class="profile-section">
-            <view class="avatar-tap-wrap" bindtap="chooseAvatar">
+            <!-- 头像展示（仅展示，不可直接点击） -->
+            <view class="avatar-tap-wrap">
               <image class="profile-avatar-img"
                 src="{{displayAvatarUrl || '/images/logo.jpg'}}"
                 mode="aspectFill"
@@ -327,25 +328,34 @@
               <view wx:if="{{avatarUploading}}" class="avatar-uploading-mask">
                 <text class="avatar-uploading-text">上传中…</text>
               </view>
-              <view wx:else class="avatar-camera-badge"><text>📷</text></view>
             </view>
-            <text class="avatar-hint">点击更换头像</text>
+
+            <!-- 昵称展示行 -->
+            <view class="nickname-info-row">
+              <text class="nickname-info-label">昵称</text>
+              <text class="nickname-info-value">{{editNickname || '未设置'}}</text>
+            </view>
+
+            <!-- 微信一键获取头像/昵称按钮 -->
+            <button class="wx-profile-btn"
+              open-type="chooseAvatar"
+              bindchooseavatar="onChooseWxAvatar">获取您微信头像/昵称</button>
           </view>
 
-          <!-- 昵称区域（id 用于键盘弹出时 scroll-into-view 定位） -->
+          <!-- 昵称编辑区（type=nickname：聚焦时微信弹出昵称建议选择器） -->
           <view id="nickname-anchor" class="nickname-section">
-            <text class="nickname-label">我的昵称</text>
+            <text class="nickname-label">修改昵称</text>
             <input class="nickname-input"
-              type="text"
-              placeholder="输入你的昵称"
+              type="nickname"
+              placeholder="点击使用微信昵称或手动填写"
               placeholder-class="nickname-placeholder"
               value="{{editNickname}}"
               bindinput="onNicknameInput"
+              bindblur="onNicknameBlur"
               maxlength="20"
               adjust-position="{{false}}"
               bindkeyboardheightchange="onNicknameKeyboardChange" />
-            <button class="nickname-save-btn"
-              bindtap="saveNickname">保存昵称</button>
+            <button class="nickname-save-btn" bindtap="saveNickname">保存昵称</button>
           </view>
 
           <!-- 提醒偏好 -->

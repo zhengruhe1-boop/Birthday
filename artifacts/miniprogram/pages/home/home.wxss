@@ -660,6 +660,46 @@
   margin-top: 12rpx;
 }
 
+/* 昵称展示行（头像下方，按钮上方） */
+.nickname-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 28rpx;
+  padding: 0 8rpx;
+}
+.nickname-info-label {
+  font-size: 28rpx;
+  color: #64748b;
+}
+.nickname-info-value {
+  font-size: 28rpx;
+  color: #1e293b;
+  font-weight: 500;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 微信头像/昵称一键获取按钮 */
+.wx-profile-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #f97316;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 50rpx;
+  border: none;
+  padding: 0;
+  margin-top: 28rpx;
+}
+.wx-profile-btn::after { border: none; }
+.wx-profile-btn:active { opacity: 0.85; }
+
 /* 昵称输入区 */
 .nickname-section {
   margin-top: 32rpx;

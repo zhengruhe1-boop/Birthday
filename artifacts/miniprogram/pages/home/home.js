@@ -241,6 +241,18 @@ Page({
     }
   },
 
+  // ── 头像：微信原生头像选择器（open-type="chooseAvatar"）─────────────────────
+  async onChooseWxAvatar(e) {
+    const tempUrl = e.detail && e.detail.avatarUrl;
+    if (!tempUrl) return;
+    if (!this.data.loggedIn) {
+      this._requireLogin("更新头像");
+      return;
+    }
+    const prevAvatarUrl = this.data.displayAvatarUrl || null;
+    await this._uploadAndSaveAvatar(tempUrl, prevAvatarUrl);
+  },
+
   // ── 头像：点击触发相册选图（兼容新旧版微信）────────────────────────────────
   async chooseAvatar() {
     if (!this.data.loggedIn) {
