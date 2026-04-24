@@ -39,6 +39,45 @@ function lunarToSolarDate(lunarYear: number, lunarMonth: number, lunarDay: numbe
 }
 
 /**
+ * 获取星座名称（支持公历和农历）。
+ * 农历生日先用当年公历转换，再匹配星座范围；公历生日直接匹配。
+ */
+export function getZodiacName(month: number, day: number, lunar: boolean): string {
+  let m = month;
+  let d = day;
+
+  if (lunar) {
+    // 用当前公历年做参考年尝试农历→公历转换
+    const refYear = new Date().getFullYear();
+    for (const tryYear of [refYear, refYear - 1, refYear + 1]) {
+      const solar = lunarToSolarDate(tryYear, month, day);
+      if (solar) {
+        m = solar.getMonth() + 1;
+        d = solar.getDate();
+        break;
+      }
+    }
+  }
+
+  if (!m || !d || m < 1 || m > 12 || d < 1 || d > 31) return "";
+
+  const md = m * 100 + d;
+  if (md >= 1222 || md <= 119) return "摩羯座";
+  if (md <= 218) return "水瓶座";
+  if (md <= 320) return "双鱼座";
+  if (md <= 419) return "白羊座";
+  if (md <= 520) return "金牛座";
+  if (md <= 621) return "双子座";
+  if (md <= 722) return "巨蟹座";
+  if (md <= 822) return "狮子座";
+  if (md <= 922) return "处女座";
+  if (md <= 1023) return "天秤座";
+  if (md <= 1122) return "天蝎座";
+  if (md <= 1221) return "射手座";
+  return "";
+}
+
+/**
  * 计算距离下一个生日的天数。
  * - 公历生日：直接按公历月日计算
  * - 农历生日：先将农历月日转换为今年/明年的公历日期，再计算差值

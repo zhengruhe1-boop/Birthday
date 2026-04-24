@@ -3,7 +3,7 @@ import { db, contactsTable } from "@workspace/db";
 import { eq, and, asc, like } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
-import { formatBirthdayDisplay, calcDaysUntilBirthday } from "../lib/birthday.js";
+import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName } from "../lib/birthday.js";
 import { generateBirthdayEvents, BirthdayEvent } from "../lib/birthday-events.js";
 import { sendBirthdayReminder } from "../lib/email.js";
 
@@ -21,7 +21,8 @@ function parseBirthdayEvents(raw: string | null): BirthdayEvent[] {
 function formatContact(c: typeof contactsTable.$inferSelect) {
   const daysUntil = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
   const birthdayDisplay = formatBirthdayDisplay(c.birthdayMonth, c.birthdayDay, c.birthdayLunar);
-  
+  const zodiac = getZodiacName(c.birthdayMonth, c.birthdayDay, c.birthdayLunar);
+
   const today = new Date();
   const age = c.birthYear ? today.getFullYear() - c.birthYear : null;
   
@@ -42,6 +43,7 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
     daysUntilBirthday: daysUntil,
     age,
     birthdayDisplay,
+    zodiac,
     createdAt: c.createdAt,
   };
 }

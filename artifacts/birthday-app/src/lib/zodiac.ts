@@ -3,10 +3,26 @@ export interface ZodiacSign {
   symbol: string;
 }
 
+/** 星座名称 → Unicode 符号 映射表 */
+export const ZODIAC_SYMBOLS: Record<string, string> = {
+  摩羯座: "♑",
+  水瓶座: "♒",
+  双鱼座: "♓",
+  白羊座: "♈",
+  金牛座: "♉",
+  双子座: "♊",
+  巨蟹座: "♋",
+  狮子座: "♌",
+  处女座: "♍",
+  天秤座: "♎",
+  天蝎座: "♏",
+  射手座: "♐",
+};
+
 /**
  * Returns the Western zodiac (星座) for a given solar month and day.
  * Returns null for invalid inputs.
- * Note: lunar calendar dates should not be passed here.
+ * @deprecated Prefer server-returned `contact.zodiac` which supports lunar conversion.
  */
 export function getZodiacSign(month: number, day: number): ZodiacSign | null {
   if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return null;

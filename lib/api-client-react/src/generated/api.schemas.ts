@@ -94,6 +94,8 @@ export interface Contact {
   age?: number | null;
   /** Formatted birthday display (e.g. 二月十四) */
   birthdayDisplay: string;
+  /** Zodiac sign name (supports lunar calendar via server-side conversion) */
+  zodiac?: string | null;
   createdAt: string;
 }
 

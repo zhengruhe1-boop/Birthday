@@ -159,7 +159,7 @@ Page({
         avatarUrl: toAbsUrl(c.avatarUrl) || null,
         monthIndex: m - 1,
         dayIndex: d - 1,
-        zodiac: getZodiac(m, d),
+        zodiac: c.zodiac || (c.birthdayLunar ? '' : getZodiac(m, d)),
         aiEvents: savedEvents,
         showAiEvents: true,
         loading: false,

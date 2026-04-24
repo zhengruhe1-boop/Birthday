@@ -10,13 +10,13 @@ function toAbsUrl(url) {
   return base + (url.startsWith('/') ? url : '/' + url);
 }
 
-// 将联系人列表中的头像 URL 转为绝对路径，并补充星座字段
+// 将联系人列表中的头像 URL 转为绝对路径
+// 星座直接使用服务端返回的 zodiac 字段（服务端已处理农历→公历转换）
 function normalizeContacts(list) {
   return (list || []).map(c => ({
     ...c,
     avatarUrl: c.avatarUrl && !c.avatarUrl.startsWith('http') ? toAbsUrl(c.avatarUrl) : (c.avatarUrl || ''),
-    zodiac: (!c.birthdayLunar && c.birthdayMonth && c.birthdayDay)
-      ? getZodiac(c.birthdayMonth, c.birthdayDay) : '',
+    zodiac: c.zodiac || '',
   }));
 }
 

@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { User, Gift, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getZodiacSign } from "@/lib/zodiac";
+import { ZODIAC_SYMBOLS } from "@/lib/zodiac";
 import type { Contact } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 
@@ -14,7 +14,9 @@ interface ContactCardProps {
 export function ContactCard({ contact, index }: ContactCardProps) {
   const isImminent = contact.daysUntilBirthday <= 7;
   const isSoon = contact.daysUntilBirthday > 7 && contact.daysUntilBirthday <= 30;
-  const zodiac = contact.birthdayLunar ? null : getZodiacSign(contact.birthdayMonth, contact.birthdayDay);
+  const zodiacName = contact.zodiac ?? null;
+  const zodiacSymbol = zodiacName ? (ZODIAC_SYMBOLS[zodiacName] ?? "") : "";
+  const zodiac = zodiacName ? { name: zodiacName, symbol: zodiacSymbol } : null;
   
   return (
     <motion.div
