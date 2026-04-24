@@ -217,11 +217,43 @@
 
 .contact-info { flex: 1; min-width: 0; }
 
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  overflow: hidden;
+}
+
 .contact-name {
   font-size: 28rpx;
   font-weight: 600;
   color: #1e293b;
-  display: block;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gender-tag {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+}
+.gender-m { background: #eff6ff; color: #3b82f6; }
+.gender-f { background: #fdf2f8; color: #ec4899; }
+
+.zodiac-tag {
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #7c3aed;
+  background: #f5f3ff;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

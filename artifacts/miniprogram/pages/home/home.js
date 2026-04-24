@@ -10,13 +10,22 @@ function toAbsUrl(url) {
   return base + (url.startsWith('/') ? url : '/' + url);
 }
 
-// 将联系人列表中的头像 URL 转为绝对路径
+// 十二生肖（以 1900 鼠年为基准）
+const SHENGXIAO = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+function getShengxiao(year) {
+  if (!year || year < 1) return '';
+  return SHENGXIAO[((year - 1900) % 12 + 12) % 12];
+}
+
+// 将联系人列表中的头像 URL 转为绝对路径，并补全展示字段
 // 星座直接使用服务端返回的 zodiac 字段（服务端已处理农历→公历转换）
 function normalizeContacts(list) {
   return (list || []).map(c => ({
     ...c,
     avatarUrl: c.avatarUrl && !c.avatarUrl.startsWith('http') ? toAbsUrl(c.avatarUrl) : (c.avatarUrl || ''),
-    zodiac: c.zodiac || '',
+    zodiac:    c.zodiac    || '',
+    gender:    c.gender    || '',
+    shengxiao: c.birthYear ? getShengxiao(c.birthYear) : '',
   }));
 }
 
