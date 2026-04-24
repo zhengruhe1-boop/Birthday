@@ -310,19 +310,26 @@ router.get("/notify-config", async (req: Request, res: Response) => {
 router.put("/notify-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { enabled, daysBefore, sendHour, templateId, h5Url } = req.body as {
-      enabled?:    boolean;
-      daysBefore?: number[];
-      sendHour?:   number;
-      templateId?: string;
-      h5Url?:      string;
+    const { enabled, daysBefore, sendHour, templateId, h5Url,
+            mpLinkEnabled, mpLinkAppId, mpLinkPagePath } = req.body as {
+      enabled?:        boolean;
+      daysBefore?:     number[];
+      sendHour?:       number;
+      templateId?:     string;
+      h5Url?:          string;
+      mpLinkEnabled?:  boolean;
+      mpLinkAppId?:    string;
+      mpLinkPagePath?: string;
     };
 
-    if (enabled !== undefined)    await setSetting("notify_enabled",     String(enabled));
-    if (daysBefore !== undefined) await setSetting("notify_days_before", daysBefore.map(String).join(","));
-    if (sendHour !== undefined)   await setSetting("notify_send_hour",   String(sendHour));
-    if (templateId !== undefined) await setSetting("notify_template_id", templateId.trim());
-    if (h5Url !== undefined)      await setSetting("notify_h5_url",      h5Url.trim());
+    if (enabled !== undefined)        await setSetting("notify_enabled",          String(enabled));
+    if (daysBefore !== undefined)     await setSetting("notify_days_before",      daysBefore.map(String).join(","));
+    if (sendHour !== undefined)       await setSetting("notify_send_hour",        String(sendHour));
+    if (templateId !== undefined)     await setSetting("notify_template_id",      templateId.trim());
+    if (h5Url !== undefined)          await setSetting("notify_h5_url",           h5Url.trim());
+    if (mpLinkEnabled !== undefined)  await setSetting("notify_mp_link_enabled",  String(mpLinkEnabled));
+    if (mpLinkAppId !== undefined)    await setSetting("notify_mp_link_appid",    mpLinkAppId.trim());
+    if (mpLinkPagePath !== undefined) await setSetting("notify_mp_link_pagepath", mpLinkPagePath.trim());
 
     res.json({ success: true });
   } catch (err) {
@@ -479,18 +486,24 @@ router.post("/oa-send-test", async (req: Request, res: Response) => {
       res.status(400).json({ error: "无法获取 OA access_token" });
       return;
     }
-    const templateId = (await getSetting("notify_template_id")) ?? "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
-    const h5Url = await getSetting("notify_h5_url");
+    const templateId     = (await getSetting("notify_template_id")) ?? "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
+    const h5Url          = await getSetting("notify_h5_url");
+    const mpLinkEnabled  = (await getSetting("notify_mp_link_enabled")) === "true";
+    const mpLinkAppId    = (await getSetting("notify_mp_link_appid")) ?? "wx4afbf7c1e3ae97ae";
+    const mpLinkPagePath = (await getSetting("notify_mp_link_pagepath")) ?? "pages/home/home";
     const payload: Record<string, unknown> = {
       touser:      oaOpenId,
       template_id: templateId,
-      // miniprogram 字段已移除：小程序与公众号未绑定时 WeChat 返回 40165 拒绝整条消息
       data: {
         thing19: { value: (name ?? "测试用户 · 生日").slice(0, 20) },
         time24:  { value: (date ?? new Date().toISOString().slice(0, 10)) + " 00:00" },
       },
     };
-    if (h5Url) payload.url = h5Url;
+    if (mpLinkEnabled && mpLinkAppId && mpLinkPagePath) {
+      payload.miniprogram = { appid: mpLinkAppId, pagepath: mpLinkPagePath };
+    } else if (h5Url) {
+      payload.url = h5Url;
+    }
     const res2 = await fetch(
       `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },

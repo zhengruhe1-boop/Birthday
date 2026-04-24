@@ -10,10 +10,15 @@ const TMPL_VAR_TIME = "time24";    // 事件日期时间，e.g. "2026-04-10 08:0
 // ── User's actual template ID (hard-coded as default) ─────────────────────────
 const DEFAULT_TEMPLATE_ID = "iKiueM36DMAWXrO4VQMK68ulAFDz_51ylIBZt_AMw9w";
 
-// 注：miniprogram 跳转需要小程序已在微信开放平台与公众号绑定且有线上版本；
-// 未满足条件时 WeChat API 返回 40165 拒绝整条消息，因此默认不加 miniprogram 字段，
-// 改为可选的 url 字段（指向 H5 网页），安全起见留空则不添加。
-const H5_NOTIFY_URL_KEY = "notify_h5_url";   // 设置项 key，可在 DB settings 里配置
+// ── Settings keys ─────────────────────────────────────────────────────────────
+const H5_NOTIFY_URL_KEY         = "notify_h5_url";           // H5 跳转链接（可选）
+const MP_LINK_ENABLED_KEY       = "notify_mp_link_enabled";  // 是否开启小程序跳转
+const MP_LINK_APPID_KEY         = "notify_mp_link_appid";    // 小程序 AppID
+const MP_LINK_PAGEPATH_KEY      = "notify_mp_link_pagepath"; // 小程序页面路径
+
+// 默认小程序配置（公众号与小程序同属一个开放平台账号时生效）
+const DEFAULT_MP_APPID    = "wx4afbf7c1e3ae97ae";
+const DEFAULT_MP_PAGEPATH = "pages/home/home";
 
 // ── In-memory access token cache ──────────────────────────────────────────────
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -67,35 +72,45 @@ export async function getAccessToken(): Promise<string | null> {
 
 // ── Config types ──────────────────────────────────────────────────────────────
 export interface NotifyConfig {
-  enabled:       boolean;
-  daysBefore:    number[];
-  sendHour:      number;
-  templateId:    string;
-  h5Url:         string;
-  lastRunAt:     string | null;
-  lastRunResult: { sent: number; skipped: number; errors: number } | null;
+  enabled:         boolean;
+  daysBefore:      number[];
+  sendHour:        number;
+  templateId:      string;
+  h5Url:           string;
+  mpLinkEnabled:   boolean;
+  mpLinkAppId:     string;
+  mpLinkPagePath:  string;
+  lastRunAt:       string | null;
+  lastRunResult:   { sent: number; skipped: number; errors: number } | null;
 }
 
 export async function getNotifyConfig(): Promise<NotifyConfig> {
-  const [enabled, daysBefore, sendHour, templateId, h5Url, lastRunAt, lastResult] =
+  const [enabled, daysBefore, sendHour, templateId, h5Url,
+         mpLinkEnabled, mpLinkAppId, mpLinkPagePath, lastRunAt, lastResult] =
     await Promise.all([
       getSettingLocal("notify_enabled"),
       getSettingLocal("notify_days_before"),
       getSettingLocal("notify_send_hour"),
       getSettingLocal("notify_template_id"),
       getSettingLocal(H5_NOTIFY_URL_KEY),
+      getSettingLocal(MP_LINK_ENABLED_KEY),
+      getSettingLocal(MP_LINK_APPID_KEY),
+      getSettingLocal(MP_LINK_PAGEPATH_KEY),
       getSettingLocal("notify_mp_last_run"),
       getSettingLocal("notify_mp_last_result"),
     ]);
 
   return {
-    enabled:       enabled !== "false",   // 未配置时默认开启
-    daysBefore:    daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],
-    sendHour:      sendHour ? parseInt(sendHour, 10) : 8,
-    templateId:    templateId ?? DEFAULT_TEMPLATE_ID,
-    h5Url:         h5Url ?? "",
+    enabled:        enabled !== "false",
+    daysBefore:     daysBefore ? daysBefore.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],
+    sendHour:       sendHour ? parseInt(sendHour, 10) : 8,
+    templateId:     templateId ?? DEFAULT_TEMPLATE_ID,
+    h5Url:          h5Url ?? "",
+    mpLinkEnabled:  mpLinkEnabled === "true",
+    mpLinkAppId:    mpLinkAppId ?? DEFAULT_MP_APPID,
+    mpLinkPagePath: mpLinkPagePath ?? DEFAULT_MP_PAGEPATH,
     lastRunAt,
-    lastRunResult: lastResult ? JSON.parse(lastResult) : null,
+    lastRunResult:  lastResult ? JSON.parse(lastResult) : null,
   };
 }
 
@@ -159,25 +174,26 @@ async function sendTemplateMsg(
   token: string,
   templateId: string,
   item: NotifyItem,
+  opts?: { h5Url?: string; mpLinkEnabled?: boolean; mpLinkAppId?: string; mpLinkPagePath?: string },
 ): Promise<{ ok: boolean; errcode?: number; errmsg?: string }> {
-  // 读取可选的 H5 跳转 URL（空值时不添加 url 字段，避免因无效地址报错）
-  const h5Url = await getSettingLocal(H5_NOTIFY_URL_KEY);
-
   const payload: Record<string, unknown> = {
     touser:      item.openId,
     template_id: templateId,
-    // 注意：不添加 miniprogram 字段
-    // 原因：小程序与公众号未在开放平台绑定 or 小程序没有线上版本时，
-    //       WeChat 会返回 40165（invalid weapp pagepath）并拒绝整条消息
     data: {
       [TMPL_VAR_NAME]: { value: item.nameField },
       [TMPL_VAR_TIME]: { value: item.timeField },
     },
   };
 
-  // 仅当 H5 URL 已配置时才添加 url 字段（用户点击通知后打开 H5 网页）
-  if (h5Url) {
-    payload.url = h5Url;
+  // 小程序跳转（需要公众号与小程序已在微信开放平台绑定，且小程序有线上版本）
+  if (opts?.mpLinkEnabled && opts.mpLinkAppId && opts.mpLinkPagePath) {
+    payload.miniprogram = {
+      appid:    opts.mpLinkAppId,
+      pagepath: opts.mpLinkPagePath,
+    };
+  } else if (opts?.h5Url) {
+    // 未配置小程序跳转时，回退到 H5 链接
+    payload.url = opts.h5Url;
   }
 
   logger.info({ label: item.label, nameField: item.nameField, timeField: item.timeField },
@@ -443,7 +459,12 @@ export async function runWechatBirthdayNotifications(): Promise<{
 
       for (const item of items) {
         try {
-          const { ok, errcode, errmsg } = await sendTemplateMsg(token, templateId, item);
+          const { ok, errcode, errmsg } = await sendTemplateMsg(token, templateId, item, {
+            h5Url:          config.h5Url,
+            mpLinkEnabled:  config.mpLinkEnabled,
+            mpLinkAppId:    config.mpLinkAppId,
+            mpLinkPagePath: config.mpLinkPagePath,
+          });
           if (ok) {
             result.sent++;
           } else {
