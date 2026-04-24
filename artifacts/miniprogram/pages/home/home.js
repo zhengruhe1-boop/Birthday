@@ -270,71 +270,80 @@ Page({
     });
   },
 
-  // ── open-type="chooseAvatar" 回调：微信返回真实头像临时路径 ──────────────────
-  onWxProfileAvatarChosen(e) {
-    const tempUrl = e.detail && e.detail.avatarUrl;
-    if (!tempUrl) return;
-    this.setData({ "wxProfileTemp.avatarUrl": tempUrl });
-  },
-
-  // ── type="nickname" 回调：微信昵称建议确认后写入 ────────────────────────────
-  onWxProfileNicknameInput(e) {
-    this.setData({ "wxProfileTemp.nickname": e.detail.value });
-  },
-
-  // ── 保存：上传头像 + 昵称写入服务器 ─────────────────────────────────────────
-  async saveWxProfile() {
-    if (!this.data.loggedIn) {
-      this._requireLogin("保存资料");
+  // ── 用户点"允许" → 调起微信原生授权弹窗（账号选择列表） ────────────────────
+  onTapGetWxProfile() {
+    if (typeof wx.getUserProfile !== "function") {
+      wx.showToast({ title: "当前版本不支持，请升级微信", icon: "none" });
       return;
     }
-    const { avatarUrl, nickname } = this.data.wxProfileTemp;
-    const cleanedNickname = (nickname || "").trim();
-    if (!avatarUrl && !cleanedNickname) {
-      this.setData({ showWxProfileModal: false });
-      return;
-    }
-    this.setData({ avatarUploading: true });
-    try {
-      let serverAvatarUrl = this.data.displayAvatarUrl || "";
-      // chooseAvatar 返回的是临时路径（非 http），需上传到服务器
-      if (avatarUrl && !avatarUrl.startsWith("http")) {
-        const uploadRes = await api.upload("api/upload", avatarUrl, "image");
-        const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-        if (rawUrl) serverAvatarUrl = toAbsUrl(rawUrl);
-      } else if (avatarUrl) {
-        serverAvatarUrl = avatarUrl;
-      }
-      const payload = {};
-      if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
-      if (cleanedNickname) payload.nickname = cleanedNickname;
-      if (Object.keys(payload).length > 0) {
-        await api.put("api/auth/me", payload);
-      }
-      const newInfo = {
-        ...(this.data.userInfo || {}),
-        ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
-        ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
-      };
-      const finalNickname = cleanedNickname || this.data.editNickname;
-      this.setData({
-        userInfo: newInfo,
-        displayAvatarUrl: toDisplayAvatar(serverAvatarUrl),
-        editNickname: finalNickname,
-        displayNickname: buildDisplayNickname(finalNickname),
-        avatarUploading: false,
-        showWxProfileModal: false,
-      });
-      wx.setStorageSync("birthday_userinfo", newInfo);
-      this._lastSavedAvatarUrl = serverAvatarUrl || null;
-      wx.showToast({ title: "资料已保存", icon: "success" });
-    } catch {
-      this.setData({ avatarUploading: false });
-      wx.showToast({ title: "保存失败，请重试", icon: "none" });
-    }
+    wx.getUserProfile({
+      desc: "标识用户",
+      lang: "zh_CN",
+      success: async (res) => {
+        const { nickName, avatarUrl } = res.userInfo;
+        // 微信返回的脱敏默认昵称，视为未授权
+        const isDefaultNick = !nickName || INVALID_NICKNAMES.concat(["微信用户"]).includes(nickName.trim());
+        const cleanedNickname = isDefaultNick ? "" : nickName.trim();
+
+        this.setData({ avatarUploading: true, showWxProfileModal: false });
+        try {
+          // 1. 微信 CDN 头像 URL 可能过期，先 downloadFile 到本地临时路径
+          //    再通过 api.upload 上传到我们的服务器，得到永久可访问的 URL
+          let serverAvatarUrl = "";
+          if (avatarUrl) {
+            try {
+              const dlRes = await new Promise((resolve, reject) => {
+                wx.downloadFile({ url: avatarUrl, success: resolve, fail: reject });
+              });
+              if (dlRes.statusCode === 200 && dlRes.tempFilePath) {
+                const upRes = await api.upload("api/upload", dlRes.tempFilePath, "image");
+                if (upRes && upRes.url) serverAvatarUrl = toAbsUrl(upRes.url);
+              }
+            } catch {
+              // 下载/上传失败时降级：直接用微信 CDN URL（当次可用，但可能过期）
+              serverAvatarUrl = avatarUrl;
+            }
+          }
+
+          // 2. 将头像 + 昵称写入服务器
+          const payload = {};
+          if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
+          if (cleanedNickname) payload.nickname = cleanedNickname;
+          if (Object.keys(payload).length > 0) {
+            await api.put("api/auth/me", payload);
+          }
+
+          // 3. 立即更新前端展示（不等下次 onShow 的 loadAll）
+          const newInfo = {
+            ...(this.data.userInfo || {}),
+            ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
+            ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
+          };
+          const finalNickname = cleanedNickname || this.data.editNickname;
+          const finalAvatarUrl = serverAvatarUrl || this.data.displayAvatarUrl || "";
+          this.setData({
+            userInfo: newInfo,
+            displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
+            editNickname: finalNickname,
+            displayNickname: buildDisplayNickname(finalNickname),
+            avatarUploading: false,
+          });
+          wx.setStorageSync("birthday_userinfo", newInfo);
+          this._lastSavedAvatarUrl = finalAvatarUrl || null;
+          wx.showToast({ title: "资料已保存", icon: "success" });
+        } catch {
+          this.setData({ avatarUploading: false });
+          wx.showToast({ title: "保存失败，请重试", icon: "none" });
+        }
+      },
+      // 用户点"取消"或拒绝 → 关闭弹窗，保持 logo 默认头像 + 默认昵称
+      fail: () => {
+        this.setData({ showWxProfileModal: false });
+      },
+    });
   },
 
-  // ── 跳过授权 ────────────────────────────────────────────────────────────────
+  // ── 跳过授权（"取消"按钮 / 点蒙层） ──────────────────────────────────────────
   skipWxProfile() {
     this.setData({ showWxProfileModal: false });
   },
