@@ -93,9 +93,6 @@ Page({
 
     editNickname: "",
     avatarUploading: false,
-
-    // 微信授权弹窗临时数据
-    wxProfileTemp: { avatarUrl: "", nickname: "" },
   },
 
   async onLoad() {
@@ -249,89 +246,59 @@ Page({
     if (!this.data.loggedIn) return;
     if (wx.getStorageSync("birthday_wx_profile_asked")) return;
     wx.setStorageSync("birthday_wx_profile_asked", true);
-    this.setData({
-      showWxProfileModal: true,
-      wxProfileTemp: {
-        avatarUrl: this.data.displayAvatarUrl || "",
-        nickname: this.data.editNickname || "",
-      },
-    });
+    this.setData({ showWxProfileModal: true });
   },
 
   // ── 微信资料授权弹窗：主动打开（从设置页按钮触发） ─────────────────────────
   openWxProfileModal() {
-    this.setData({
-      showWxProfileModal: true,
-      showSettings: false,
-      wxProfileTemp: {
-        avatarUrl: this.data.displayAvatarUrl || "",
-        nickname: this.data.editNickname || "",
+    this.setData({ showWxProfileModal: true, showSettings: false });
+  },
+
+  // ── 用户点击"允许"→ 调起微信原生授权弹窗获取昵称+头像 ────────────────────────
+  onTapGetWxProfile() {
+    if (typeof wx.getUserProfile !== "function") {
+      wx.showToast({ title: "当前版本暂不支持", icon: "none" });
+      return;
+    }
+    wx.getUserProfile({
+      desc: "标识用户",
+      lang: "zh_CN",
+      success: async (res) => {
+        const { nickName, avatarUrl } = res.userInfo;
+        this.setData({ avatarUploading: true });
+        try {
+          // 微信头像 URL 为持久 CDN 地址，直接保存无需上传
+          const payload = {};
+          if (avatarUrl) payload.avatarUrl = avatarUrl;
+          if (nickName) payload.nickname = nickName;
+          if (Object.keys(payload).length > 0) {
+            await api.put("api/auth/me", payload);
+          }
+          const newInfo = {
+            ...(this.data.userInfo || {}),
+            ...payload,
+          };
+          const finalNickname = nickName || this.data.editNickname;
+          this.setData({
+            userInfo: newInfo,
+            displayAvatarUrl: toDisplayAvatar(avatarUrl || ""),
+            editNickname: finalNickname,
+            displayNickname: buildDisplayNickname(finalNickname),
+            avatarUploading: false,
+            showWxProfileModal: false,
+          });
+          wx.setStorageSync("birthday_userinfo", newInfo);
+          wx.showToast({ title: "资料已保存", icon: "success" });
+        } catch {
+          this.setData({ avatarUploading: false });
+          wx.showToast({ title: "保存失败，请重试", icon: "none" });
+        }
+      },
+      fail: () => {
+        // 用户取消授权，关闭弹窗，保持默认头像/昵称
+        this.setData({ showWxProfileModal: false });
       },
     });
-  },
-
-  // ── 微信原生头像选择器回调 ──────────────────────────────────────────────────
-  onWxProfileAvatarChosen(e) {
-    const tempUrl = e.detail && e.detail.avatarUrl;
-    if (!tempUrl) return;
-    this.setData({ "wxProfileTemp.avatarUrl": tempUrl });
-  },
-
-  // ── 微信昵称输入回调 ──────────────────────────────────────────────────────
-  onWxProfileNicknameInput(e) {
-    this.setData({ "wxProfileTemp.nickname": e.detail.value });
-  },
-
-  // ── 保存微信头像+昵称至服务器 ────────────────────────────────────────────────
-  async saveWxProfile() {
-    if (!this.data.loggedIn) {
-      this._requireLogin("保存资料");
-      return;
-    }
-    const { avatarUrl, nickname } = this.data.wxProfileTemp;
-    const cleanedNickname = (nickname || "").trim();
-    if (!avatarUrl && !cleanedNickname) {
-      this.setData({ showWxProfileModal: false });
-      return;
-    }
-    this.setData({ avatarUploading: true });
-    try {
-      let serverAvatarUrl = this.data.displayAvatarUrl || "";
-      // 临时路径才需要上传，http URL 说明已是之前保存的头像
-      if (avatarUrl && !avatarUrl.startsWith("http")) {
-        const uploadRes = await api.upload("api/upload", avatarUrl, "image");
-        const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-        if (rawUrl) serverAvatarUrl = toAbsUrl(rawUrl);
-      } else if (avatarUrl) {
-        serverAvatarUrl = avatarUrl;
-      }
-      const payload = {};
-      if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
-      if (cleanedNickname) payload.nickname = cleanedNickname;
-      if (Object.keys(payload).length > 0) {
-        await api.put("api/auth/me", payload);
-      }
-      const newInfo = {
-        ...(this.data.userInfo || {}),
-        ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
-        ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
-      };
-      const finalNickname = cleanedNickname || this.data.editNickname;
-      this.setData({
-        userInfo: newInfo,
-        displayAvatarUrl: toDisplayAvatar(serverAvatarUrl),
-        editNickname: finalNickname,
-        displayNickname: buildDisplayNickname(finalNickname),
-        avatarUploading: false,
-        showWxProfileModal: false,
-      });
-      wx.setStorageSync("birthday_userinfo", newInfo);
-      this._lastSavedAvatarUrl = serverAvatarUrl || null;
-      wx.showToast({ title: "资料已保存", icon: "success" });
-    } catch {
-      this.setData({ avatarUploading: false });
-      wx.showToast({ title: "保存失败，请重试", icon: "none" });
-    }
   },
 
   // ── 跳过授权 ────────────────────────────────────────────────────────────────
