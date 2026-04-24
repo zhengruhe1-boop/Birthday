@@ -272,86 +272,96 @@ Page({
     });
   },
 
-  // ── 用户点"允许" → 调起微信原生授权弹窗（账号选择列表） ────────────────────
-  onTapGetWxProfile() {
-    if (typeof wx.getUserProfile !== "function") {
-      wx.showToast({ title: "当前版本不支持，请升级微信", icon: "none" });
+  // ── open-type="chooseAvatar" 回调：用户选择头像后立即预览 ──────────────────
+  // e.detail.avatarUrl 是微信本地临时路径（非 http URL），可直接用于预览
+  onWxProfileAvatarChosen(e) {
+    const tempPath = e.detail && e.detail.avatarUrl;
+    if (!tempPath) return;
+    this.setData({ "wxProfileTemp.avatarUrl": tempPath });
+  },
+
+  // ── type="nickname" 回调：用户从微信昵称建议键盘确认后写入 ────────────────────
+  onWxProfileNicknameInput(e) {
+    this.setData({ "wxProfileTemp.nickname": e.detail.value || "" });
+  },
+
+  // ── 点"完成"：压缩头像 → 上传服务器 → 保存昵称 → 刷新展示 ─────────────────
+  async saveWxProfile() {
+    if (!this.data.loggedIn) { this._requireLogin("保存资料"); return; }
+
+    const { avatarUrl: tempAvatarPath, nickname } = this.data.wxProfileTemp;
+    const cleanedNickname = cleanNickname(nickname || "");
+
+    // 头像和昵称都没选，直接关闭
+    if (!tempAvatarPath && !cleanedNickname) {
+      this.setData({ showWxProfileModal: false });
       return;
     }
-    wx.getUserProfile({
-      desc: "标识用户",
-      lang: "zh_CN",
-      success: async (res) => {
-        const { nickName, avatarUrl } = res.userInfo;
 
-        // 过滤微信脱敏默认昵称（INVALID_NICKNAMES 已含"微信用户"）
-        const cleanedNickname = cleanNickname(nickName || "");
+    this.setData({ avatarUploading: true });
+    try {
+      let serverAvatarUrl = "";
 
-        // 过滤微信默认灰色头像：URL 中含 /0/0 表示未设置真实头像
-        const isDefaultAvatar = !avatarUrl || avatarUrl.includes("/0/0");
-
-        this.setData({ avatarUploading: true, showWxProfileModal: false });
+      if (tempAvatarPath) {
+        // 1. wx.compressImage 将头像压缩到 80% 质量，避免超过服务器 12MB 限制
+        let uploadPath = tempAvatarPath;
         try {
-          // 1. 下载微信 CDN 头像并上传到我们的服务器（得到永久 URL）
-          //    仅对真实头像操作，跳过默认灰色头像
-          let serverAvatarUrl = "";
-          if (avatarUrl && !isDefaultAvatar) {
-            try {
-              const dlRes = await new Promise((resolve, reject) => {
-                wx.downloadFile({ url: avatarUrl, success: resolve, fail: reject });
-              });
-              if (dlRes.statusCode === 200 && dlRes.tempFilePath) {
-                const upRes = await api.upload("api/upload", dlRes.tempFilePath, "image");
-                if (upRes && upRes.url) serverAvatarUrl = toAbsUrl(upRes.url);
-              }
-            } catch {
-              // 下载/上传异常：不设置头像（保持当前头像或 logo 默认）
-            }
-          }
-
-          // 2. 仅把真实数据写入服务器（屏蔽脱敏/默认值）
-          const payload = {};
-          if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
-          if (cleanedNickname) payload.nickname = cleanedNickname;
-          if (Object.keys(payload).length > 0) {
-            await api.put("api/auth/me", payload);
-          }
-
-          // 3. 立即更新前端展示
-          //    displayAvatarUrl: 本次上传成功用新 URL，否则保持现有已有值（非"微信用户"旧值）
-          //    displayNickname: 本次拿到真实昵称则用，否则仅用 cleanNickname 清洗后的值
-          const newInfo = {
-            ...(this.data.userInfo || {}),
-            ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
-            ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
-          };
-          // ⚠️ 不回退到旧 editNickname —— 旧值可能也是"微信用户"
-          const finalNickname = cleanedNickname;
-          // 头像：本次上传成功 > 现有已保存 URL（已经干净）> 空（显示 logo）
-          const finalAvatarUrl = serverAvatarUrl || (
-            this.data.displayAvatarUrl && !this.data.displayAvatarUrl.includes("/0/0")
-              ? this.data.displayAvatarUrl : ""
-          );
-          this.setData({
-            userInfo: newInfo,
-            displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
-            editNickname: finalNickname,
-            displayNickname: buildDisplayNickname(finalNickname),
-            avatarUploading: false,
+          const compressed = await new Promise((resolve, reject) => {
+            wx.compressImage({
+              src: tempAvatarPath,
+              quality: 80,
+              success: resolve,
+              fail: reject,
+            });
           });
-          wx.setStorageSync("birthday_userinfo", newInfo);
-          this._lastSavedAvatarUrl = serverAvatarUrl || null;
-          wx.showToast({ title: "资料已保存", icon: "success" });
+          if (compressed && compressed.tempFilePath) {
+            uploadPath = compressed.tempFilePath;
+          }
         } catch {
-          this.setData({ avatarUploading: false });
-          wx.showToast({ title: "保存失败，请重试", icon: "none" });
+          // 压缩失败则直接用原始临时路径上传
         }
-      },
-      // 用户点"取消"或拒绝 → 关闭弹窗，保持 logo 默认头像 + 默认昵称
-      fail: () => {
-        this.setData({ showWxProfileModal: false });
-      },
-    });
+
+        // 2. 上传到服务器，得到永久可访问的 URL
+        const upRes = await api.upload("api/upload", uploadPath, "image");
+        if (upRes && upRes.url) {
+          serverAvatarUrl = toAbsUrl(upRes.url);
+        }
+      }
+
+      // 3. 写入服务器（只写有效数据）
+      const payload = {};
+      if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
+      if (cleanedNickname) payload.nickname = cleanedNickname;
+      if (Object.keys(payload).length > 0) {
+        await api.put("api/auth/me", payload);
+      }
+
+      // 4. 立即更新页面头部展示（不等待 loadAll 重新请求）
+      const newInfo = {
+        ...(this.data.userInfo || {}),
+        ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
+        ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
+      };
+      const finalAvatarUrl = serverAvatarUrl || (
+        toDisplayAvatar(this.data.displayAvatarUrl) ? this.data.displayAvatarUrl : ""
+      );
+      this.setData({
+        userInfo: newInfo,
+        displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
+        editNickname: cleanedNickname,
+        displayNickname: buildDisplayNickname(cleanedNickname),
+        avatarUploading: false,
+        showWxProfileModal: false,
+        wxProfileTemp: { avatarUrl: "", nickname: "" },
+      });
+      wx.setStorageSync("birthday_userinfo", newInfo);
+      this._lastSavedAvatarUrl = serverAvatarUrl || null;
+      wx.showToast({ title: "资料已保存", icon: "success" });
+    } catch (err) {
+      this.setData({ avatarUploading: false });
+      const msg = (err && err.message) ? err.message : "保存失败，请重试";
+      wx.showToast({ title: msg.slice(0, 20), icon: "none" });
+    }
   },
 
   // ── 跳过授权（"取消"按钮 / 点蒙层） ──────────────────────────────────────────

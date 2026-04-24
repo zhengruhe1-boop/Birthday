@@ -359,16 +359,40 @@
     </view>
   </view>
 
-  <!-- 微信资料授权弹窗 —— 点"允许"触发 wx.getUserProfile 原生系统弹窗 -->
+  <!-- 微信资料弹窗：open-type="chooseAvatar" 获取真实头像，type="nickname" 获取真实昵称 -->
   <view wx:if="{{showWxProfileModal}}" class="modal-mask" bindtap="skipWxProfile">
     <view class="wx-auth-sheet" catchtap="noop">
       <view class="modal-handle" />
       <text class="wx-auth-title">获取你的昵称、头像</text>
       <text class="wx-auth-sub">标识用户</text>
-      <button class="wx-auth-confirm-btn" bindtap="onTapGetWxProfile">
-        {{avatarUploading ? '获取中…' : '允许'}}
+
+      <!-- 点击弹出微信相册/头像选择器，返回真实头像临时路径 -->
+      <button class="wx-auth-avatar-btn"
+        open-type="chooseAvatar"
+        bindchooseavatar="onWxProfileAvatarChosen">
+        <image wx:if="{{wxProfileTemp.avatarUrl}}"
+          class="wx-auth-avatar-img"
+          src="{{wxProfileTemp.avatarUrl}}"
+          mode="aspectFill" />
+        <view wx:else class="wx-auth-avatar-placeholder">
+          <text class="wx-auth-avatar-icon">👤</text>
+          <text class="wx-auth-avatar-hint">点击选择微信头像</text>
+        </view>
       </button>
-      <button class="wx-auth-skip-btn" bindtap="skipWxProfile">取消</button>
+
+      <!-- 聚焦时微信弹出昵称建议键盘，用户确认后填入真实昵称 -->
+      <input class="wx-auth-nickname-input"
+        type="nickname"
+        placeholder="点击填入微信昵称"
+        placeholder-class="wx-auth-nickname-ph"
+        value="{{wxProfileTemp.nickname}}"
+        bindinput="onWxProfileNicknameInput"
+        maxlength="20" />
+
+      <button class="wx-auth-confirm-btn" bindtap="saveWxProfile">
+        {{avatarUploading ? '上传中…' : '完成'}}
+      </button>
+      <button class="wx-auth-skip-btn" bindtap="skipWxProfile">跳过</button>
     </view>
   </view>
 
