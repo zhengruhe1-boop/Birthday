@@ -64,7 +64,7 @@ router.get("/wechat/subscribe-status", requireAuth, async (req: AuthRequest, res
       .where(eq(usersTable.id, req.userId!)).limit(1);
     if (!rows.length) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const { openId, unionId } = rows[0];
+    const { openId, oaOpenId, unionId } = rows[0];
 
     // Non-WeChat users (mock accounts) are never subscribed
     if (!openId || openId.startsWith("mock:")) {
@@ -90,41 +90,59 @@ router.get("/wechat/subscribe-status", requireAuth, async (req: AuthRequest, res
       return { ok: true, subscribed: data.subscribe === 1, errcode: 0 };
     };
 
-    // Step 1: Try current user's openId directly (works if they're already an OA user)
+    // Step 1: 优先用已关联的 oaOpenId（MP 登录后合并的 OA openId）
+    // 这是最可靠的路径：用户先关注 OA → MP 登录时已将 oaOpenId 写入同一行
+    if (oaOpenId && !oaOpenId.startsWith("mock:")) {
+      const direct = await checkSubscription(oaOpenId);
+      if (direct.ok) {
+        req.log.info({ oaOpenId, subscribed: direct.subscribed }, "subscribe-status: resolved via oaOpenId");
+        res.json({ subscribed: direct.subscribed, linkedOa: true });
+        return;
+      }
+      req.log.warn({ oaOpenId, errcode: direct.errcode }, "subscribe-status: oaOpenId check failed, falling back");
+    }
+
+    // Step 2: 尝试用当前 openId 直接查（用于 OA 网页授权登录用户，openId 即 OA openId）
     const direct = await checkSubscription(openId);
     if (direct.ok) {
-      // Current openId is valid for the OA → return result + indicate OA is linked
       res.json({ subscribed: direct.subscribed, linkedOa: true });
       return;
     }
 
-    // Step 2: If direct check failed (likely MP openId, not OA openId), find linked OA user via unionId
+    // Step 3: 通过 unionId 查找其他关联的 OA 行（含 oaOpenId 的占位行）
     if (unionId) {
+      // 先查有 oaOpenId 的行（包括 openId 为 null 的 OA 占位行）
       const linked = await db.select().from(usersTable)
         .where(and(
           eq(usersTable.unionId, unionId),
           ne(usersTable.id, req.userId!),
-          isNotNull(usersTable.openId),
+          isNotNull(usersTable.oaOpenId),
         ))
         .limit(5);
 
       for (const linkedUser of linked) {
-        if (!linkedUser.openId || linkedUser.openId.startsWith("mock:")) continue;
-        const result = await checkSubscription(linkedUser.openId);
+        const checkId = linkedUser.oaOpenId ?? linkedUser.openId;
+        if (!checkId || checkId.startsWith("mock:")) continue;
+        const result = await checkSubscription(checkId);
         if (result.ok) {
-          req.log.info({ unionId, linkedOpenId: linkedUser.openId }, "subscribe-status: resolved via unionId");
+          req.log.info({ unionId, checkId }, "subscribe-status: resolved via unionId + oaOpenId");
+          // 将 oaOpenId 回填到当前用户行，方便下次直接命中 Step 1
+          if (linkedUser.oaOpenId && !rows[0].oaOpenId) {
+            await db.update(usersTable)
+              .set({ oaOpenId: linkedUser.oaOpenId })
+              .where(eq(usersTable.id, req.userId!));
+          }
           res.json({ subscribed: result.subscribed, linkedOa: true });
           return;
         }
       }
 
-      // Found unionId but no linked OA account that works → OA not yet bound
       req.log.info({ unionId }, "subscribe-status: unionId set but no linked OA user found");
       res.json({ subscribed: false, linkedOa: false });
       return;
     }
 
-    // Step 3: No unionId available → OA not bound to this MP account yet
+    // Step 4: 无任何关联信息
     req.log.warn({ errcode: direct.errcode }, "subscribe-status: direct check failed, no unionId to fall back on");
     res.json({ subscribed: false, linkedOa: false });
   } catch (err) {
