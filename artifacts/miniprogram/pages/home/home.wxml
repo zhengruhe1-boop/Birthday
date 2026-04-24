@@ -3,12 +3,17 @@
   <!-- 顶部 Header -->
   <view class="home-header">
     <view class="header-left" bindtap="{{loggedIn ? 'openSettings' : 'goLogin'}}">
-      <!-- 头像（点击进入设置） -->
+      <!-- 头像（点击进入设置）：有真实头像 URL 显示头像，否则显示 logo -->
       <view class="avatar-wrap-hd">
-        <image class="avatar-img-hd"
-          src="{{displayAvatarUrl || '/images/logo.jpg'}}"
+        <image wx:if="{{displayAvatarUrl}}"
+          class="avatar-img-hd"
+          src="{{displayAvatarUrl}}"
           mode="aspectFill"
           binderror="onAvatarImgError" />
+        <image wx:else
+          class="avatar-img-hd"
+          src="/images/logo.jpg"
+          mode="aspectFill" />
       </view>
       <view class="header-text">
         <text class="welcome-text">{{displayNickname}}</text>

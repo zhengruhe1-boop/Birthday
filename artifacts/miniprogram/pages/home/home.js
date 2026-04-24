@@ -45,8 +45,8 @@ function normalizeContacts(list) {
   }));
 }
 
-// 清理微信系统占位文字，视为未设置昵称
-const INVALID_NICKNAMES = ["获取微信昵称", "微信昵称", "用户昵称"];
+// 清理微信系统占位文字（含脱敏默认昵称），视为未设置昵称
+const INVALID_NICKNAMES = ["获取微信昵称", "微信昵称", "用户昵称", "微信用户"];
 function cleanNickname(nickname) {
   const s = (nickname || "").trim();
   return INVALID_NICKNAMES.includes(s) ? "" : s;
@@ -61,9 +61,11 @@ function buildDisplayNickname(nickname) {
 const PREF_EMAIL_NOTIFY = "birthday_pref_email_notify";
 const DEFAULT_AVATAR = "/images/logo.jpg";
 
-// 只有以 http 开头的才算有效服务器 URL，否则用默认 logo
+// 只有以 http 开头且非微信默认灰色头像（/0/0）的才展示，否则返回空（显示 logo）
 function toDisplayAvatar(url) {
-  return url && url.startsWith("http") ? url : "";
+  if (!url || !url.startsWith("http")) return "";
+  if (url.includes("/0/0")) return ""; // 微信脱敏默认灰色头像
+  return url;
 }
 
 Page({
@@ -281,16 +283,19 @@ Page({
       lang: "zh_CN",
       success: async (res) => {
         const { nickName, avatarUrl } = res.userInfo;
-        // 微信返回的脱敏默认昵称，视为未授权
-        const isDefaultNick = !nickName || INVALID_NICKNAMES.concat(["微信用户"]).includes(nickName.trim());
-        const cleanedNickname = isDefaultNick ? "" : nickName.trim();
+
+        // 过滤微信脱敏默认昵称（INVALID_NICKNAMES 已含"微信用户"）
+        const cleanedNickname = cleanNickname(nickName || "");
+
+        // 过滤微信默认灰色头像：URL 中含 /0/0 表示未设置真实头像
+        const isDefaultAvatar = !avatarUrl || avatarUrl.includes("/0/0");
 
         this.setData({ avatarUploading: true, showWxProfileModal: false });
         try {
-          // 1. 微信 CDN 头像 URL 可能过期，先 downloadFile 到本地临时路径
-          //    再通过 api.upload 上传到我们的服务器，得到永久可访问的 URL
+          // 1. 下载微信 CDN 头像并上传到我们的服务器（得到永久 URL）
+          //    仅对真实头像操作，跳过默认灰色头像
           let serverAvatarUrl = "";
-          if (avatarUrl) {
+          if (avatarUrl && !isDefaultAvatar) {
             try {
               const dlRes = await new Promise((resolve, reject) => {
                 wx.downloadFile({ url: avatarUrl, success: resolve, fail: reject });
@@ -300,12 +305,11 @@ Page({
                 if (upRes && upRes.url) serverAvatarUrl = toAbsUrl(upRes.url);
               }
             } catch {
-              // 下载/上传失败时降级：直接用微信 CDN URL（当次可用，但可能过期）
-              serverAvatarUrl = avatarUrl;
+              // 下载/上传异常：不设置头像（保持当前头像或 logo 默认）
             }
           }
 
-          // 2. 将头像 + 昵称写入服务器
+          // 2. 仅把真实数据写入服务器（屏蔽脱敏/默认值）
           const payload = {};
           if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
           if (cleanedNickname) payload.nickname = cleanedNickname;
@@ -313,14 +317,21 @@ Page({
             await api.put("api/auth/me", payload);
           }
 
-          // 3. 立即更新前端展示（不等下次 onShow 的 loadAll）
+          // 3. 立即更新前端展示
+          //    displayAvatarUrl: 本次上传成功用新 URL，否则保持现有已有值（非"微信用户"旧值）
+          //    displayNickname: 本次拿到真实昵称则用，否则仅用 cleanNickname 清洗后的值
           const newInfo = {
             ...(this.data.userInfo || {}),
             ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
             ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
           };
-          const finalNickname = cleanedNickname || this.data.editNickname;
-          const finalAvatarUrl = serverAvatarUrl || this.data.displayAvatarUrl || "";
+          // ⚠️ 不回退到旧 editNickname —— 旧值可能也是"微信用户"
+          const finalNickname = cleanedNickname;
+          // 头像：本次上传成功 > 现有已保存 URL（已经干净）> 空（显示 logo）
+          const finalAvatarUrl = serverAvatarUrl || (
+            this.data.displayAvatarUrl && !this.data.displayAvatarUrl.includes("/0/0")
+              ? this.data.displayAvatarUrl : ""
+          );
           this.setData({
             userInfo: newInfo,
             displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
@@ -329,7 +340,7 @@ Page({
             avatarUploading: false,
           });
           wx.setStorageSync("birthday_userinfo", newInfo);
-          this._lastSavedAvatarUrl = finalAvatarUrl || null;
+          this._lastSavedAvatarUrl = serverAvatarUrl || null;
           wx.showToast({ title: "资料已保存", icon: "success" });
         } catch {
           this.setData({ avatarUploading: false });
