@@ -88,17 +88,14 @@ Page({
 
     showFab: false,
     showSettings: false,
+    showWxProfileModal: false,
     emailNotify: true,
 
-    // 编辑昵称
     editNickname: "",
-    nicknameChanged: false,
     avatarUploading: false,
 
-    // 键盘高度（px）：用于在昵称输入时把设置弹窗上移，避免被键盘遮挡
-    keyboardHeight: 0,
-    // scroll-into-view 目标 id：键盘弹出时滚动到昵称区域
-    nicknameScrollAnchor: "",
+    // 微信授权弹窗临时数据
+    wxProfileTemp: { avatarUrl: "", nickname: "" },
   },
 
   async onLoad() {
@@ -190,6 +187,7 @@ Page({
       this.setData({ loadingUpcoming: false, loadingEvents: false });
     }
     if (done) done();
+    this._checkAutoShowWxProfileModal();
   },
 
   // ── 搜索 ─────────────────────────────────────────────────────────────────────
@@ -241,180 +239,104 @@ Page({
     }
   },
 
-  // ── 头像：微信原生头像选择器（open-type="chooseAvatar"）─────────────────────
-  async onChooseWxAvatar(e) {
-    const tempUrl = e.detail && e.detail.avatarUrl;
-    if (!tempUrl) return;
-    if (!this.data.loggedIn) {
-      this._requireLogin("更新头像");
-      return;
-    }
-    const prevAvatarUrl = this.data.displayAvatarUrl || null;
-    await this._uploadAndSaveAvatar(tempUrl, prevAvatarUrl);
-  },
-
-  // ── 头像：点击触发相册选图（兼容新旧版微信）────────────────────────────────
-  async chooseAvatar() {
-    if (!this.data.loggedIn) {
-      this._requireLogin("上传头像");
-      return;
-    }
-    const prevAvatarUrl = this.data.displayAvatarUrl || null;
-
-    try {
-      let tempUrl = "";
-      if (wx.chooseMedia) {
-        // 基础库 2.10.0+
-        const res = await new Promise((resolve, reject) => {
-          wx.chooseMedia({
-            count: 1,
-            mediaType: ["image"],
-            sourceType: ["album", "camera"],
-            success: resolve,
-            fail: reject,
-          });
-        });
-        tempUrl = res.tempFiles[0].tempFilePath;
-      } else {
-        // 旧版基础库兼容
-        const res = await new Promise((resolve, reject) => {
-          wx.chooseImage({
-            count: 1,
-            sizeType: ["compressed"],
-            sourceType: ["album", "camera"],
-            success: resolve,
-            fail: reject,
-          });
-        });
-        tempUrl = res.tempFilePaths[0];
-      }
-      await this._uploadAndSaveAvatar(tempUrl, prevAvatarUrl);
-    } catch (err) {
-      const msg = (err && (err.errMsg || err.message)) || "";
-      if (msg.includes("cancel")) return;
-      wx.showToast({ title: "选择图片失败", icon: "none" });
-    }
-  },
-
-  // ── 头像：通用上传保存逻辑 ────────────────────────────────────────────────────
-  async _uploadAndSaveAvatar(tempUrl, prevAvatarUrl) {
-    if (!tempUrl) return;
-    // 临时路径仅用于预览，不写 DB
-    this.setData({
-      userInfo: { ...(this.data.userInfo || {}), avatarUrl: tempUrl },
-      displayAvatarUrl: tempUrl,
-      avatarUploading: true,
-    });
-    this._avatarUploading = true;
-
-    try {
-      const uploadRes = await api.upload("api/upload", tempUrl, "image");
-      const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
-      if (!rawUrl) throw new Error("服务器未返回图片地址");
-
-      const serverUrl = toAbsUrl(rawUrl);
-      await api.put("api/auth/me", { avatarUrl: serverUrl });
-
-      const finalInfo = { ...(this.data.userInfo || {}), avatarUrl: serverUrl };
-      this.setData({
-        userInfo: finalInfo,
-        displayAvatarUrl: toDisplayAvatar(serverUrl),
-        avatarUploading: false,
-      });
-      wx.setStorageSync("birthday_userinfo", finalInfo);
-      this._lastSavedAvatarUrl = serverUrl;
-      wx.showToast({ title: "头像已更新", icon: "success" });
-    } catch (err) {
-      const errMsg = (err && err.message) || "头像上传失败，请重试";
-      this.setData({
-        userInfo: {
-          ...(this.data.userInfo || {}),
-          avatarUrl: prevAvatarUrl || "",
-        },
-        displayAvatarUrl: toDisplayAvatar(prevAvatarUrl || ""),
-        avatarUploading: false,
-      });
-      wx.showToast({
-        title: errMsg.length > 14 ? "头像上传失败，请重试" : errMsg,
-        icon: "none",
-      });
-    } finally {
-      this._avatarUploading = false;
-    }
-  },
-
   // ── 头像图片加载失败时（URL 过期/失效）回退到 logo ──────────────────────────
   onAvatarImgError() {
     this.setData({ displayAvatarUrl: "" });
   },
 
-  // ── 昵称：输入时标记有未保存改动 ─────────────────────────────────────────────
-  onNicknameInput(e) {
-    const nickname = e.detail.value;
-    const original = (this.data.userInfo && this.data.userInfo.nickname) || "";
+  // ── 微信资料授权弹窗：首次自动弹出检查 ──────────────────────────────────────
+  _checkAutoShowWxProfileModal() {
+    if (!this.data.loggedIn) return;
+    if (wx.getStorageSync("birthday_wx_profile_asked")) return;
+    wx.setStorageSync("birthday_wx_profile_asked", true);
     this.setData({
-      editNickname: nickname,
-      nicknameChanged: nickname.trim() !== original.trim(),
+      showWxProfileModal: true,
+      wxProfileTemp: {
+        avatarUrl: this.data.displayAvatarUrl || "",
+        nickname: this.data.editNickname || "",
+      },
     });
   },
 
-  // ── 昵称：失去焦点自动保存 ────────────────────────────────────────────────────
-  async onNicknameBlur() {
-    if (!this.data.loggedIn || !this.data.nicknameChanged) return;
-    const nickname = (this.data.editNickname || "").trim();
-    if (!nickname) return;
-    this.setData({ nicknameChanged: false });
-    await this._saveNickname(nickname);
-  },
-
-  // ── 键盘高度变化：弹窗动态上移 + 滚动到昵称区域，保持内容可见 ──────────────────
-  onNicknameKeyboardChange(e) {
-    const h = e.detail.height || 0;
+  // ── 微信资料授权弹窗：主动打开（从设置页按钮触发） ─────────────────────────
+  openWxProfileModal() {
     this.setData({
-      keyboardHeight: h,
-      // 键盘弹出时滚到昵称区域，键盘收起时清空锚点
-      nicknameScrollAnchor: h > 0 ? "nickname-anchor" : "",
+      showWxProfileModal: true,
+      showSettings: false,
+      wxProfileTemp: {
+        avatarUrl: this.data.displayAvatarUrl || "",
+        nickname: this.data.editNickname || "",
+      },
     });
   },
 
-  // ── 昵称：手动点击保存按钮（始终可见）──────────────────────────────────────
-  async saveNickname() {
+  // ── 微信原生头像选择器回调 ──────────────────────────────────────────────────
+  onWxProfileAvatarChosen(e) {
+    const tempUrl = e.detail && e.detail.avatarUrl;
+    if (!tempUrl) return;
+    this.setData({ "wxProfileTemp.avatarUrl": tempUrl });
+  },
+
+  // ── 微信昵称输入回调 ──────────────────────────────────────────────────────
+  onWxProfileNicknameInput(e) {
+    this.setData({ "wxProfileTemp.nickname": e.detail.value });
+  },
+
+  // ── 保存微信头像+昵称至服务器 ────────────────────────────────────────────────
+  async saveWxProfile() {
     if (!this.data.loggedIn) {
-      this._requireLogin("设置昵称");
+      this._requireLogin("保存资料");
       return;
     }
-    const nickname = (this.data.editNickname || "").trim();
-    if (!nickname) {
-      wx.showToast({ title: "昵称不能为空", icon: "none" });
+    const { avatarUrl, nickname } = this.data.wxProfileTemp;
+    const cleanedNickname = (nickname || "").trim();
+    if (!avatarUrl && !cleanedNickname) {
+      this.setData({ showWxProfileModal: false });
       return;
     }
-    this.setData({ nicknameChanged: false });
-    await this._saveNickname(nickname);
-  },
-
-  // ── 昵称：公共保存逻辑 ────────────────────────────────────────────────────────
-  async _saveNickname(nickname) {
+    this.setData({ avatarUploading: true });
     try {
-      const updated = await api.put("api/auth/me", { nickname });
-      const currentAvatarUrl =
-        (this.data.userInfo && this.data.userInfo.avatarUrl) || "";
-      const serverAvatarUrl = toAbsUrl(updated.avatarUrl);
-      const finalAvatarUrl = serverAvatarUrl || currentAvatarUrl;
+      let serverAvatarUrl = this.data.displayAvatarUrl || "";
+      // 临时路径才需要上传，http URL 说明已是之前保存的头像
+      if (avatarUrl && !avatarUrl.startsWith("http")) {
+        const uploadRes = await api.upload("api/upload", avatarUrl, "image");
+        const rawUrl = uploadRes && uploadRes.url ? uploadRes.url : null;
+        if (rawUrl) serverAvatarUrl = toAbsUrl(rawUrl);
+      } else if (avatarUrl) {
+        serverAvatarUrl = avatarUrl;
+      }
+      const payload = {};
+      if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
+      if (cleanedNickname) payload.nickname = cleanedNickname;
+      if (Object.keys(payload).length > 0) {
+        await api.put("api/auth/me", payload);
+      }
       const newInfo = {
         ...(this.data.userInfo || {}),
-        ...updated,
-        avatarUrl: finalAvatarUrl,
+        ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
+        ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
       };
+      const finalNickname = cleanedNickname || this.data.editNickname;
       this.setData({
         userInfo: newInfo,
-        displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
-        displayNickname: buildDisplayNickname(nickname),
+        displayAvatarUrl: toDisplayAvatar(serverAvatarUrl),
+        editNickname: finalNickname,
+        displayNickname: buildDisplayNickname(finalNickname),
+        avatarUploading: false,
+        showWxProfileModal: false,
       });
       wx.setStorageSync("birthday_userinfo", newInfo);
-      wx.showToast({ title: "昵称已保存", icon: "success" });
+      this._lastSavedAvatarUrl = serverAvatarUrl || null;
+      wx.showToast({ title: "资料已保存", icon: "success" });
     } catch {
-      wx.showToast({ title: "昵称保存失败", icon: "none" });
+      this.setData({ avatarUploading: false });
+      wx.showToast({ title: "保存失败，请重试", icon: "none" });
     }
+  },
+
+  // ── 跳过授权 ────────────────────────────────────────────────────────────────
+  skipWxProfile() {
+    this.setData({ showWxProfileModal: false });
   },
 
   // ── 登录引导（未登录时统一弹窗提示）────────────────────────────────────────────
@@ -490,20 +412,10 @@ Page({
 
   // ── 设置 ─────────────────────────────────────────────────────────────────────
   openSettings() {
-    this.setData({
-      showSettings: true,
-      editNickname: cleanNickname(
-        this.data.userInfo && this.data.userInfo.nickname,
-      ),
-      nicknameChanged: false,
-    });
+    this.setData({ showSettings: true });
   },
   closeSettings() {
-    this.setData({
-      showSettings: false,
-      keyboardHeight: 0,
-      nicknameScrollAnchor: "",
-    });
+    this.setData({ showSettings: false });
   },
   goSubscribePage() {
     this.closeSettings();

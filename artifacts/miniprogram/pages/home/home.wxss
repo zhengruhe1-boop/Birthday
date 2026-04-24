@@ -615,28 +615,11 @@
   overflow: hidden;
   box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.14);
 }
-.avatar-tap-wrap:active { opacity: 0.82; }
-
 .profile-avatar-img {
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
   display: block;
-}
-
-/* 相机角标 */
-.avatar-camera-badge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 48rpx;
-  height: 48rpx;
-  background: rgba(0,0,0,0.45);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
 }
 
 /* 上传中遮罩 */
@@ -652,12 +635,6 @@
 .avatar-uploading-text {
   font-size: 20rpx;
   color: #fff;
-}
-
-.avatar-hint {
-  font-size: 22rpx;
-  color: #94a3b8;
-  margin-top: 12rpx;
 }
 
 /* 昵称展示行（头像下方，按钮上方） */
@@ -700,48 +677,6 @@
 .wx-profile-btn::after { border: none; }
 .wx-profile-btn:active { opacity: 0.85; }
 
-/* 昵称输入区 */
-.nickname-section {
-  margin-top: 32rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.nickname-label {
-  font-size: 24rpx;
-  color: #64748b;
-  font-weight: 500;
-  display: block;
-}
-
-.nickname-input {
-  height: 88rpx;
-  line-height: 88rpx;
-  background: #f8fafc;
-  border: 2rpx solid #e2e8f0;
-  border-radius: 20rpx;
-  padding: 0 32rpx;
-  font-size: 28rpx;
-  color: #1e293b;
-}
-
-.nickname-placeholder { color: #cbd5e1; }
-
-.nickname-save-btn {
-  height: 80rpx;
-  line-height: 80rpx;
-  background: #f97316;
-  color: #fff;
-  font-size: 28rpx;
-  font-weight: 600;
-  border-radius: 20rpx;
-  border: none;
-  padding: 0;
-}
-.nickname-save-btn::after { border: none; }
-.nickname-save-btn:active { opacity: 0.82; }
-
 /* 设置分组 */
 .settings-item-group {
   margin-bottom: 32rpx;
@@ -779,3 +714,127 @@
 }
 .logout-btn::after { border: none; }
 .logout-btn:active { opacity: 0.75; }
+
+/* ── 微信资料授权弹窗 ──────────────────────────────────────────────────────── */
+.wx-auth-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 0 48rpx 60rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wx-auth-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 40rpx;
+  display: block;
+  text-align: center;
+}
+
+.wx-auth-sub {
+  font-size: 24rpx;
+  color: #94a3b8;
+  margin-top: 10rpx;
+  display: block;
+  text-align: center;
+}
+
+/* 头像选择按钮（圆圈，open-type="chooseAvatar"） */
+.wx-auth-avatar-btn {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: none;
+  padding: 0;
+  margin-top: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wx-auth-avatar-btn::after { border: none; }
+.wx-auth-avatar-btn:active { opacity: 0.8; }
+
+.wx-auth-avatar-img {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+.wx-auth-avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.wx-auth-avatar-icon {
+  font-size: 48rpx;
+  display: block;
+}
+
+.wx-auth-avatar-hint {
+  font-size: 18rpx;
+  color: #94a3b8;
+  margin-top: 6rpx;
+  display: block;
+}
+
+/* 昵称输入框 */
+.wx-auth-nickname-input {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 20rpx;
+  padding: 0 32rpx;
+  font-size: 30rpx;
+  color: #1e293b;
+  margin-top: 36rpx;
+  box-sizing: border-box;
+}
+.wx-auth-nickname-ph { color: #cbd5e1; }
+
+/* 完成按钮 */
+.wx-auth-confirm-btn {
+  width: 100%;
+  height: 92rpx;
+  line-height: 92rpx;
+  background: #f97316;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 700;
+  border-radius: 50rpx;
+  border: none;
+  padding: 0;
+  margin-top: 32rpx;
+}
+.wx-auth-confirm-btn::after { border: none; }
+.wx-auth-confirm-btn:active { opacity: 0.85; }
+
+/* 跳过按钮 */
+.wx-auth-skip-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 28rpx;
+  border: none;
+  padding: 0;
+  margin-top: 16rpx;
+}
+.wx-auth-skip-btn::after { border: none; }
+.wx-auth-skip-btn:active { opacity: 0.7; }

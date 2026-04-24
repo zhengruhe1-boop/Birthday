@@ -306,20 +306,17 @@
 
   <!-- 设置面板 -->
   <view wx:if="{{showSettings}}" class="modal-mask" bindtap="closeSettings">
-    <!-- margin-bottom 随键盘高度动态上移，保证输入框和保存按钮始终可见 -->
-    <view class="modal-sheet" catchtap="noop" style="margin-bottom:{{keyboardHeight}}px">
+    <view class="modal-sheet" catchtap="noop">
       <view class="modal-handle" />
       <view class="modal-header">
         <text class="modal-title">设置</text>
         <view class="modal-close" bindtap="closeSettings"><text>✕</text></view>
       </view>
-      <!-- scroll-into-view：键盘弹出时自动滚动到昵称区域 -->
-      <scroll-view class="settings-body" scroll-y scroll-into-view="{{nicknameScrollAnchor}}">
+      <scroll-view class="settings-body" scroll-y>
         <view class="settings-inner">
 
-          <!-- 头像 + 昵称 + 微信获取按钮 -->
+          <!-- 头像 + 昵称展示 + 微信获取按钮 -->
           <view class="profile-section">
-            <!-- 头像展示（仅展示，不可直接点击） -->
             <view class="avatar-tap-wrap">
               <image class="profile-avatar-img"
                 src="{{displayAvatarUrl || '/images/logo.jpg'}}"
@@ -329,33 +326,11 @@
                 <text class="avatar-uploading-text">上传中…</text>
               </view>
             </view>
-
-            <!-- 昵称展示行 -->
             <view class="nickname-info-row">
               <text class="nickname-info-label">昵称</text>
               <text class="nickname-info-value">{{editNickname || '未设置'}}</text>
             </view>
-
-            <!-- 微信一键获取头像/昵称按钮 -->
-            <button class="wx-profile-btn"
-              open-type="chooseAvatar"
-              bindchooseavatar="onChooseWxAvatar">获取您微信头像/昵称</button>
-          </view>
-
-          <!-- 昵称编辑区（type=nickname：聚焦时微信弹出昵称建议选择器） -->
-          <view id="nickname-anchor" class="nickname-section">
-            <text class="nickname-label">修改昵称</text>
-            <input class="nickname-input"
-              type="nickname"
-              placeholder="点击使用微信昵称或手动填写"
-              placeholder-class="nickname-placeholder"
-              value="{{editNickname}}"
-              bindinput="onNicknameInput"
-              bindblur="onNicknameBlur"
-              maxlength="20"
-              adjust-position="{{false}}"
-              bindkeyboardheightchange="onNicknameKeyboardChange" />
-            <button class="nickname-save-btn" bindtap="saveNickname">保存昵称</button>
+            <button class="wx-profile-btn" bindtap="openWxProfileModal">获取您微信头像/昵称</button>
           </view>
 
           <!-- 提醒偏好 -->
@@ -376,6 +351,41 @@
 
         </view>
       </scroll-view>
+    </view>
+  </view>
+
+  <!-- 微信资料授权弹窗（首次进入自动弹出 / 设置页主动触发） -->
+  <view wx:if="{{showWxProfileModal}}" class="modal-mask" bindtap="skipWxProfile">
+    <view class="wx-auth-sheet" catchtap="noop">
+      <view class="modal-handle" />
+      <text class="wx-auth-title">获取您的微信头像/昵称</text>
+      <text class="wx-auth-sub">将作为您在生日通中的身份标识</text>
+
+      <!-- 头像选择圆圈：open-type="chooseAvatar" 触发微信原生头像选择器 -->
+      <button class="wx-auth-avatar-btn"
+        open-type="chooseAvatar"
+        bindchooseavatar="onWxProfileAvatarChosen">
+        <image wx:if="{{wxProfileTemp.avatarUrl}}" class="wx-auth-avatar-img"
+          src="{{wxProfileTemp.avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="wx-auth-avatar-placeholder">
+          <text class="wx-auth-avatar-icon">📷</text>
+          <text class="wx-auth-avatar-hint">点击选择微信头像</text>
+        </view>
+      </button>
+
+      <!-- 昵称输入：type="nickname" 聚焦时微信弹出昵称建议 -->
+      <input class="wx-auth-nickname-input"
+        type="nickname"
+        placeholder="点击填入微信昵称"
+        placeholder-class="wx-auth-nickname-ph"
+        value="{{wxProfileTemp.nickname}}"
+        bindinput="onWxProfileNicknameInput"
+        maxlength="20" />
+
+      <button class="wx-auth-confirm-btn" bindtap="saveWxProfile">
+        {{avatarUploading ? '保存中…' : '完成'}}
+      </button>
+      <button class="wx-auth-skip-btn" bindtap="skipWxProfile">跳过</button>
     </view>
   </view>
 
