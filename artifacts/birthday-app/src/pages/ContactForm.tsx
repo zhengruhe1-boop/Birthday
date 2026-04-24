@@ -473,7 +473,7 @@ export default function ContactForm() {
                           : "border-border bg-white text-muted-foreground hover:bg-gray-50",
                       )}
                     >
-                      <span>👨</span> 男
+                      男
                     </button>
                     <button
                       type="button"
@@ -485,7 +485,7 @@ export default function ContactForm() {
                           : "border-border bg-white text-muted-foreground hover:bg-gray-50",
                       )}
                     >
-                      <span>👩</span> 女
+                      女
                     </button>
                   </div>
                 )}

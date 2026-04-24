@@ -52,13 +52,14 @@ export function ContactCard({ contact, index }: ContactCardProps) {
               )}
             </div>
             <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-              <span className={cn(
-                "inline-flex items-center justify-center px-1.5 py-0.5 rounded text-xs font-medium",
-                contact.gender === "male" ? "bg-blue-50 text-blue-500" : 
-                contact.gender === "female" ? "bg-pink-50 text-pink-500" : "bg-gray-100 text-gray-500"
-              )}>
-                {contact.gender === "male" ? "👨" : contact.gender === "female" ? "👩" : "👤"}
-              </span>
+              {contact.gender && (
+                <span className={cn(
+                  "inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium",
+                  contact.gender === "male" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"
+                )}>
+                  {contact.gender === "male" ? "男" : "女"}
+                </span>
+              )}
               
               <span className="flex items-center gap-1 text-xs font-medium text-foreground/80 bg-secondary/50 px-2 py-0.5 rounded-full">
                 {contact.birthdayLunar ? "农历" : "公历"} {contact.birthdayDisplay}

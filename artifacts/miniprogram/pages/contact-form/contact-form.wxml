@@ -32,10 +32,10 @@
         <text class="label">性别<text class="label-optional">（选填）</text></text>
         <view class="gender-row">
           <view class="gender-btn {{gender === 'male' ? 'active-male' : ''}}" data-val="male" bindtap="setGender">
-            <text>👦 男</text>
+            <text>男</text>
           </view>
           <view class="gender-btn {{gender === 'female' ? 'active-female' : ''}}" data-val="female" bindtap="setGender">
-            <text>👧 女</text>
+            <text>女</text>
           </view>
           <view class="gender-btn {{!gender ? 'active-neutral' : ''}}" data-val="" bindtap="setGender">
             <text>不填</text>
