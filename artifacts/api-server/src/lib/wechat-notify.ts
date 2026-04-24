@@ -189,7 +189,7 @@ async function sendTemplateMsg(
   if (opts?.mpLinkEnabled && opts.mpLinkAppId && opts.mpLinkPagePath) {
     payload.miniprogram = {
       appid:    opts.mpLinkAppId,
-      pagepath: opts.mpLinkPagePath,
+      pagepath: opts.mpLinkPagePath.replace(/\.html$/i, ""),
     };
   } else if (opts?.h5Url) {
     // 未配置小程序跳转时，回退到 H5 链接

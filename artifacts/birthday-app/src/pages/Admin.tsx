@@ -2323,9 +2323,10 @@ function NotifyConfigPanel({ adminKey }: { adminKey: string }) {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">小程序页面路径</label>
                       <input type="text" value={oa.mpLinkPagePath}
-                        onChange={e => setOa(c => ({ ...c, mpLinkPagePath: e.target.value }))}
+                        onChange={e => setOa(c => ({ ...c, mpLinkPagePath: e.target.value.replace(/\.html$/i, "") }))}
                         placeholder="pages/home/home"
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono" />
+                      <p className="mt-1 text-xs text-gray-400">路径不含 <span className="font-mono">.html</span> 后缀，例如 <span className="font-mono">pages/home/home</span></p>
                     </div>
                     <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
                       前提：小程序需已在微信开放平台与公众号绑定，且有审核通过的线上版本。否则微信会返回 40165 错误。

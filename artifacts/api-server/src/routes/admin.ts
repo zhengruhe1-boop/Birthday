@@ -329,7 +329,7 @@ router.put("/notify-config", async (req: Request, res: Response) => {
     if (h5Url !== undefined)          await setSetting("notify_h5_url",           h5Url.trim());
     if (mpLinkEnabled !== undefined)  await setSetting("notify_mp_link_enabled",  String(mpLinkEnabled));
     if (mpLinkAppId !== undefined)    await setSetting("notify_mp_link_appid",    mpLinkAppId.trim());
-    if (mpLinkPagePath !== undefined) await setSetting("notify_mp_link_pagepath", mpLinkPagePath.trim());
+    if (mpLinkPagePath !== undefined) await setSetting("notify_mp_link_pagepath", mpLinkPagePath.trim().replace(/\.html$/i, ""));
 
     res.json({ success: true });
   } catch (err) {
@@ -490,7 +490,7 @@ router.post("/oa-send-test", async (req: Request, res: Response) => {
     const h5Url          = await getSetting("notify_h5_url");
     const mpLinkEnabled  = (await getSetting("notify_mp_link_enabled")) === "true";
     const mpLinkAppId    = (await getSetting("notify_mp_link_appid")) ?? "wx4afbf7c1e3ae97ae";
-    const mpLinkPagePath = (await getSetting("notify_mp_link_pagepath")) ?? "pages/home/home";
+    const mpLinkPagePath = ((await getSetting("notify_mp_link_pagepath")) ?? "pages/home/home").replace(/\.html$/i, "");
     const payload: Record<string, unknown> = {
       touser:      oaOpenId,
       template_id: templateId,
