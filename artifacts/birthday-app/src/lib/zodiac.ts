@@ -3,6 +3,17 @@ export interface ZodiacSign {
   symbol: string;
 }
 
+/** 十二生肖 — 以 1900 年（鼠年）为基准 */
+const SHENGXIAO = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
+
+/**
+ * 根据公历出生年份返回对应生肖名称，年份无效时返回 null。
+ */
+export function getShengxiao(year: number | null | undefined): string | null {
+  if (!year || year < 1) return null;
+  return SHENGXIAO[((year - 1900) % 12 + 12) % 12];
+}
+
 /** 星座名称 → Unicode 符号 映射表 */
 export const ZODIAC_SYMBOLS: Record<string, string> = {
   摩羯座: "♑",

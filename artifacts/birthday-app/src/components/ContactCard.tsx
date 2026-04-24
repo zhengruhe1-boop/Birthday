@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { User, Gift, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ZODIAC_SYMBOLS } from "@/lib/zodiac";
+import { getShengxiao } from "@/lib/zodiac";
 import type { Contact } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 
@@ -15,8 +15,7 @@ export function ContactCard({ contact, index }: ContactCardProps) {
   const isImminent = contact.daysUntilBirthday <= 7;
   const isSoon = contact.daysUntilBirthday > 7 && contact.daysUntilBirthday <= 30;
   const zodiacName = contact.zodiac ?? null;
-  const zodiacSymbol = zodiacName ? (ZODIAC_SYMBOLS[zodiacName] ?? "") : "";
-  const zodiac = zodiacName ? { name: zodiacName, symbol: zodiacSymbol } : null;
+  const shengxiao = getShengxiao(contact.birthYear);
   
   return (
     <motion.div
@@ -45,9 +44,9 @@ export function ContactCard({ contact, index }: ContactCardProps) {
               <h3 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
                 {contact.name}
               </h3>
-              {zodiac && (
+              {zodiacName && (
                 <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                  {zodiac.symbol} {zodiac.name}
+                  {zodiacName}{shengxiao ? ` · ${shengxiao}` : ""}
                 </span>
               )}
             </div>

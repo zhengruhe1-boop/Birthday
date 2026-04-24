@@ -25,7 +25,7 @@ import {
 } from "@/hooks/use-contacts";
 import { useAuth, getAuthHeaders } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { getZodiacSign } from "@/lib/zodiac";
+import { getZodiacSign, getShengxiao } from "@/lib/zodiac";
 import { detectPlatform } from "@/lib/platform";
 import type { BirthdayEvent } from "@workspace/api-client-react";
 
@@ -567,10 +567,9 @@ export default function ContactForm() {
             {/* Live zodiac preview */}
             {zodiac && (
               <div className="flex items-center gap-2.5 px-4 py-3 bg-violet-50 rounded-xl border border-violet-100">
-                <span className="text-2xl leading-none">{zodiac.symbol}</span>
                 <div>
                   <p className="text-sm font-semibold text-violet-700">
-                    {zodiac.name}
+                    {zodiac.name}{formBirthYear && !formLunar ? ` · ${getShengxiao(Number(formBirthYear))}` : ""}
                   </p>
                   <p className="text-xs text-violet-400">
                     {Number(formMonth)}月{Number(formDay)}日 ·{" "}
