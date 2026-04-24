@@ -73,12 +73,9 @@
             <view class="contact-info">
               <view class="contact-name-row">
                 <text class="contact-name">{{item.name}}</text>
-                <text wx:if="{{item.gender}}" class="gender-tag {{item.gender === 'male' ? 'gender-m' : 'gender-f'}}">{{item.gender === 'male' ? '男' : '女'}}</text>
                 <text wx:if="{{item.zodiac}}" class="zodiac-tag">{{item.zodiac}}{{item.shengxiao ? ' · ' + item.shengxiao : ''}}</text>
               </view>
-              <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}
-              </text>
+              <text class="contact-sub">{{item.gender ? (item.gender === 'male' ? '男' : '女') + ' · ' : ''}}{{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}</text>
             </view>
             <text class="arrow">›</text>
           </view>
@@ -123,12 +120,9 @@
             <view class="contact-info">
               <view class="contact-name-row">
                 <text class="contact-name">{{item.name}}</text>
-                <text wx:if="{{item.gender}}" class="gender-tag {{item.gender === 'male' ? 'gender-m' : 'gender-f'}}">{{item.gender === 'male' ? '男' : '女'}}</text>
                 <text wx:if="{{item.zodiac}}" class="zodiac-tag">{{item.zodiac}}{{item.shengxiao ? ' · ' + item.shengxiao : ''}}</text>
               </view>
-              <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}
-              </text>
+              <text class="contact-sub">{{item.gender ? (item.gender === 'male' ? '男' : '女') + ' · ' : ''}}{{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}</text>
             </view>
             <view class="days-badge imminent">
               <text>{{item.daysUntilBirthday === 0 ? '今天🎂' : item.daysUntilBirthday === 1 ? '明天' : item.daysUntilBirthday + '天后'}}</text>
@@ -154,12 +148,9 @@
             <view class="contact-info">
               <view class="contact-name-row">
                 <text class="contact-name">{{item.name}}</text>
-                <text wx:if="{{item.gender}}" class="gender-tag {{item.gender === 'male' ? 'gender-m' : 'gender-f'}}">{{item.gender === 'male' ? '男' : '女'}}</text>
                 <text wx:if="{{item.zodiac}}" class="zodiac-tag">{{item.zodiac}}{{item.shengxiao ? ' · ' + item.shengxiao : ''}}</text>
               </view>
-              <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}
-              </text>
+              <text class="contact-sub">{{item.gender ? (item.gender === 'male' ? '男' : '女') + ' · ' : ''}}{{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}</text>
             </view>
             <view class="days-badge soon">
               <text>{{item.daysUntilBirthday}}天后</text>
@@ -185,12 +176,9 @@
             <view class="contact-info">
               <view class="contact-name-row">
                 <text class="contact-name">{{item.name}}</text>
-                <text wx:if="{{item.gender}}" class="gender-tag {{item.gender === 'male' ? 'gender-m' : 'gender-f'}}">{{item.gender === 'male' ? '男' : '女'}}</text>
                 <text wx:if="{{item.zodiac}}" class="zodiac-tag">{{item.zodiac}}{{item.shengxiao ? ' · ' + item.shengxiao : ''}}</text>
               </view>
-              <text class="contact-sub">
-                {{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}
-              </text>
+              <text class="contact-sub">{{item.gender ? (item.gender === 'male' ? '男' : '女') + ' · ' : ''}}{{item.birthdayLunar ? '农历' : '公历'}} {{item.birthdayMonth}}月{{item.birthdayDay}}日{{item.relation ? ' · ' + item.relation : ''}}{{item.age ? ' · 距' + item.age + '岁' : ''}}</text>
             </view>
             <view class="days-badge monthly">
               <text>{{item.daysUntilBirthday}}天后</text>

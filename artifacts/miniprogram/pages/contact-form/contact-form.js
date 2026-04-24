@@ -1,32 +1,38 @@
-const api = require('../../utils/api');
-const { isLoggedIn } = require('../../utils/auth');
+const api = require("../../utils/api");
+const { isLoggedIn } = require("../../utils/auth");
 
 // 将相对路径转为绝对 URL（微信小程序 image 不支持相对路径）
 function toAbsUrl(url) {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
-  return base + (url.startsWith('/') ? url : '/' + url);
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (getApp().globalData.apiBase || "").replace(/\/$/, "");
+  return base + (url.startsWith("/") ? url : "/" + url);
 }
 
-const MONTHS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-const DAYS   = Array.from({ length: 31 }, (_, i) => String(i + 1));
-const RELATIONS = ['家人', '朋友', '同事', '恋人', '同学', '其他'];
+const MONTHS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+const RELATIONS = ["家人", "朋友", "同事", "恋人", "同学", "其他"];
 
 function getZodiac(month, day) {
   const signs = [
-    { name: '摩羯座', m: 1, d: 20 }, { name: '水瓶座', m: 2, d: 19 },
-    { name: '双鱼座', m: 3, d: 20 }, { name: '白羊座', m: 4, d: 20 },
-    { name: '金牛座', m: 5, d: 21 }, { name: '双子座', m: 6, d: 21 },
-    { name: '巨蟹座', m: 7, d: 23 }, { name: '狮子座', m: 8, d: 23 },
-    { name: '处女座', m: 9, d: 23 }, { name: '天秤座', m: 10, d: 23 },
-    { name: '天蝎座', m: 11, d: 22 }, { name: '射手座', m: 12, d: 22 },
-    { name: '摩羯座', m: 1, d: 31 },
+    { name: "摩羯座", m: 1, d: 20 },
+    { name: "水瓶座", m: 2, d: 19 },
+    { name: "双鱼座", m: 3, d: 20 },
+    { name: "白羊座", m: 4, d: 20 },
+    { name: "金牛座", m: 5, d: 21 },
+    { name: "双子座", m: 6, d: 21 },
+    { name: "巨蟹座", m: 7, d: 23 },
+    { name: "狮子座", m: 8, d: 23 },
+    { name: "处女座", m: 9, d: 23 },
+    { name: "天秤座", m: 10, d: 23 },
+    { name: "天蝎座", m: 11, d: 22 },
+    { name: "射手座", m: 12, d: 22 },
+    { name: "摩羯座", m: 1, d: 31 },
   ];
   for (const s of signs) {
     if (month < s.m || (month === s.m && day < s.d)) return s.name;
   }
-  return '摩羯座';
+  return "摩羯座";
 }
 
 Page({
@@ -38,15 +44,15 @@ Page({
     deleting: false,
 
     // Form fields
-    name: '',
-    gender: '',
+    name: "",
+    gender: "",
     birthdayMonth: 1,
     birthdayDay: 1,
     birthdayLunar: false,
-    birthYear: '',
-    relation: '',
-    hometown: '',
-    reminderEmail: '',
+    birthYear: "",
+    relation: "",
+    hometown: "",
+    reminderEmail: "",
     avatarUrl: null,
     avatarUploading: false,
 
@@ -58,17 +64,17 @@ Page({
     relationOptions: RELATIONS,
 
     // Zodiac
-    zodiac: '',
+    zodiac: "",
 
     // AI events
     aiEvents: [],
     aiLoading: false,
-    aiError: '',
+    aiError: "",
     showAiEvents: true,
 
     // Test email
-    testEmailStatus: 'idle',
-    testEmailMsg: '',
+    testEmailStatus: "idle",
+    testEmailMsg: "",
 
     // 消息通知
     oaSubscribed: false,
@@ -86,23 +92,25 @@ Page({
       loggedIn = isLoggedIn();
     }
     if (!loggedIn) {
-      wx.reLaunch({ url: '/pages/login/login' });
+      wx.reLaunch({ url: "/pages/login/login" });
       return;
     }
 
     const id = opts.id;
-    if (id && id !== 'new') {
+    if (id && id !== "new") {
       this.setData({ isEdit: true, contactId: parseInt(id, 10) });
-      wx.setNavigationBarTitle({ title: '编辑生日' });
+      wx.setNavigationBarTitle({ title: "编辑生日" });
       this.loadContact(parseInt(id, 10));
     } else {
-      wx.setNavigationBarTitle({ title: '添加生日' });
+      wx.setNavigationBarTitle({ title: "添加生日" });
       const now = new Date();
       const m = now.getMonth() + 1;
       const d = now.getDate();
       this.setData({
-        birthdayMonth: m, birthdayDay: d,
-        monthIndex: m - 1, dayIndex: d - 1,
+        birthdayMonth: m,
+        birthdayDay: d,
+        monthIndex: m - 1,
+        dayIndex: d - 1,
         zodiac: getZodiac(m, d),
       });
     }
@@ -116,11 +124,19 @@ Page({
 
   async loadOaStatus() {
     try {
-      const res = await api.get('api/auth/wechat/subscribe-status');
+      const res = await api.get("api/auth/wechat/subscribe-status");
       const subscribed = !!(res && res.subscribed);
-      this.setData({ oaSubscribed: subscribed, notifyEnabled: subscribed, oaChecked: true });
+      this.setData({
+        oaSubscribed: subscribed,
+        notifyEnabled: subscribed,
+        oaChecked: true,
+      });
     } catch {
-      this.setData({ oaSubscribed: false, notifyEnabled: false, oaChecked: true });
+      this.setData({
+        oaSubscribed: false,
+        notifyEnabled: false,
+        oaChecked: true,
+      });
     }
   },
 
@@ -128,54 +144,66 @@ Page({
     const val = e.detail.value;
     if (val && !this.data.oaSubscribed) {
       this.setData({ notifyEnabled: false });
-      wx.navigateTo({ url: '/pages/follow-oa/follow-oa' });
+      wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
       return;
     }
     this.setData({ notifyEnabled: val });
   },
 
   goFollowOa() {
-    wx.navigateTo({ url: '/pages/follow-oa/follow-oa' });
+    wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
   },
 
   async loadContact(id) {
     this.setData({ loading: true });
     try {
-      const c = await api.get('api/contacts/' + id);
+      const c = await api.get("api/contacts/" + id);
       const m = c.birthdayMonth;
       const d = c.birthdayDay;
       // 读取已保存的历史事件（服务端已持久化，无需每次重新生成）
-      const savedEvents = Array.isArray(c.birthdayEvents) ? c.birthdayEvents : [];
+      const savedEvents = Array.isArray(c.birthdayEvents)
+        ? c.birthdayEvents
+        : [];
       this.setData({
-        name: c.name || '',
-        gender: c.gender || '',
+        name: c.name || "",
+        gender: c.gender || "",
         birthdayMonth: m,
         birthdayDay: d,
         birthdayLunar: !!c.birthdayLunar,
-        birthYear: c.birthYear ? String(c.birthYear) : '',
-        relation: c.relation || '',
-        hometown: c.hometown || '',
-        reminderEmail: c.reminderEmail || '',
+        birthYear: c.birthYear ? String(c.birthYear) : "",
+        relation: c.relation || "",
+        hometown: c.hometown || "",
+        reminderEmail: c.reminderEmail || "",
         avatarUrl: toAbsUrl(c.avatarUrl) || null,
         monthIndex: m - 1,
         dayIndex: d - 1,
-        zodiac: c.zodiac || (c.birthdayLunar ? '' : getZodiac(m, d)),
+        zodiac: c.zodiac || (c.birthdayLunar ? "" : getZodiac(m, d)),
         aiEvents: savedEvents,
         showAiEvents: true,
         loading: false,
       });
     } catch {
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      wx.showToast({ title: "加载失败", icon: "none" });
       this.setData({ loading: false });
     }
   },
 
-  onNameInput(e) { this.setData({ name: e.detail.value }); },
-  onBirthYearInput(e) { this.setData({ birthYear: e.detail.value }); },
-  onHometownInput(e) { this.setData({ hometown: e.detail.value }); },
-  onEmailInput(e) { this.setData({ reminderEmail: e.detail.value }); },
+  onNameInput(e) {
+    this.setData({ name: e.detail.value });
+  },
+  onBirthYearInput(e) {
+    this.setData({ birthYear: e.detail.value });
+  },
+  onHometownInput(e) {
+    this.setData({ hometown: e.detail.value });
+  },
+  onEmailInput(e) {
+    this.setData({ reminderEmail: e.detail.value });
+  },
 
-  setGender(e) { this.setData({ gender: e.currentTarget.dataset.val }); },
+  setGender(e) {
+    this.setData({ gender: e.currentTarget.dataset.val });
+  },
 
   toggleLunar() {
     this.setData({ birthdayLunar: !this.data.birthdayLunar });
@@ -184,13 +212,21 @@ Page({
   onMonthChange(e) {
     const idx = parseInt(e.detail.value, 10);
     const m = idx + 1;
-    this.setData({ monthIndex: idx, birthdayMonth: m, zodiac: getZodiac(m, this.data.birthdayDay) });
+    this.setData({
+      monthIndex: idx,
+      birthdayMonth: m,
+      zodiac: getZodiac(m, this.data.birthdayDay),
+    });
   },
 
   onDayChange(e) {
     const idx = parseInt(e.detail.value, 10);
     const d = idx + 1;
-    this.setData({ dayIndex: idx, birthdayDay: d, zodiac: getZodiac(this.data.birthdayMonth, d) });
+    this.setData({
+      dayIndex: idx,
+      birthdayDay: d,
+      zodiac: getZodiac(this.data.birthdayMonth, d),
+    });
   },
 
   onRelationChange(e) {
@@ -199,18 +235,20 @@ Page({
 
   async chooseAvatar() {
     // 记住上传前已有的服务器 URL，失败时恢复
-    const prevAvatarUrl = (this.data.avatarUrl && this.data.avatarUrl.startsWith('http'))
-      ? this.data.avatarUrl : null;
+    const prevAvatarUrl =
+      this.data.avatarUrl && this.data.avatarUrl.startsWith("http")
+        ? this.data.avatarUrl
+        : null;
 
     try {
-      let tempFile = '';
+      let tempFile = "";
       if (wx.chooseMedia) {
         // 基础库 2.10.0+
         const res = await new Promise((resolve, reject) => {
           wx.chooseMedia({
             count: 1,
-            mediaType: ['image'],
-            sourceType: ['album', 'camera'],
+            mediaType: ["image"],
+            sourceType: ["album", "camera"],
             success: resolve,
             fail: reject,
           });
@@ -221,8 +259,8 @@ Page({
         const res = await new Promise((resolve, reject) => {
           wx.chooseImage({
             count: 1,
-            sizeType: ['compressed'],
-            sourceType: ['album', 'camera'],
+            sizeType: ["compressed"],
+            sourceType: ["album", "camera"],
             success: resolve,
             fail: reject,
           });
@@ -234,8 +272,8 @@ Page({
       this.setData({ avatarUrl: tempFile, avatarUploading: true });
 
       // ② 上传图片到服务器（不依赖 contactId，任何时候均可上传）
-      const uploadRes = await api.upload('api/upload', tempFile, 'image');
-      if (!uploadRes || !uploadRes.url) throw new Error('服务器未返回图片地址');
+      const uploadRes = await api.upload("api/upload", tempFile, "image");
+      if (!uploadRes || !uploadRes.url) throw new Error("服务器未返回图片地址");
 
       const absUrl = toAbsUrl(uploadRes.url);
 
@@ -244,34 +282,47 @@ Page({
 
       // ④ 若是编辑模式，额外 PUT 立即持久化（新建联系人在 handleSave 时统一保存）
       if (this.data.contactId) {
-        await api.put('api/contacts/' + this.data.contactId, { avatarUrl: absUrl });
+        await api.put("api/contacts/" + this.data.contactId, {
+          avatarUrl: absUrl,
+        });
       }
 
-      wx.showToast({ title: '头像已选择', icon: 'success' });
+      wx.showToast({ title: "头像已选择", icon: "success" });
     } catch (err) {
-      const msg = (err && (err.errMsg || err.message)) || '';
+      const msg = (err && (err.errMsg || err.message)) || "";
       // 用户取消选择：静默处理
-      if (msg.includes('cancel')) return;
+      if (msg.includes("cancel")) return;
       // 上传失败：恢复旧头像，避免临时路径残留被 handleSave 写入 DB
       this.setData({ avatarUrl: prevAvatarUrl, avatarUploading: false });
-      const hint = (err && err.message && err.message.length <= 14) ? err.message : '头像上传失败，请重试';
-      wx.showToast({ title: hint, icon: 'none' });
+      const hint =
+        err && err.message && err.message.length <= 14
+          ? err.message
+          : "头像上传失败，请重试";
+      wx.showToast({ title: hint, icon: "none" });
     }
   },
 
   async loadAiEvents() {
     if (!this.data.contactId) {
-      wx.showToast({ title: '请先保存联系人', icon: 'none' });
+      wx.showToast({ title: "请先保存联系人", icon: "none" });
       return;
     }
-    this.setData({ aiLoading: true, aiError: '', showAiEvents: true });
+    this.setData({ aiLoading: true, aiError: "", showAiEvents: true });
     try {
-      const res = await api.post('api/contacts/' + this.data.contactId + '/birthday-events', {});
+      const res = await api.post(
+        "api/contacts/" + this.data.contactId + "/birthday-events",
+        {},
+      );
       // 服务器返回 { events: [...] }，取 events 数组
-      const events = (res && Array.isArray(res.events)) ? res.events : (Array.isArray(res) ? res : []);
+      const events =
+        res && Array.isArray(res.events)
+          ? res.events
+          : Array.isArray(res)
+            ? res
+            : [];
       this.setData({ aiEvents: events, aiLoading: false });
     } catch (err) {
-      this.setData({ aiError: err.message || '获取失败', aiLoading: false });
+      this.setData({ aiError: err.message || "获取失败", aiLoading: false });
     }
   },
 
@@ -282,21 +333,30 @@ Page({
 
   async sendTestEmail() {
     if (!this.data.reminderEmail) {
-      wx.showToast({ title: '请先填写邮箱', icon: 'none' });
+      wx.showToast({ title: "请先填写邮箱", icon: "none" });
       return;
     }
     if (!this.data.contactId) {
-      wx.showToast({ title: '请先保存联系人', icon: 'none' });
+      wx.showToast({ title: "请先保存联系人", icon: "none" });
       return;
     }
-    this.setData({ testEmailStatus: 'sending' });
+    this.setData({ testEmailStatus: "sending" });
     try {
-      const res = await api.post('api/contacts/' + this.data.contactId + '/test-email', {});
-      this.setData({ testEmailStatus: 'success', testEmailMsg: res.message || '邮件已发送' });
-      setTimeout(() => this.setData({ testEmailStatus: 'idle' }), 4000);
+      const res = await api.post(
+        "api/contacts/" + this.data.contactId + "/test-email",
+        {},
+      );
+      this.setData({
+        testEmailStatus: "success",
+        testEmailMsg: res.message || "邮件已发送",
+      });
+      setTimeout(() => this.setData({ testEmailStatus: "idle" }), 4000);
     } catch (err) {
-      this.setData({ testEmailStatus: 'error', testEmailMsg: err.message || '发送失败' });
-      setTimeout(() => this.setData({ testEmailStatus: 'idle' }), 4000);
+      this.setData({
+        testEmailStatus: "error",
+        testEmailMsg: err.message || "发送失败",
+      });
+      setTimeout(() => this.setData({ testEmailStatus: "idle" }), 4000);
     }
   },
 
@@ -304,7 +364,8 @@ Page({
     const d = this.data;
     // 只有 http(s) 开头的服务器永久 URL 才写入 DB；
     // 微信临时路径（wxfile://tmp/...）或 null 均不保存，防止刷新后图片消失
-    const safeAvatar = (d.avatarUrl && d.avatarUrl.startsWith('http')) ? d.avatarUrl : null;
+    const safeAvatar =
+      d.avatarUrl && d.avatarUrl.startsWith("http") ? d.avatarUrl : null;
     return {
       name: d.name.trim(),
       gender: d.gender || null,
@@ -321,12 +382,12 @@ Page({
 
   validate() {
     if (!this.data.name.trim()) {
-      wx.showToast({ title: '请输入姓名', icon: 'none' });
+      wx.showToast({ title: "请输入姓名", icon: "none" });
       return false;
     }
     const email = this.data.reminderEmail.trim();
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      wx.showToast({ title: '邮箱格式不正确', icon: 'none' });
+      wx.showToast({ title: "邮箱格式不正确", icon: "none" });
       return false;
     }
     return true;
@@ -338,37 +399,39 @@ Page({
     try {
       const body = this.buildBody();
       if (this.data.isEdit) {
-        await api.put('api/contacts/' + this.data.contactId, body);
-        wx.showToast({ title: '保存成功', icon: 'success' });
+        await api.put("api/contacts/" + this.data.contactId, body);
+        wx.showToast({ title: "保存成功", icon: "success" });
       } else {
-        await api.post('api/contacts', body);
-        wx.showToast({ title: '添加成功', icon: 'success' });
+        await api.post("api/contacts", body);
+        wx.showToast({ title: "添加成功", icon: "success" });
       }
       setTimeout(() => wx.navigateBack(), 800);
     } catch (err) {
-      wx.showToast({ title: err.message || '保存失败', icon: 'none' });
+      wx.showToast({ title: err.message || "保存失败", icon: "none" });
     } finally {
       this.setData({ saving: false });
     }
   },
 
-  handleBack() { wx.navigateBack(); },
+  handleBack() {
+    wx.navigateBack();
+  },
 
   async handleDelete() {
     wx.showModal({
-      title: '删除联系人',
+      title: "删除联系人",
       content: '确定要删除"' + this.data.name + '"吗？此操作不可恢复。',
-      confirmText: '删除',
-      confirmColor: '#ef4444',
+      confirmText: "删除",
+      confirmColor: "#ef4444",
       success: async (res) => {
         if (res.confirm) {
           this.setData({ deleting: true });
           try {
-            await api.del('api/contacts/' + this.data.contactId);
-            wx.showToast({ title: '已删除', icon: 'success' });
+            await api.del("api/contacts/" + this.data.contactId);
+            wx.showToast({ title: "已删除", icon: "success" });
             setTimeout(() => wx.navigateBack(), 800);
           } catch {
-            wx.showToast({ title: '删除失败', icon: 'none' });
+            wx.showToast({ title: "删除失败", icon: "none" });
             this.setData({ deleting: false });
           }
         }
@@ -378,16 +441,16 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
-      path: '/pages/home/home',
-      imageUrl: '/images/logo.jpg',
+      title: "生日通.让您不再错过每个重要日子",
+      path: "/pages/home/home",
+      imageUrl: "/images/logo.jpg",
     };
   },
 
   onShareTimeline() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
-      imageUrl: '/images/logo.jpg',
+      title: "生日通.让您不再错过每个重要日子",
+      imageUrl: "/images/logo.jpg",
     };
   },
 });

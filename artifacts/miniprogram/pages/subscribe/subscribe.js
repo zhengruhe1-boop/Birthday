@@ -1,7 +1,7 @@
-const api = require('../../utils/api');
-const { isLoggedIn } = require('../../utils/auth');
+const api = require("../../utils/api");
+const { isLoggedIn } = require("../../utils/auth");
 
-const MP_TEMPLATE_ID = 'vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ';
+const MP_TEMPLATE_ID = "vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ";
 
 Page({
   data: {
@@ -13,7 +13,7 @@ Page({
 
   onLoad() {
     if (!isLoggedIn()) {
-      wx.reLaunch({ url: '/pages/login/login' });
+      wx.reLaunch({ url: "/pages/login/login" });
       return;
     }
     this.loadInfo();
@@ -27,7 +27,7 @@ Page({
   async loadInfo() {
     this.setData({ loading: true });
     try {
-      const info = await api.get('api/auth/mp-subscribe-info');
+      const info = await api.get("api/auth/mp-subscribe-info");
       this.setData({
         subscribed: info.subscribed || false,
         subscribeCount: info.subscribeCount || 0,
@@ -46,10 +46,10 @@ Page({
         wx.requestSubscribeMessage({
           tmplIds: [MP_TEMPLATE_ID],
           success(res) {
-            if (res[MP_TEMPLATE_ID] === 'accept') {
+            if (res[MP_TEMPLATE_ID] === "accept") {
               resolve(true);
             } else {
-              reject(new Error('用户未授权'));
+              reject(new Error("用户未授权"));
             }
           },
           fail(err) {
@@ -58,13 +58,13 @@ Page({
         });
       });
 
-      await api.post('api/auth/mp-subscribe', { templateId: MP_TEMPLATE_ID });
+      await api.post("api/auth/mp-subscribe", { templateId: MP_TEMPLATE_ID });
       await this.loadInfo();
-      wx.showToast({ title: '订阅成功', icon: 'success' });
+      wx.showToast({ title: "订阅成功", icon: "success" });
     } catch (err) {
-      const msg = err && err.message ? err.message : '订阅失败';
-      if (msg !== '用户未授权') {
-        wx.showToast({ title: msg, icon: 'none' });
+      const msg = err && err.message ? err.message : "订阅失败";
+      if (msg !== "用户未授权") {
+        wx.showToast({ title: msg, icon: "none" });
       }
     } finally {
       this.setData({ requesting: false });
@@ -77,16 +77,16 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
-      path: '/pages/home/home',
-      imageUrl: '/images/logo.jpg',
+      title: "生日通.让您不再错过每个重要日子",
+      path: "/pages/home/home",
+      imageUrl: "/images/logo.jpg",
     };
   },
 
   onShareTimeline() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
-      imageUrl: '/images/logo.jpg',
+      title: "生日通.让您不再错过每个重要日子",
+      imageUrl: "/images/logo.jpg",
     };
   },
 });

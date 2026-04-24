@@ -116,7 +116,7 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
+      title: '生日通.让您不再错过每个重要日子',
       path: '/pages/home/home',
       imageUrl: '/images/logo.jpg',
     };
@@ -124,7 +124,7 @@ Page({
 
   onShareTimeline() {
     return {
-      title: '生日通 — 再也不错过重要纪念日',
+      title: '生日通.让您不再错过每个重要日子',
       imageUrl: '/images/logo.jpg',
     };
   },

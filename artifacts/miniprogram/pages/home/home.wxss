@@ -235,15 +235,6 @@
   white-space: nowrap;
 }
 
-.gender-tag {
-  flex-shrink: 0;
-  font-size: 20rpx;
-  font-weight: 600;
-  padding: 2rpx 10rpx;
-  border-radius: 6rpx;
-}
-.gender-m { background: #eff6ff; color: #3b82f6; }
-.gender-f { background: #fdf2f8; color: #ec4899; }
 
 .zodiac-tag {
   flex-shrink: 1;
