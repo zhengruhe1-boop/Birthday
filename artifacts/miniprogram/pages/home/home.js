@@ -189,7 +189,6 @@ Page({
       this.setData({ loadingUpcoming: false, loadingEvents: false });
     }
     if (done) done();
-    this._checkAutoShowWxProfileModal();
   },
 
   // ── 搜索 ─────────────────────────────────────────────────────────────────────
