@@ -273,10 +273,11 @@ Page({
   },
 
   // ── open-type="chooseAvatar" 回调：用户选择头像后立即预览 ──────────────────
-  // e.detail.avatarUrl 是微信本地临时路径（非 http URL），可直接用于预览
   onWxProfileAvatarChosen(e) {
     const tempPath = e.detail && e.detail.avatarUrl;
     if (!tempPath) return;
+    // tempPath 是微信本地临时路径（非 http），用 _wxAvatarIsNew 标记需要上传
+    this._wxAvatarIsNew = true;
     this.setData({ "wxProfileTemp.avatarUrl": tempPath });
   },
 
@@ -285,15 +286,15 @@ Page({
     this.setData({ "wxProfileTemp.nickname": e.detail.value || "" });
   },
 
-  // ── 点"完成"：压缩头像 → 上传服务器 → 保存昵称 → 刷新展示 ─────────────────
+  // ── 点"允许"：压缩并上传头像 → 保存昵称 → 立即刷新首页展示 ─────────────────
   async saveWxProfile() {
     if (!this.data.loggedIn) { this._requireLogin("保存资料"); return; }
 
-    const { avatarUrl: tempAvatarPath, nickname } = this.data.wxProfileTemp;
+    const { avatarUrl: avatarPath, nickname } = this.data.wxProfileTemp;
     const cleanedNickname = cleanNickname(nickname || "");
+    const avatarChanged = !!this._wxAvatarIsNew; // 标记：是否为本次新选择的临时路径
 
-    // 头像和昵称都没选，直接关闭
-    if (!tempAvatarPath && !cleanedNickname) {
+    if (!avatarPath && !cleanedNickname) {
       this.setData({ showWxProfileModal: false });
       return;
     }
@@ -302,33 +303,26 @@ Page({
     try {
       let serverAvatarUrl = "";
 
-      if (tempAvatarPath) {
-        // 1. wx.compressImage 将头像压缩到 80% 质量，避免超过服务器 12MB 限制
-        let uploadPath = tempAvatarPath;
-        try {
-          const compressed = await new Promise((resolve, reject) => {
-            wx.compressImage({
-              src: tempAvatarPath,
-              quality: 80,
-              success: resolve,
-              fail: reject,
+      if (avatarPath) {
+        if (!avatarChanged) {
+          // 头像未更改（仍是之前存储在服务器的 http URL），直接复用
+          serverAvatarUrl = avatarPath.startsWith("http") ? avatarPath : "";
+        } else {
+          // 用户新选择了头像（本地临时路径）：先压缩再上传
+          let uploadPath = avatarPath;
+          try {
+            const compressed = await new Promise((resolve, reject) => {
+              wx.compressImage({ src: avatarPath, quality: 80, success: resolve, fail: reject });
             });
-          });
-          if (compressed && compressed.tempFilePath) {
-            uploadPath = compressed.tempFilePath;
-          }
-        } catch {
-          // 压缩失败则直接用原始临时路径上传
-        }
+            if (compressed && compressed.tempFilePath) uploadPath = compressed.tempFilePath;
+          } catch { /* 压缩失败直接用原始路径 */ }
 
-        // 2. 上传到服务器，得到永久可访问的 URL
-        const upRes = await api.upload("api/upload", uploadPath, "image");
-        if (upRes && upRes.url) {
-          serverAvatarUrl = toAbsUrl(upRes.url);
+          const upRes = await api.upload("api/upload", uploadPath, "image");
+          if (upRes && upRes.url) serverAvatarUrl = toAbsUrl(upRes.url);
         }
       }
 
-      // 3. 写入服务器（只写有效数据）
+      // 仅把有效数据写入服务器
       const payload = {};
       if (serverAvatarUrl) payload.avatarUrl = serverAvatarUrl;
       if (cleanedNickname) payload.nickname = cleanedNickname;
@@ -336,18 +330,19 @@ Page({
         await api.put("api/auth/me", payload);
       }
 
-      // 4. 立即更新页面头部展示（不等待 loadAll 重新请求）
+      // 立即刷新首页头部（不等 onShow 触发 loadAll）
       const newInfo = {
         ...(this.data.userInfo || {}),
         ...(serverAvatarUrl ? { avatarUrl: serverAvatarUrl } : {}),
         ...(cleanedNickname ? { nickname: cleanedNickname } : {}),
       };
-      const finalAvatarUrl = serverAvatarUrl || (
-        toDisplayAvatar(this.data.displayAvatarUrl) ? this.data.displayAvatarUrl : ""
+      const displayAvatar = toDisplayAvatar(
+        serverAvatarUrl || toDisplayAvatar(this.data.displayAvatarUrl)
       );
+      this._wxAvatarIsNew = false;
       this.setData({
         userInfo: newInfo,
-        displayAvatarUrl: toDisplayAvatar(finalAvatarUrl),
+        displayAvatarUrl: displayAvatar,
         editNickname: cleanedNickname,
         displayNickname: buildDisplayNickname(cleanedNickname),
         avatarUploading: false,

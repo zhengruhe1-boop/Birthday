@@ -746,6 +746,17 @@
   text-align: center;
 }
 
+/* 步骤说明行 */
+.wx-auth-step-row {
+  width: 100%;
+  margin-top: 32rpx;
+  margin-bottom: 8rpx;
+}
+.wx-auth-step-label {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
 /* 头像选择圆圈按钮（open-type="chooseAvatar"） */
 .wx-auth-avatar-btn {
   width: 180rpx;
