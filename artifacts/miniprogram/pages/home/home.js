@@ -251,22 +251,24 @@ Page({
     if (!this.data.loggedIn) return;
     if (wx.getStorageSync("birthday_wx_profile_asked")) return;
     wx.setStorageSync("birthday_wx_profile_asked", true);
-    // 初始只显示默认头像和占位，不预取用户信息
-    this._wxAvatarIsNew = false;
     this.setData({
       showWxProfileModal: true,
-      wxProfileTemp: { avatarUrl: "", nickname: "" },
+      wxProfileTemp: {
+        avatarUrl: this.data.displayAvatarUrl || "",
+        nickname: this.data.editNickname || "",
+      },
     });
   },
 
   // ── 微信资料授权弹窗：主动打开（从设置页按钮触发） ─────────────────────────
   openWxProfileModal() {
-    // 初始只显示默认头像和占位，不预取用户信息
-    this._wxAvatarIsNew = false;
     this.setData({
       showWxProfileModal: true,
       showSettings: false,
-      wxProfileTemp: { avatarUrl: "", nickname: "" },
+      wxProfileTemp: {
+        avatarUrl: this.data.displayAvatarUrl || "",
+        nickname: this.data.editNickname || "",
+      },
     });
   },
 

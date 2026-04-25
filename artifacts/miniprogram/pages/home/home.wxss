@@ -746,37 +746,51 @@
   text-align: center;
 }
 
-/* 步骤提示文字（button 外部，不在 button 内） */
-.wx-auth-step-label {
-  font-size: 24rpx;
-  color: #94a3b8;
-  display: block;
+/* 步骤说明行 */
+.wx-auth-step-row {
   width: 100%;
   margin-top: 32rpx;
   margin-bottom: 8rpx;
 }
+.wx-auth-step-label {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
 
-/* 头像选择按钮：open-type="chooseAvatar"，内部只放 image */
+/* 头像选择圆圈按钮（open-type="chooseAvatar"） */
 .wx-auth-avatar-btn {
   width: 180rpx;
   height: 180rpx;
   border-radius: 50%;
   overflow: hidden;
-  background: #e2e8f0;
+  background: #f1f5f9;
   border: none;
   padding: 0;
-  margin-top: 8rpx;
+  margin-top: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .wx-auth-avatar-btn::after { border: none; }
 .wx-auth-avatar-btn:active { opacity: 0.8; }
 
-/* image 必须在 button 内部，始终存在，src 为默认图或真实头像 */
 .wx-auth-avatar-img {
   width: 180rpx;
   height: 180rpx;
   border-radius: 50%;
   display: block;
 }
+
+.wx-auth-avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.wx-auth-avatar-icon { font-size: 56rpx; display: block; }
+.wx-auth-avatar-hint { font-size: 18rpx; color: #94a3b8; margin-top: 6rpx; display: block; }
 
 /* 昵称输入（type="nickname" 触发微信昵称建议） */
 .wx-auth-nickname-input {
