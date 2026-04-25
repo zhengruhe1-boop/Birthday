@@ -366,27 +366,18 @@
       <text class="wx-auth-title">获取你的昵称、头像</text>
       <text class="wx-auth-sub">用于在生日通中标识你的身份</text>
 
-      <!-- ① 头像：点击后微信弹出原生头像选择器 -->
-      <view class="wx-auth-step-row">
-        <text class="wx-auth-step-label">① 点击头像选择</text>
-      </view>
+      <!-- 头像：button 内只放 image，不放文字 -->
+      <text class="wx-auth-step-label">① 点击头像</text>
       <button class="wx-auth-avatar-btn"
         open-type="chooseAvatar"
         bindchooseavatar="onWxProfileAvatarChosen">
-        <image wx:if="{{wxProfileTemp.avatarUrl}}"
-          class="wx-auth-avatar-img"
-          src="{{wxProfileTemp.avatarUrl}}"
+        <image class="wx-auth-avatar-img"
+          src="{{wxProfileTemp.avatarUrl || '/images/logo.jpg'}}"
           mode="aspectFill" />
-        <view wx:else class="wx-auth-avatar-placeholder">
-          <text class="wx-auth-avatar-icon">👤</text>
-          <text class="wx-auth-avatar-hint">点击获取微信头像</text>
-        </view>
       </button>
 
-      <!-- ② 昵称：聚焦后微信弹出真实昵称建议键盘 -->
-      <view class="wx-auth-step-row">
-        <text class="wx-auth-step-label">② 点击昵称输入框</text>
-      </view>
+      <!-- 昵称：type="nickname" 触发微信原生昵称弹窗 -->
+      <text class="wx-auth-step-label" style="margin-top:28rpx;">② 点击填入昵称</text>
       <input class="wx-auth-nickname-input"
         type="nickname"
         name="nickname"
@@ -396,7 +387,7 @@
         bindinput="onWxProfileNicknameInput"
         maxlength="20" />
 
-      <!-- 允许按钮 -->
+      <!-- 允许 / 取消 -->
       <button class="wx-auth-confirm-btn" bindtap="saveWxProfile">
         {{avatarUploading ? '保存中…' : '允许'}}
       </button>
