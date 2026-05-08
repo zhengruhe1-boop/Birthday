@@ -1,0 +1,3 @@
+<view class="container">
+  <web-view src="{{h5Url}}" bindmessage="onMessage"></web-view>
+</view>
