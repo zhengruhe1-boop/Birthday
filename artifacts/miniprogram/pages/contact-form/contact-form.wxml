@@ -1,0 +1,213 @@
+<view class="cf-page">
+
+  <!-- ─── 加载中 ───────────────────────────────────────────────── -->
+  <view wx:if="{{mode === 'loading'}}" class="cf-loading">
+    <view class="cf-spinner"></view>
+    <text class="cf-loading-text">加载中…</text>
+  </view>
+
+  <!-- ─── 查看模式 ─────────────────────────────────────────────── -->
+  <view wx:elif="{{mode === 'view'}}" class="cf-view">
+
+    <!-- 联系人信息卡片 -->
+    <view class="cf-card cf-info-card">
+      <view class="cf-avatar-row">
+        <view class="cf-avatar-circle" style="background:{{contact.gender==='female'?'#fce7f3':'#e0f2fe'}}">
+          <text class="cf-avatar-text">{{contact.name[0] || '?'}}</text>
+        </view>
+        <view class="cf-info-main">
+          <text class="cf-name">{{contact.name}}</text>
+          <view class="cf-tags">
+            <text wx:if="{{contact.relation}}" class="cf-tag cf-tag-rel">{{contact.relation}}</text>
+            <text wx:if="{{contact.zodiac}}" class="cf-tag cf-tag-zodiac">{{contact.zodiac}}</text>
+            <text wx:if="{{contact.age}}" class="cf-tag cf-tag-age">{{contact.age}}岁</text>
+          </view>
+        </view>
+        <view class="cf-edit-btn" bindtap="startEdit">
+          <text class="cf-edit-icon">✏️</text>
+        </view>
+      </view>
+
+      <view class="cf-divider"></view>
+
+      <view class="cf-detail-row">
+        <text class="cf-detail-label">🎂 生日</text>
+        <text class="cf-detail-val">{{contact.birthdayDisplay}}{{contact.birthdayLunar ? '（农历）' : ''}}</text>
+      </view>
+      <view wx:if="{{contact.daysUntilBirthday === 0}}" class="cf-birthday-today">
+        <text>🎉 今天就是生日！</text>
+      </view>
+      <view wx:elif="{{contact.daysUntilBirthday > 0}}" class="cf-detail-row">
+        <text class="cf-detail-label">⏳ 倒计时</text>
+        <text class="cf-detail-val cf-countdown">还有 {{contact.daysUntilBirthday}} 天</text>
+      </view>
+      <view wx:if="{{contact.hometown}}" class="cf-detail-row">
+        <text class="cf-detail-label">📍 故乡</text>
+        <text class="cf-detail-val">{{contact.hometown}}</text>
+      </view>
+      <view wx:if="{{contact.reminderEmail}}" class="cf-detail-row">
+        <text class="cf-detail-label">📧 邮件提醒</text>
+        <text class="cf-detail-val cf-email">{{contact.reminderEmail}}</text>
+      </view>
+    </view>
+
+    <!-- 历史大事记卡片 -->
+    <view class="cf-card cf-events-card">
+      <view class="cf-events-header">
+        <text class="cf-events-title">🌏 出生那天的历史大事</text>
+        <view wx:if="{{!eventsLoading}}" class="cf-refresh-btn" bindtap="onRefreshEvents">
+          <text class="cf-refresh-text">刷新</text>
+        </view>
+      </view>
+
+      <!-- 生成中 -->
+      <view wx:if="{{eventsLoading}}" class="cf-events-loading">
+        <view class="cf-spinner cf-spinner-sm"></view>
+        <text class="cf-events-loading-text">正在查询历史大事…</text>
+      </view>
+
+      <!-- 有大事记 -->
+      <view wx:elif="{{contact.birthdayEvents && contact.birthdayEvents.length > 0}}">
+        <view wx:for="{{contact.birthdayEvents}}" wx:key="index" class="cf-event-item">
+          <view class="cf-event-header">
+            <text class="cf-event-year">{{item.year}}</text>
+            <text class="cf-event-cat {{item.category === '中国' ? 'cf-cat-cn' : 'cf-cat-world'}}">
+              {{item.category}}
+            </text>
+          </view>
+          <text class="cf-event-title">{{item.title}}</text>
+          <text class="cf-event-desc">{{item.description}}</text>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view wx:else class="cf-events-empty">
+        <text class="cf-events-empty-text">暂无历史大事，点击"刷新"重新生成</text>
+      </view>
+    </view>
+
+    <!-- 删除按钮 -->
+    <button class="cf-delete-btn" bindtap="handleDelete" loading="{{deleting}}">
+      删除生日
+    </button>
+
+  </view>
+
+  <!-- ─── 新建 / 编辑表单 ───────────────────────────────────────── -->
+  <view wx:elif="{{mode === 'new' || mode === 'edit'}}">
+    <scroll-view scroll-y class="cf-form-scroll">
+      <view class="cf-form">
+
+        <!-- 姓名 -->
+        <view class="cf-section">
+          <text class="cf-section-label">姓名</text>
+          <input class="cf-input"
+            placeholder="请输入姓名"
+            placeholder-class="cf-ph"
+            value="{{name}}"
+            bindinput="onNameInput"
+            maxlength="20" />
+        </view>
+
+        <!-- 生日（多列选择器：月 + 日） -->
+        <view class="cf-section">
+          <view class="cf-section-header">
+            <text class="cf-section-label">生日</text>
+            <view class="cf-lunar-row">
+              <text class="cf-lunar-label">农历</text>
+              <switch class="cf-switch" checked="{{birthdayLunar}}" bindchange="onLunarChange" color="#f97316" />
+            </view>
+          </view>
+          <picker mode="multiSelector"
+            value="{{[monthIndex, dayIndex]}}"
+            range="{{[months, days]}}"
+            range-key="label"
+            bindchange="onBirthdayChange"
+            bindcolumnchange="onBirthdayColumnChange">
+            <view class="cf-picker-val">
+              <text>{{birthdayMonth}}月{{birthdayDay}}日{{birthdayLunar ? '（农历）' : ''}}</text>
+              <text class="cf-picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 出生年份（可选） -->
+        <view class="cf-section">
+          <text class="cf-section-label">出生年份（可选）</text>
+          <input class="cf-input"
+            placeholder="如 1990，留空则不显示年龄"
+            placeholder-class="cf-ph"
+            value="{{birthYear}}"
+            bindinput="onBirthYearInput"
+            type="number"
+            maxlength="4" />
+        </view>
+
+        <!-- 性别 -->
+        <view class="cf-section">
+          <text class="cf-section-label">性别</text>
+          <picker mode="selector"
+            value="{{genderIndex}}"
+            range="{{genders}}"
+            range-key="label"
+            bindchange="onGenderChange">
+            <view class="cf-picker-val">
+              <text>{{genders[genderIndex].label}}</text>
+              <text class="cf-picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 关系 -->
+        <view class="cf-section">
+          <text class="cf-section-label">关系（可选）</text>
+          <picker mode="selector"
+            value="{{relationIndex >= 0 ? relationIndex : 0}}"
+            range="{{relations}}"
+            bindchange="onRelationChange">
+            <view class="cf-picker-val">
+              <text>{{relation || '请选择关系'}}</text>
+              <text class="cf-picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 故乡 -->
+        <view class="cf-section">
+          <text class="cf-section-label">故乡（可选）</text>
+          <input class="cf-input"
+            placeholder="如 北京"
+            placeholder-class="cf-ph"
+            value="{{hometown}}"
+            bindinput="onHometownInput"
+            maxlength="30" />
+        </view>
+
+        <!-- 邮件提醒 -->
+        <view class="cf-section">
+          <text class="cf-section-label">邮件提醒（可选）</text>
+          <input class="cf-input"
+            placeholder="生日前一天发提醒邮件"
+            placeholder-class="cf-ph"
+            value="{{reminderEmail}}"
+            bindinput="onEmailInput"
+            type="email"
+            maxlength="60" />
+        </view>
+
+        <!-- 操作按钮 -->
+        <view class="cf-actions">
+          <button class="cf-save-btn" bindtap="handleSave" loading="{{saving}}">
+            {{saving ? '保存中…' : (mode === 'new' ? '添加生日' : '保存修改')}}
+          </button>
+          <button class="cf-cancel-btn" bindtap="cancelEdit">取消</button>
+          <button wx:if="{{mode === 'edit'}}" class="cf-delete-btn" bindtap="handleDelete" loading="{{deleting}}">
+            删除生日
+          </button>
+        </view>
+
+      </view>
+    </scroll-view>
+  </view>
+
+</view>

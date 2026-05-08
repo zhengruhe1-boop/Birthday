@@ -1,0 +1,348 @@
+.cf-page {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* ─── 加载 ─────────────────────────────────────────────────────── */
+.cf-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 200rpx;
+}
+.cf-loading-text {
+  font-size: 28rpx;
+  color: #94a3b8;
+  margin-top: 24rpx;
+}
+.cf-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 6rpx solid #fed7aa;
+  border-top-color: #f97316;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.cf-spinner-sm {
+  width: 40rpx;
+  height: 40rpx;
+  border-width: 4rpx;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── 卡片 ─────────────────────────────────────────────────────── */
+.cf-card {
+  margin: 24rpx 28rpx 0;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0,0,0,0.06);
+}
+
+/* ─── 查看模式：联系人信息卡 ─────────────────────────────────────── */
+.cf-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+.cf-avatar-circle {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cf-avatar-text {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #475569;
+}
+.cf-info-main {
+  flex: 1;
+}
+.cf-name {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+.cf-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 10rpx;
+}
+.cf-tag {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 500;
+}
+.cf-tag-rel  { background: #fff7ed; color: #ea580c; }
+.cf-tag-zodiac { background: #f0fdf4; color: #16a34a; }
+.cf-tag-age  { background: #eff6ff; color: #2563eb; }
+
+.cf-edit-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cf-edit-btn:active { opacity: 0.7; }
+.cf-edit-icon { font-size: 32rpx; }
+
+.cf-divider {
+  height: 1rpx;
+  background: #f1f5f9;
+  margin: 24rpx 0;
+}
+.cf-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.cf-detail-label {
+  font-size: 26rpx;
+  color: #64748b;
+  min-width: 160rpx;
+  flex-shrink: 0;
+}
+.cf-detail-val {
+  font-size: 28rpx;
+  color: #1e293b;
+  font-weight: 500;
+  flex: 1;
+}
+.cf-countdown {
+  color: #f97316;
+  font-weight: 700;
+}
+.cf-email {
+  font-size: 24rpx;
+  word-break: break-all;
+}
+.cf-birthday-today {
+  background: linear-gradient(135deg, #fff1f2, #fff7ed);
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #f43f5e;
+  text-align: center;
+}
+
+/* ─── 查看模式：历史大事记卡 ─────────────────────────────────────── */
+.cf-events-card { margin-top: 20rpx; }
+.cf-events-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+.cf-events-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+.cf-refresh-btn {
+  background: #f1f5f9;
+  border-radius: 20rpx;
+  padding: 8rpx 24rpx;
+}
+.cf-refresh-btn:active { opacity: 0.7; }
+.cf-refresh-text {
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.cf-events-loading {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+}
+.cf-events-loading-text {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+.cf-event-item {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+.cf-event-item:last-child { border-bottom: none; }
+.cf-event-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 10rpx;
+}
+.cf-event-year {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #475569;
+}
+.cf-event-cat {
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 12rpx;
+  font-weight: 600;
+}
+.cf-cat-cn    { background: #fff1f2; color: #e11d48; }
+.cf-cat-world { background: #eff6ff; color: #2563eb; }
+.cf-event-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1e293b;
+  display: block;
+  margin-bottom: 8rpx;
+}
+.cf-event-desc {
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.6;
+  display: block;
+}
+.cf-events-empty {
+  padding: 32rpx 0;
+  text-align: center;
+}
+.cf-events-empty-text {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+/* ─── 表单 ─────────────────────────────────────────────────────── */
+.cf-form-scroll {
+  height: calc(100vh - 0px);
+}
+.cf-form {
+  padding: 24rpx 28rpx 60rpx;
+}
+.cf-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 1rpx 8rpx rgba(0,0,0,0.05);
+}
+.cf-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.cf-section-label {
+  font-size: 26rpx;
+  color: #64748b;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.cf-section-header .cf-section-label {
+  margin-bottom: 0;
+}
+.cf-lunar-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.cf-lunar-label {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+.cf-switch {
+  transform: scale(0.8);
+}
+.cf-input {
+  font-size: 30rpx;
+  color: #1e293b;
+  width: 100%;
+  height: 60rpx;
+  line-height: 60rpx;
+}
+.cf-ph { color: #cbd5e1; }
+.cf-picker-val {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 30rpx;
+  color: #1e293b;
+  height: 60rpx;
+  line-height: 60rpx;
+}
+.cf-picker-arrow {
+  font-size: 36rpx;
+  color: #cbd5e1;
+}
+
+/* ─── 按钮 ─────────────────────────────────────────────────────── */
+.cf-actions {
+  margin-top: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.cf-save-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: linear-gradient(135deg, #f97316, #f43f5e);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 700;
+  border-radius: 50rpx;
+  border: none;
+  padding: 0;
+}
+.cf-save-btn::after { border: none; }
+.cf-save-btn:active { opacity: 0.85; }
+
+.cf-cancel-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 30rpx;
+  border-radius: 50rpx;
+  border: none;
+  padding: 0;
+}
+.cf-cancel-btn::after { border: none; }
+.cf-cancel-btn:active { opacity: 0.8; }
+
+.cf-delete-btn {
+  height: 88rpx;
+  line-height: 88rpx;
+  background: transparent;
+  color: #ef4444;
+  font-size: 28rpx;
+  border: 2rpx solid #fecaca;
+  border-radius: 50rpx;
+  padding: 0;
+  box-sizing: border-box;
+}
+.cf-delete-btn::after { border: none; }
+.cf-delete-btn:active { opacity: 0.7; }
+
+/* 查看模式下的删除按钮独占行并有外边距 */
+.cf-view .cf-delete-btn {
+  display: block;
+  width: calc(100% - 56rpx);
+  margin: 20rpx 28rpx 40rpx;
+}
+
+/* 表单模式下（在 cf-actions 里）全宽 */
+.cf-actions .cf-delete-btn {
+  width: 100%;
+}
