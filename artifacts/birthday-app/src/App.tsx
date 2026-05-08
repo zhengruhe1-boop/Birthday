@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,9 @@ import Login from "./pages/Login";
 import ContactForm from "./pages/ContactForm";
 import EventForm from "./pages/EventForm";
 import Admin from "./pages/Admin";
+import Tools from "./pages/Tools";
+import Profile from "./pages/Profile";
+import BottomNav from "./components/BottomNav";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,17 +22,27 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+const BOTTOM_NAV_PATHS = ["/", "/tools", "/profile"];
+
+function AppShell() {
+  const [location] = useLocation();
+  const showNav = BOTTOM_NAV_PATHS.includes(location);
+
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/contact/:id" component={ContactForm} />
-      <Route path="/event/new/:type" component={EventForm} />
-      <Route path="/event/:id" component={EventForm} />
-      <Route path="/admin" component={Admin} />
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/tools" component={Tools} />
+        <Route path="/profile" component={Profile} />
+        <Route path="/login" component={Login} />
+        <Route path="/contact/:id" component={ContactForm} />
+        <Route path="/event/new/:type" component={EventForm} />
+        <Route path="/event/:id" component={EventForm} />
+        <Route path="/admin" component={Admin} />
+        <Route component={NotFound} />
+      </Switch>
+      {showNav && <BottomNav />}
+    </>
   );
 }
 
@@ -38,7 +51,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AppShell />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

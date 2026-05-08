@@ -666,7 +666,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-6 right-0 left-0 max-w-md mx-auto pointer-events-none px-6 flex flex-col items-end z-50">
+      <div className="fixed bottom-20 right-0 left-0 max-w-md mx-auto pointer-events-none px-6 flex flex-col items-end z-50">
         {/* Sub-buttons */}
         <AnimatePresence>
           {showFab && (
