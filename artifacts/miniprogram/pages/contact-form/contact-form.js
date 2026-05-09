@@ -13,7 +13,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function getDaysInMonth(month, isLunar) {
-  if (isLunar) return 30; // 农历每月最多30天
+  if (isLunar) return 30;
   const map = { 1:31, 2:29, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31 };
   return map[month] || 31;
 }
@@ -24,6 +24,13 @@ function buildDays(month, isLunar) {
     value: i + 1,
     label: (i + 1) + "日",
   }));
+}
+
+function toAbsUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (getApp().globalData.apiBase || "").replace(/\/$/, "");
+  return base + (url.startsWith("/") ? url : "/" + url);
 }
 
 Page({
@@ -43,6 +50,7 @@ Page({
     relation: "",
     hometown: "",
     reminderEmail: "",
+    avatarUrl: "",
 
     // Picker options & indices
     months: MONTHS,
@@ -59,6 +67,12 @@ Page({
     deleting: false,
     eventsLoading: false,
     eventsGenerated: false,
+    avatarUploading: false,
+
+    // 消息通知
+    oaSubscribed: false,
+    notifyEnabled: false,
+    oaChecked: false,
   },
 
   // ── 生命周期 ────────────────────────────────────────────────────────────────
@@ -83,6 +97,87 @@ Page({
     } else {
       await this.loadContact(parseInt(id, 10));
     }
+    this.loadOaStatus();
+  },
+
+  async onShow() {
+    if (!this.data.oaChecked) return;
+    this.loadOaStatus();
+  },
+
+  // ── 消息通知状态 ──────────────────────────────────────────────────────────────
+
+  async loadOaStatus() {
+    try {
+      const res = await api.get("api/auth/wechat/subscribe-status");
+      const subscribed = !!(res && res.subscribed);
+      this.setData({
+        oaSubscribed: subscribed,
+        notifyEnabled: subscribed,
+        oaChecked: true,
+      });
+    } catch {
+      this.setData({ oaSubscribed: false, notifyEnabled: false, oaChecked: true });
+    }
+  },
+
+  onNotifyToggle(e) {
+    const val = e.detail.value;
+    if (val && !this.data.oaSubscribed) {
+      this.setData({ notifyEnabled: false });
+      wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
+      return;
+    }
+    this.setData({ notifyEnabled: val });
+  },
+
+  goFollowOa() {
+    wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
+  },
+
+  // ── 头像上传 ─────────────────────────────────────────────────────────────────
+
+  chooseAvatar() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ["image"],
+      sourceType: ["album", "camera"],
+      success: (res) => {
+        const tempPath = res.tempFiles && res.tempFiles[0] && res.tempFiles[0].tempFilePath;
+        if (!tempPath) return;
+        this._uploadAvatar(tempPath);
+      },
+    });
+  },
+
+  async _uploadAvatar(tempPath) {
+    this.setData({ avatarUploading: true });
+    try {
+      // 先压缩
+      let uploadPath = tempPath;
+      try {
+        const compressed = await new Promise((resolve, reject) => {
+          wx.compressImage({ src: tempPath, quality: 80, success: resolve, fail: reject });
+        });
+        if (compressed && compressed.tempFilePath) uploadPath = compressed.tempFilePath;
+      } catch { /* 压缩失败用原始路径 */ }
+
+      const upRes = await api.upload("api/upload", uploadPath, "image");
+      if (upRes && upRes.url) {
+        const absUrl = toAbsUrl(upRes.url);
+        this.setData({ avatarUrl: absUrl, avatarUploading: false });
+      } else {
+        throw new Error("上传失败");
+      }
+    } catch (err) {
+      this.setData({ avatarUploading: false });
+      wx.showToast({ title: (err && err.message) || "头像上传失败", icon: "none" });
+    }
+  },
+
+  // 查看模式：头像加载失败回退
+  onContactAvatarError() {
+    this.setData({ "contact.avatarUrl": "" });
   },
 
   // ── 加载联系人 ───────────────────────────────────────────────────────────────
@@ -92,7 +187,6 @@ Page({
     try {
       const c = await api.get("api/contacts/" + id);
       this._applyContact(c, "view");
-      // 若历史大事记为空，自动触发生成
       if (!c.birthdayEvents || c.birthdayEvents.length === 0) {
         this._autoGenerateEvents(id, c.birthdayMonth, c.birthdayDay);
       }
@@ -102,17 +196,17 @@ Page({
     }
   },
 
-  // 把服务器数据同步到 data（view 或 edit 模式均用）
   _applyContact(c, mode) {
     const monthIndex = (c.birthdayMonth || 1) - 1;
     const days = buildDays(c.birthdayMonth, c.birthdayLunar);
     const dayIndex = Math.max(0, (c.birthdayDay || 1) - 1);
     const genderIndex = Math.max(0, GENDERS.findIndex(g => g.value === c.gender));
     const relationIndex = RELATIONS.indexOf(c.relation || "");
+    const avatarUrl = c.avatarUrl ? toAbsUrl(c.avatarUrl) : "";
 
     this.setData({
       mode: mode || "view",
-      contact: c,
+      contact: { ...c, avatarUrl },
       contactId: c.id,
       name: c.name || "",
       birthdayMonth: c.birthdayMonth,
@@ -123,6 +217,7 @@ Page({
       relation: c.relation || "",
       hometown: c.hometown || "",
       reminderEmail: c.reminderEmail || "",
+      avatarUrl,
       monthIndex,
       days,
       dayIndex,
@@ -132,20 +227,17 @@ Page({
     wx.setNavigationBarTitle({ title: c.name || "生日详情" });
   },
 
-  // ── 历史大事记自动生成 ────────────────────────────────────────────────────────
+  // ── 历史大事记 ────────────────────────────────────────────────────────────────
 
   async _autoGenerateEvents(id, month, day) {
     this.setData({ eventsLoading: true, eventsGenerated: false });
     try {
-      // 先等待 1.5s，给服务器后台生成任务一些时间
       await new Promise(r => setTimeout(r, 1500));
-      // 重新拉取，看后台是否已完成
       const fresh = await api.get("api/contacts/" + id);
       if (fresh.birthdayEvents && fresh.birthdayEvents.length > 0) {
         this.setData({ "contact.birthdayEvents": fresh.birthdayEvents });
         return;
       }
-      // 若仍为空，主动调用生成接口
       const res = await api.post(
         "api/contacts/" + id + "/birthday-events?month=" + month + "&day=" + day,
         {}
@@ -153,13 +245,12 @@ Page({
       if (res && res.events) {
         this.setData({ "contact.birthdayEvents": res.events });
       }
-    } catch { /* 静默失败，用户可手动点"刷新" */ }
+    } catch { /* 静默失败 */ }
     finally {
       this.setData({ eventsLoading: false, eventsGenerated: true });
     }
   },
 
-  // 手动刷新大事记
   async onRefreshEvents() {
     const { contactId, contact } = this.data;
     if (!contactId || this.data.eventsLoading) return;
@@ -206,15 +297,9 @@ Page({
     const isLunar = e.detail.value;
     const days = buildDays(this.data.birthdayMonth, isLunar);
     const dayIndex = Math.min(this.data.dayIndex, days.length - 1);
-    this.setData({
-      birthdayLunar: isLunar,
-      days,
-      dayIndex,
-      birthdayDay: days[dayIndex].value,
-    });
+    this.setData({ birthdayLunar: isLunar, days, dayIndex, birthdayDay: days[dayIndex].value });
   },
 
-  // 多列选择器：列值变化时实时更新日期选项
   onBirthdayColumnChange(e) {
     const col = e.detail.column;
     const val = e.detail.value;
@@ -223,18 +308,12 @@ Page({
       const days = buildDays(month, this.data.birthdayLunar);
       const dayIndex = Math.min(this.data.dayIndex, days.length - 1);
       this.setData({
-        monthIndex: val,
-        birthdayMonth: month,
-        days,
-        dayIndex,
-        birthdayDay: days[dayIndex].value,
+        monthIndex: val, birthdayMonth: month, days,
+        dayIndex, birthdayDay: days[dayIndex].value,
       });
     } else {
       const days = this.data.days;
-      this.setData({
-        dayIndex: val,
-        birthdayDay: (days[val] || days[days.length - 1]).value,
-      });
+      this.setData({ dayIndex: val, birthdayDay: (days[val] || days[days.length - 1]).value });
     }
   },
 
@@ -244,11 +323,8 @@ Page({
     const days = buildDays(month, this.data.birthdayLunar);
     const safeIdx = Math.min(dayIdx, days.length - 1);
     this.setData({
-      monthIndex: monthIdx,
-      birthdayMonth: month,
-      days,
-      dayIndex: safeIdx,
-      birthdayDay: days[safeIdx].value,
+      monthIndex: monthIdx, birthdayMonth: month, days,
+      dayIndex: safeIdx, birthdayDay: days[safeIdx].value,
     });
   },
 
@@ -277,8 +353,8 @@ Page({
       relation: d.relation || null,
       hometown: d.hometown.trim() || null,
       reminderEmail: d.reminderEmail.trim() || null,
+      avatarUrl: d.avatarUrl || null,
     };
-    // gender API 只接受 "male" / "female"，未知时不发该字段
     if (d.gender === "male" || d.gender === "female") {
       body.gender = d.gender;
     }
@@ -299,7 +375,6 @@ Page({
     try {
       const body = this._buildBody();
       if (this.data.contactId) {
-        // 更新
         const prevMonth = this.data.contact && this.data.contact.birthdayMonth;
         const prevDay   = this.data.contact && this.data.contact.birthdayDay;
         const updated   = await api.put("api/contacts/" + this.data.contactId, body);
@@ -314,12 +389,9 @@ Page({
           }, 400);
         }
       } else {
-        // 新建
         const created = await api.post("api/contacts", body);
         wx.showToast({ title: "添加成功", icon: "success" });
-        // 切换到查看模式（此时大事记还在后台生成中）
         this._applyContact(created, "view");
-        // 自动触发生成，完成后展示
         this._autoGenerateEvents(created.id, created.birthdayMonth, created.birthdayDay);
       }
     } catch (err) {

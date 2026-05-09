@@ -12,7 +12,14 @@
     <!-- 联系人信息卡片 -->
     <view class="cf-card cf-info-card">
       <view class="cf-avatar-row">
-        <view class="cf-avatar-circle" style="background:{{contact.gender==='female'?'#fce7f3':'#e0f2fe'}}">
+        <!-- 有头像图片则显示图片，否则显示首字母圆圈 -->
+        <view wx:if="{{contact.avatarUrl}}" class="cf-avatar-img-wrap">
+          <image class="cf-avatar-img"
+            src="{{contact.avatarUrl}}"
+            mode="aspectFill"
+            binderror="onContactAvatarError" />
+        </view>
+        <view wx:else class="cf-avatar-circle" style="background:{{contact.gender==='female'?'#fce7f3':'#e0f2fe'}}">
           <text class="cf-avatar-text">{{contact.name[0] || '?'}}</text>
         </view>
         <view class="cf-info-main">
@@ -60,13 +67,11 @@
         </view>
       </view>
 
-      <!-- 生成中 -->
       <view wx:if="{{eventsLoading}}" class="cf-events-loading">
         <view class="cf-spinner cf-spinner-sm"></view>
         <text class="cf-events-loading-text">正在查询历史大事…</text>
       </view>
 
-      <!-- 有大事记 -->
       <view wx:elif="{{contact.birthdayEvents && contact.birthdayEvents.length > 0}}">
         <view wx:for="{{contact.birthdayEvents}}" wx:key="index" class="cf-event-item">
           <view class="cf-event-header">
@@ -80,7 +85,6 @@
         </view>
       </view>
 
-      <!-- 空状态 -->
       <view wx:else class="cf-events-empty">
         <text class="cf-events-empty-text">暂无历史大事，点击"刷新"重新生成</text>
       </view>
@@ -97,6 +101,24 @@
   <view wx:elif="{{mode === 'new' || mode === 'edit'}}">
     <scroll-view scroll-y class="cf-form-scroll">
       <view class="cf-form">
+
+        <!-- 头像上传 -->
+        <view class="cf-section cf-avatar-section" bindtap="chooseAvatar">
+          <view class="cf-avatar-upload-wrap">
+            <view wx:if="{{avatarUploading}}" class="cf-avatar-uploading">
+              <view class="cf-spinner cf-spinner-sm"></view>
+              <text class="cf-avatar-upload-hint">上传中…</text>
+            </view>
+            <block wx:elif="{{avatarUrl}}">
+              <image class="cf-avatar-upload-img" src="{{avatarUrl}}" mode="aspectFill" />
+              <view class="cf-avatar-edit-badge"><text>✏️</text></view>
+            </block>
+            <view wx:else class="cf-avatar-placeholder">
+              <text class="cf-avatar-placeholder-icon">📷</text>
+              <text class="cf-avatar-placeholder-text">点击上传头像（可选）</text>
+            </view>
+          </view>
+        </view>
 
         <!-- 姓名 -->
         <view class="cf-section">
@@ -193,6 +215,25 @@
             bindinput="onEmailInput"
             type="email"
             maxlength="60" />
+        </view>
+
+        <!-- 消息通知 -->
+        <view class="cf-section cf-notify-card">
+          <view class="cf-notify-row">
+            <view class="cf-notify-left">
+              <text class="cf-notify-label">消息通知</text>
+              <text class="cf-notify-sub">
+                {{oaSubscribed ? '已关注公众号，生日临近将推送微信提醒' : '关注生日通公众号后可开启'}}
+              </text>
+            </view>
+            <switch
+              checked="{{notifyEnabled}}"
+              bindchange="onNotifyToggle"
+              color="#f43f5e" />
+          </view>
+          <view wx:if="{{!oaSubscribed}}" class="cf-notify-tip" bindtap="goFollowOa">
+            <text class="cf-notify-tip-text">👆 点此了解如何关注公众号开通提醒</text>
+          </view>
         </view>
 
         <!-- 操作按钮 -->

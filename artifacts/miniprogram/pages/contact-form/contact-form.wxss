@@ -228,6 +228,118 @@
 .cf-form {
   padding: 24rpx 28rpx 60rpx;
 }
+
+/* 头像上传区 */
+.cf-avatar-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24rpx;
+}
+.cf-avatar-upload-wrap {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 3rpx dashed #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.cf-avatar-section:active .cf-avatar-upload-wrap { opacity: 0.75; }
+.cf-avatar-upload-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  display: block;
+}
+.cf-avatar-edit-badge {
+  position: absolute;
+  bottom: 6rpx;
+  right: 6rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+}
+.cf-avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+.cf-avatar-placeholder-icon { font-size: 48rpx; display: block; }
+.cf-avatar-placeholder-text {
+  font-size: 20rpx;
+  color: #94a3b8;
+  display: block;
+  text-align: center;
+  padding: 0 16rpx;
+}
+.cf-avatar-uploading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+.cf-avatar-upload-hint { font-size: 20rpx; color: #94a3b8; }
+
+/* 查看模式：头像图片 */
+.cf-avatar-img-wrap {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3rpx rgba(249,115,22,0.2);
+}
+.cf-avatar-img {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+/* 消息通知卡片 */
+.cf-notify-card { padding: 24rpx 32rpx; }
+.cf-notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.cf-notify-left { flex: 1; min-width: 0; }
+.cf-notify-label {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+.cf-notify-sub {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-top: 6rpx;
+  line-height: 1.5;
+}
+.cf-notify-tip {
+  margin-top: 20rpx;
+  background: #fff7ed;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+.cf-notify-tip:active { opacity: 0.75; }
+.cf-notify-tip-text {
+  font-size: 24rpx;
+  color: #ea580c;
+}
 .cf-section {
   background: #fff;
   border-radius: 20rpx;
