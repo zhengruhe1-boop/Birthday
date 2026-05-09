@@ -8,7 +8,8 @@
     "pages/event-form/event-form",
     "pages/subscribe/subscribe",
     "pages/follow-oa/follow-oa",
-    "pages/legal/legal"
+    "pages/legal/legal",
+    "pages/fortune/fortune"
   ],
   "tabBar": {
     "color": "#94a3b8",

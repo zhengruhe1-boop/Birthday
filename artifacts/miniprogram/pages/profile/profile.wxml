@@ -22,6 +22,18 @@
       <text class="user-arrow">›</text>
     </view>
 
+    <!-- 今日运势入口 -->
+    <view class="fortune-entry" bindtap="goFortune">
+      <view class="fortune-entry-left">
+        <view class="fortune-entry-icon">🔮</view>
+        <view class="fortune-entry-text">
+          <text class="fortune-entry-title">今日运势</text>
+          <text class="fortune-entry-sub">{{fortuneSign ? fortuneSign + ' · 点击查看今日运势' : '点击设置星座，查看今日运势'}}</text>
+        </view>
+      </view>
+      <text class="fortune-entry-arrow">›</text>
+    </view>
+
     <!-- 消息与通知 -->
     <view class="group-label">消息与通知</view>
     <view class="menu-group">

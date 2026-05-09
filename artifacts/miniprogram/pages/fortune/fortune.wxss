@@ -1,0 +1,261 @@
+.fortune-page {
+  min-height: 100vh;
+  background: #0f0f23;
+}
+.fortune-scroll { height: 100vh; }
+
+/* ── Hero 卡 ─────────────────────────────────────── */
+.hero-card {
+  position: relative;
+  margin: 0;
+  padding: 48rpx 32rpx 36rpx;
+  background: linear-gradient(145deg, #1a1a3e 0%, #2d1b69 60%, #1a1a3e 100%);
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(167,139,250,0.15) 0%, transparent 60%),
+              radial-gradient(circle at 20% 80%, rgba(244,63,94,0.10) 0%, transparent 50%);
+}
+.hero-content { position: relative; }
+
+.sign-display {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.08);
+  border: 1rpx solid rgba(255,255,255,0.15);
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 28rpx;
+}
+.sign-emoji { font-size: 60rpx; margin-right: 20rpx; }
+.sign-info { flex: 1; }
+.sign-name { font-size: 32rpx; font-weight: 700; color: #fff; display: block; }
+.sign-hint { font-size: 22rpx; color: rgba(255,255,255,0.55); display: block; margin-top: 4rpx; }
+.sign-edit {
+  font-size: 22rpx; color: #a78bfa;
+  background: rgba(167,139,250,0.15);
+  padding: 8rpx 20rpx; border-radius: 24rpx;
+  border: 1rpx solid rgba(167,139,250,0.3);
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.date-picker-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  background: rgba(255,255,255,0.08);
+  border: 1rpx solid rgba(255,255,255,0.12);
+  border-radius: 16rpx;
+  padding: 18rpx 24rpx;
+}
+.date-icon { font-size: 30rpx; }
+.date-text { font-size: 26rpx; color: rgba(255,255,255,0.8); }
+.query-btn {
+  padding: 18rpx 36rpx;
+  background: linear-gradient(135deg, #f43f5e, #a855f7);
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.query-btn.loading { opacity: 0.6; }
+
+/* ── 通用内容卡 ─────────────────────────────────────── */
+.summary-card, .indices-card, .traits-card, .outfit-card {
+  margin: 24rpx 24rpx 0;
+  background: #1e1e3a;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  border: 1rpx solid rgba(255,255,255,0.06);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-bottom: 24rpx;
+}
+.section-icon { font-size: 32rpx; }
+.section-title { font-size: 30rpx; font-weight: 700; color: #e2e8f0; flex: 1; }
+.sign-tag {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.06);
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+}
+
+.summary-text {
+  font-size: 26rpx;
+  color: #cbd5e1;
+  line-height: 1.8;
+  display: block;
+}
+.tip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  margin-top: 20rpx;
+  background: rgba(167,139,250,0.1);
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border-left: 4rpx solid #a78bfa;
+}
+.tip-icon { font-size: 26rpx; }
+.tip-text { font-size: 24rpx; color: #c4b5fd; flex: 1; line-height: 1.6; }
+
+/* ── 四维指数 ─────────────────────────────────────── */
+.index-list { display: flex; flex-direction: column; gap: 28rpx; }
+.index-item {}
+.index-label-row { display: flex; align-items: center; gap: 8rpx; margin-bottom: 10rpx; }
+.index-emoji { font-size: 28rpx; }
+.index-name { font-size: 26rpx; color: #e2e8f0; flex: 1; }
+.index-score { font-size: 30rpx; font-weight: 800; }
+.index-bar-bg {
+  height: 12rpx;
+  background: rgba(255,255,255,0.08);
+  border-radius: 8rpx;
+  overflow: hidden;
+  margin-bottom: 10rpx;
+}
+.index-bar-fill {
+  height: 100%;
+  border-radius: 8rpx;
+  transition: width 0.6s ease;
+}
+.index-desc { font-size: 22rpx; color: #94a3b8; display: block; }
+
+/* ── 星座特点 ─────────────────────────────────────── */
+.traits-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.trait-item {
+  width: calc(50% - 8rpx);
+  background: rgba(255,255,255,0.04);
+  border-radius: 14rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid rgba(255,255,255,0.06);
+}
+.trait-label {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.4);
+  display: block;
+  margin-bottom: 6rpx;
+}
+.trait-value { font-size: 24rpx; color: #e2e8f0; font-weight: 600; display: block; }
+
+/* ── 穿搭推荐 ─────────────────────────────────────── */
+.outfit-text {
+  font-size: 26rpx;
+  color: #cbd5e1;
+  line-height: 1.8;
+  display: block;
+  background: rgba(244,63,94,0.07);
+  border-radius: 14rpx;
+  padding: 20rpx;
+  border-left: 4rpx solid #f43f5e;
+}
+
+/* ── 免责声明 ─────────────────────────────────────── */
+.disclaimer {
+  margin: 24rpx 24rpx 0;
+  padding: 20rpx 24rpx;
+  background: rgba(255,255,255,0.03);
+  border-radius: 14rpx;
+  border: 1rpx dashed rgba(255,255,255,0.1);
+}
+.disclaimer-text { font-size: 20rpx; color: rgba(255,255,255,0.3); line-height: 1.7; }
+
+/* ── 空状态 ─────────────────────────────────────── */
+.empty-card {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120rpx 40rpx;
+  gap: 20rpx;
+}
+.empty-icon { font-size: 80rpx; }
+.empty-title { font-size: 26rpx; color: rgba(255,255,255,0.4); text-align: center; }
+
+/* ── 加载 ─────────────────────────────────────── */
+.loading-card {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 100rpx 40rpx; gap: 24rpx;
+}
+.loading-icon { font-size: 80rpx; display: block; animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+.loading-text { font-size: 26rpx; color: rgba(255,255,255,0.5); }
+
+/* ── 错误 ─────────────────────────────────────── */
+.error-card {
+  margin: 24rpx;
+  padding: 28rpx;
+  background: rgba(244,63,94,0.12);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(244,63,94,0.3);
+}
+.error-text { font-size: 26rpx; color: #fda4af; line-height: 1.6; }
+
+/* ── 星座选择弹窗 ─────────────────────────────────────── */
+.modal-mask {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  display: flex; align-items: flex-end;
+}
+.sign-sheet {
+  width: 100%;
+  background: #1e1e3a;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 0 0 env(safe-area-inset-bottom);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-handle {
+  width: 60rpx; height: 8rpx;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4rpx;
+  margin: 20rpx auto 0;
+}
+.modal-title {
+  display: block;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #e2e8f0;
+  padding: 24rpx 0 20rpx;
+}
+.sign-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8rpx 20rpx 24rpx;
+  gap: 12rpx;
+}
+.sign-option {
+  width: calc(33.33% - 8rpx);
+  background: rgba(255,255,255,0.05);
+  border: 1rpx solid rgba(255,255,255,0.08);
+  border-radius: 16rpx;
+  padding: 20rpx 12rpx;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6rpx;
+}
+.sign-option.active {
+  background: rgba(167,139,250,0.2);
+  border-color: #a78bfa;
+}
+.sign-opt-emoji { font-size: 40rpx; }
+.sign-opt-name { font-size: 24rpx; font-weight: 600; color: #e2e8f0; }
+.sign-opt-range { font-size: 18rpx; color: rgba(255,255,255,0.35); }

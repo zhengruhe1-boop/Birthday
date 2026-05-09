@@ -1,0 +1,173 @@
+<view class="fortune-page">
+  <scroll-view class="fortune-scroll" scroll-y>
+
+    <!-- 顶部星座选择卡 -->
+    <view class="hero-card">
+      <view class="hero-bg" />
+      <view class="hero-content">
+        <view class="sign-display" bindtap="openSignPicker">
+          <text class="sign-emoji">{{currentSign ? signData[currentSign].emoji : '✨'}}</text>
+          <view class="sign-info">
+            <text class="sign-name">{{currentSign || '选择星座'}}</text>
+            <text class="sign-hint">{{currentSign ? signData[currentSign].dateRange : '点击设置你的星座'}}</text>
+          </view>
+          <text class="sign-edit">{{currentSign ? '切换' : '选择'}}</text>
+        </view>
+
+        <view class="date-row">
+          <picker mode="date" value="{{queryDate}}" bindchange="onDateChange">
+            <view class="date-picker-btn">
+              <text class="date-icon">📅</text>
+              <text class="date-text">{{queryDate}}</text>
+            </view>
+          </picker>
+          <view class="query-btn {{loading ? 'loading' : ''}}" bindtap="queryFortune">
+            <text>{{loading ? '生成中…' : '查看运势'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 错误提示 -->
+    <view wx:if="{{error}}" class="error-card">
+      <text class="error-text">{{error}}</text>
+    </view>
+
+    <!-- 无数据状态 -->
+    <view wx:elif="{{!fortune && !loading}}" class="empty-card">
+      <text class="empty-icon">🔮</text>
+      <text class="empty-title">{{currentSign ? '点击「查看运势」获取今日运势' : '请先选择你的星座'}}</text>
+    </view>
+
+    <!-- 运势内容 -->
+    <block wx:elif="{{fortune}}">
+
+      <!-- 总运卡 -->
+      <view class="summary-card">
+        <view class="section-header">
+          <text class="section-icon">🌟</text>
+          <text class="section-title">今日总运</text>
+          <text class="sign-tag">{{currentSign}} · {{queryDate}}</text>
+        </view>
+        <text class="summary-text">{{fortune.summary}}</text>
+        <view wx:if="{{fortune.tip}}" class="tip-row">
+          <text class="tip-icon">💡</text>
+          <text class="tip-text">{{fortune.tip}}</text>
+        </view>
+      </view>
+
+      <!-- 四维指数 -->
+      <view class="indices-card">
+        <view class="section-header">
+          <text class="section-icon">📊</text>
+          <text class="section-title">四维指数</text>
+        </view>
+        <view class="index-list">
+          <view class="index-item" wx:for="{{indices}}" wx:key="key">
+            <view class="index-label-row">
+              <text class="index-emoji">{{item.emoji}}</text>
+              <text class="index-name">{{item.name}}</text>
+              <text class="index-score" style="color:{{item.color}}">{{item.score}}</text>
+            </view>
+            <view class="index-bar-bg">
+              <view class="index-bar-fill" style="width:{{item.score}}%;background:{{item.color}}" />
+            </view>
+            <text class="index-desc">{{item.desc}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 星座特点 -->
+      <view class="traits-card" wx:if="{{currentSign}}">
+        <view class="section-header">
+          <text class="section-icon">⭐</text>
+          <text class="section-title">星座特点</text>
+        </view>
+        <view class="traits-grid">
+          <view class="trait-item">
+            <text class="trait-label">四象属性</text>
+            <text class="trait-value">{{signData[currentSign].element}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">掌管宫位</text>
+            <text class="trait-value">{{signData[currentSign].house}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">阴阳属性</text>
+            <text class="trait-value">{{signData[currentSign].yinyang}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">最大特征</text>
+            <text class="trait-value">{{signData[currentSign].trait}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">主管行星</text>
+            <text class="trait-value">{{signData[currentSign].planet}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">幸运颜色</text>
+            <text class="trait-value">{{signData[currentSign].color}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">吉祥饰物</text>
+            <text class="trait-value">{{signData[currentSign].talisman}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">幸运号码</text>
+            <text class="trait-value">{{signData[currentSign].number}}</text>
+          </view>
+          <view class="trait-item">
+            <text class="trait-label">开运金属</text>
+            <text class="trait-value">{{signData[currentSign].metal}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 今日穿搭 -->
+      <view class="outfit-card" wx:if="{{fortune.outfit}}">
+        <view class="section-header">
+          <text class="section-icon">👗</text>
+          <text class="section-title">今日穿搭推荐</text>
+        </view>
+        <text class="outfit-text">{{fortune.outfit}}</text>
+      </view>
+
+      <!-- 免责声明 -->
+      <view class="disclaimer">
+        <text class="disclaimer-text">⚠️ 以上内容仅供参考，请理性看待，不作为任何决策依据。</text>
+      </view>
+
+    </block>
+
+    <!-- 加载占位 -->
+    <view wx:if="{{loading}}" class="loading-card">
+      <view class="loading-anim">
+        <text class="loading-icon">🔮</text>
+      </view>
+      <text class="loading-text">正在为你生成今日运势…</text>
+    </view>
+
+    <view style="height:60rpx" />
+  </scroll-view>
+
+  <!-- 星座选择弹窗 -->
+  <view wx:if="{{showSignPicker}}" class="modal-mask" bindtap="closeSignPicker">
+    <view class="sign-sheet" catchtap="noop">
+      <view class="modal-handle" />
+      <text class="modal-title">选择你的星座</text>
+      <view class="sign-grid">
+        <view
+          wx:for="{{signs}}"
+          wx:key="*this"
+          class="sign-option {{currentSign === item ? 'active' : ''}}"
+          bindtap="selectSign"
+          data-sign="{{item}}">
+          <text class="sign-opt-emoji">{{signData[item].emoji}}</text>
+          <text class="sign-opt-name">{{item}}</text>
+          <text class="sign-opt-range">{{signData[item].dateRange}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

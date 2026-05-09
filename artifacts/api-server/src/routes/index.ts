@@ -8,6 +8,7 @@ import adminRouter from "./admin.js";
 import eventsRouter from "./events.js";
 import shareRouter from "./share.js";
 import wechatOaRouter from "./wechat-oa.js";
+import fortuneRouter from "./fortune.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/admin", adminRouter);
 router.use("/events", eventsRouter);
 router.use("/share", shareRouter);
 router.use("/wechat/oa", wechatOaRouter);
+router.use("/fortune", fortuneRouter);
 
 export default router;
