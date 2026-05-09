@@ -247,7 +247,7 @@
 
     </block>
 
-    <view style="height:160rpx" />
+    <view style="height:80rpx" />
   </scroll-view>
 
   <!-- FAB 遮罩 -->
