@@ -1,0 +1,79 @@
+<view class="tools-page">
+
+  <view class="tools-header">
+    <text class="tools-title">小工具</text>
+    <text class="tools-sub">记录每一个重要的日子</text>
+  </view>
+
+  <scroll-view class="tools-scroll" scroll-y>
+
+    <view class="section-label">快速添加</view>
+
+    <view class="tool-list">
+
+      <view class="tool-item" bindtap="goAddContact">
+        <view class="tool-icon rose-bg"><text>🎂</text></view>
+        <view class="tool-info">
+          <text class="tool-name">添加生日</text>
+          <text class="tool-desc">记录亲友生日，到期自动提醒</text>
+        </view>
+        <text class="tool-arrow">›</text>
+      </view>
+
+      <view class="tool-item" bindtap="goAddAnniversary">
+        <view class="tool-icon pink-bg"><text>❤️</text></view>
+        <view class="tool-info">
+          <text class="tool-name">添加纪念日</text>
+          <text class="tool-desc">结婚纪念日、恋爱周年等</text>
+        </view>
+        <text class="tool-arrow">›</text>
+      </view>
+
+      <view class="tool-item" bindtap="goAddCountdown">
+        <view class="tool-icon orange-bg"><text>⏱️</text></view>
+        <view class="tool-info">
+          <text class="tool-name">添加倒数日</text>
+          <text class="tool-desc">考试、旅行、大事件倒计时</text>
+        </view>
+        <text class="tool-arrow">›</text>
+      </view>
+
+      <view class="tool-item" bindtap="goAddOther">
+        <view class="tool-icon violet-bg"><text>✨</text></view>
+        <view class="tool-info">
+          <text class="tool-name">其它提醒</text>
+          <text class="tool-desc">自定义提醒事项</text>
+        </view>
+        <text class="tool-arrow">›</text>
+      </view>
+
+    </view>
+
+    <view class="section-label" style="margin-top:40rpx">即将上线</view>
+
+    <view class="tool-list">
+
+      <view class="tool-item tool-item-disabled">
+        <view class="tool-icon blue-bg"><text>🧮</text></view>
+        <view class="tool-info">
+          <text class="tool-name tool-name-gray">年龄计算器</text>
+          <text class="tool-desc">根据生日计算精确年龄</text>
+        </view>
+        <view class="coming-badge"><text>即将上线</text></view>
+      </view>
+
+      <view class="tool-item tool-item-disabled">
+        <view class="tool-icon amber-bg"><text>⭐</text></view>
+        <view class="tool-info">
+          <text class="tool-name tool-name-gray">星座查询</text>
+          <text class="tool-desc">输入生日查看星座运势</text>
+        </view>
+        <view class="coming-badge"><text>即将上线</text></view>
+      </view>
+
+    </view>
+
+    <view style="height:40rpx" />
+  </scroll-view>
+
+</view>

@@ -1,12 +1,40 @@
 {
   "pages": [
     "pages/home/home",
+    "pages/tools/tools",
+    "pages/profile/profile",
     "pages/login/login",
     "pages/contact-form/contact-form",
     "pages/event-form/event-form",
     "pages/subscribe/subscribe",
     "pages/follow-oa/follow-oa"
   ],
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#f43f5e",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "images/tabbar/home.png",
+        "selectedIconPath": "images/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/tools/tools",
+        "text": "小工具",
+        "iconPath": "images/tabbar/tools.png",
+        "selectedIconPath": "images/tabbar/tools-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tabbar/profile.png",
+        "selectedIconPath": "images/tabbar/profile-active.png"
+      }
+    ]
+  },
   "window": {
     "backgroundColor": "#f8fafc",
     "backgroundTextStyle": "dark",

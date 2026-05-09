@@ -1,0 +1,112 @@
+.tools-page {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.tools-header {
+  padding: 40rpx 32rpx 28rpx;
+  padding-top: calc(40rpx + env(safe-area-inset-top));
+  background: linear-gradient(135deg, #fff5f7 0%, #fff9f0 100%);
+  border-bottom: 1rpx solid rgba(244,63,94,0.08);
+}
+
+.tools-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tools-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #f43f5e;
+  margin-top: 6rpx;
+  opacity: 0.7;
+}
+
+.tools-scroll {
+  height: calc(100vh - 160rpx);
+}
+
+.section-label {
+  font-size: 22rpx;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+  padding: 32rpx 32rpx 12rpx;
+  display: block;
+}
+
+.tool-list {
+  margin: 0 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+
+.tool-item {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 28rpx 28rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+.tool-item:last-child { border-bottom: none; }
+.tool-item:active { background: #f8fafc; }
+
+.tool-item-disabled { opacity: 0.5; }
+.tool-item-disabled:active { background: transparent; }
+
+.tool-icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+.rose-bg   { background: #fff1f2; }
+.pink-bg   { background: #fdf2f8; }
+.orange-bg { background: #fff7ed; }
+.violet-bg { background: #f5f3ff; }
+.blue-bg   { background: #eff6ff; }
+.amber-bg  { background: #fffbeb; }
+
+.tool-info { flex: 1; min-width: 0; }
+
+.tool-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.tool-name-gray { color: #94a3b8; }
+
+.tool-desc {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-top: 4rpx;
+}
+
+.tool-arrow {
+  color: #cbd5e1;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.coming-badge {
+  background: #f1f5f9;
+  border-radius: 100rpx;
+  padding: 4rpx 16rpx;
+  flex-shrink: 0;
+}
+.coming-badge text {
+  font-size: 20rpx;
+  color: #94a3b8;
+}

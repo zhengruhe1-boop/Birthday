@@ -1,0 +1,114 @@
+<view class="profile-page">
+
+  <scroll-view class="profile-scroll" scroll-y>
+
+    <!-- 用户信息卡片 -->
+    <view class="user-card" bindtap="{{loggedIn ? 'openWxProfileModal' : 'goLogin'}}">
+      <view class="user-avatar-wrap">
+        <image wx:if="{{displayAvatarUrl}}"
+          class="user-avatar-img"
+          src="{{displayAvatarUrl}}"
+          mode="aspectFill"
+          binderror="onAvatarError" />
+        <image wx:else
+          class="user-avatar-img"
+          src="/images/logo.jpg"
+          mode="aspectFill" />
+      </view>
+      <view class="user-info">
+        <text class="user-name">{{displayNickname}}</text>
+        <text class="user-sub">{{loggedIn ? '点击修改头像/昵称' : '点击登录'}}</text>
+      </view>
+      <text class="user-arrow">›</text>
+    </view>
+
+    <!-- 消息与通知 -->
+    <view class="group-label">消息与通知</view>
+    <view class="menu-group">
+      <view class="menu-item">
+        <view class="menu-icon bell-bg"><text>🔔</text></view>
+        <text class="menu-name">邮件提醒</text>
+        <switch checked="{{emailNotify}}" bindchange="toggleEmailNotify" color="#f43f5e" style="transform:scale(0.85)" />
+      </view>
+      <view class="menu-item" bindtap="goSubscribe">
+        <view class="menu-icon green-bg"><text>📢</text></view>
+        <text class="menu-name">订阅消息设置</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 其他 -->
+    <view class="group-label">其他</view>
+    <view class="menu-group">
+      <view class="menu-item" bindtap="goFollowOA">
+        <view class="menu-icon wechat-bg"><text>💬</text></view>
+        <text class="menu-name">关注公众号</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="shareApp">
+        <view class="menu-icon blue-bg"><text>🔗</text></view>
+        <text class="menu-name">分享给朋友</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 退出登录 -->
+    <view wx:if="{{loggedIn}}" class="logout-wrap">
+      <view class="logout-btn" bindtap="handleLogout">
+        <text>退出登录</text>
+      </view>
+    </view>
+    <view wx:else class="logout-wrap">
+      <view class="login-btn" bindtap="goLogin">
+        <text>立即登录</text>
+      </view>
+    </view>
+
+    <view class="footer-tip"><text>生日通 · 记住每一个重要的日子</text></view>
+
+    <view style="height:40rpx" />
+  </scroll-view>
+
+  <!-- 微信资料授权弹窗 -->
+  <view wx:if="{{showWxProfileModal}}" class="modal-mask" bindtap="skipWxProfile">
+    <view class="wx-auth-sheet" catchtap="noop">
+      <view class="modal-handle" />
+      <text class="wx-auth-title">修改头像 / 昵称</text>
+      <text class="wx-auth-sub">获取您的微信头像和昵称</text>
+
+      <view class="wx-auth-step-row">
+        <text class="wx-auth-step-label">① 点击头像选择</text>
+      </view>
+      <button class="wx-auth-avatar-btn"
+        open-type="chooseAvatar"
+        bindchooseavatar="onWxProfileAvatarChosen">
+        <image wx:if="{{wxProfileTemp.avatarUrl}}"
+          class="wx-auth-avatar-img"
+          src="{{wxProfileTemp.avatarUrl}}"
+          mode="aspectFill" />
+        <view wx:else class="wx-auth-avatar-placeholder">
+          <text class="wx-auth-avatar-icon">👤</text>
+          <text class="wx-auth-avatar-hint">点击获取微信头像</text>
+        </view>
+      </button>
+
+      <view class="wx-auth-step-row">
+        <text class="wx-auth-step-label">② 点击昵称输入框</text>
+      </view>
+      <input class="wx-auth-nickname-input"
+        type="nickname"
+        name="nickname"
+        placeholder="点击获取微信昵称"
+        placeholder-class="wx-auth-nickname-ph"
+        value="{{wxProfileTemp.nickname}}"
+        bindinput="onWxProfileNicknameInput"
+        maxlength="20" />
+
+      <button class="wx-auth-confirm-btn" bindtap="saveWxProfile">
+        {{avatarUploading ? '保存中…' : '保存'}}
+      </button>
+      <button class="wx-auth-skip-btn" bindtap="skipWxProfile">取消</button>
+    </view>
+  </view>
+
+</view>
