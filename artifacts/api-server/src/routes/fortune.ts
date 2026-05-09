@@ -1,6 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
+import { getSetting } from "./admin.js";
 
 const router = Router();
 
@@ -19,10 +20,20 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "无效的日期格式" });
   }
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  // 优先用管理后台配置的 key，其次 fallback 到环境变量
+  const apiKey =
+    (await getSetting("ai_api_key_custom")) ||
+    process.env.DEEPSEEK_API_KEY ||
+    "";
+
   if (!apiKey) {
-    return res.status(503).json({ error: "运势服务暂未配置，请联系管理员" });
+    return res
+      .status(503)
+      .json({ error: "运势服务暂未配置 API Key，请在管理后台 AI 模型设置中填写" });
   }
+
+  // 管理后台设置的模型（默认 deepseek-chat）
+  const model = (await getSetting("ai_model")) || "deepseek-chat";
 
   const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
 
@@ -44,7 +55,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 
   try {
     const completion = await client.chat.completions.create({
-      model: "deepseek-chat",
+      model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.8,
       max_tokens: 600,
