@@ -12,6 +12,26 @@ App({
     const stored = wx.getStorageSync('birthday_token');
     if (stored) this.globalData.token = stored;
     this.globalData.sessionReady = this._silentLogin();
+    this._checkUpdate();
+  },
+
+  _checkUpdate() {
+    if (!wx.canIUse('getUpdateManager')) return;
+    const mgr = wx.getUpdateManager();
+    mgr.onUpdateReady(function () {
+      wx.showModal({
+        title: '发现新版本 🎉',
+        content: '新版本已准备好，重启后即可体验最新功能。',
+        confirmText: '立即重启',
+        cancelText: '下次再说',
+        success(res) {
+          if (res.confirm) mgr.applyUpdate();
+        },
+      });
+    });
+    mgr.onUpdateFailed(function () {
+      wx.showToast({ title: '新版本下载失败，请检查网络', icon: 'none', duration: 2500 });
+    });
   },
 
   // 无感知自动保持登录态：
