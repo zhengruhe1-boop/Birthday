@@ -77,6 +77,14 @@ Page({
     wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
   },
 
+  goUserAgreement() {
+    wx.navigateTo({ url: "/pages/legal/legal?type=agreement" });
+  },
+
+  goPrivacyPolicy() {
+    wx.navigateTo({ url: "/pages/legal/legal?type=privacy" });
+  },
+
   goLogin() {
     wx.navigateTo({ url: "/pages/login/login" });
   },

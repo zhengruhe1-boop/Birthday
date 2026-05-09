@@ -1,0 +1,66 @@
+<view class="legal-page">
+  <scroll-view class="legal-scroll" scroll-y>
+    <view class="legal-body">
+
+      <text class="legal-title">{{title}}</text>
+      <text class="legal-updated">更新日期：2025年1月1日</text>
+
+      <block wx:if="{{type === 'agreement'}}">
+        <text class="legal-section-title">一、服务说明</text>
+        <text class="legal-text">生日通（以下简称"本应用"）是一款帮助用户记录和管理亲友生日、纪念日及重要日期的小程序。本协议适用于所有使用本应用的用户。</text>
+
+        <text class="legal-section-title">二、用户注册与账号</text>
+        <text class="legal-text">用户通过微信授权登录本应用，即表示同意本协议全部条款。用户应妥善保管账号信息，对账号下发生的所有行为承担责任。</text>
+
+        <text class="legal-section-title">三、服务内容</text>
+        <text class="legal-text">本应用提供以下服务：\n· 生日记录与提醒\n· 纪念日管理\n· 倒数日计时\n· 邮件及微信消息推送提醒</text>
+
+        <text class="legal-section-title">四、用户行为规范</text>
+        <text class="legal-text">用户不得利用本应用从事任何违法、侵权或损害他人利益的行为。用户上传的内容须合法合规，不得包含虚假信息或恶意内容。</text>
+
+        <text class="legal-section-title">五、知识产权</text>
+        <text class="legal-text">本应用的所有内容（包括但不限于设计、代码、文字、图片）的知识产权归开发方所有，未经许可不得复制或商业使用。</text>
+
+        <text class="legal-section-title">六、免责声明</text>
+        <text class="legal-text">本应用不对因不可抗力、网络故障或第三方原因导致的服务中断或数据丢失承担责任。提醒功能依赖网络环境，不保证100%准时送达。</text>
+
+        <text class="legal-section-title">七、协议变更</text>
+        <text class="legal-text">本应用保留随时修改本协议的权利，修改后的协议将通过应用内通知告知用户，继续使用即视为接受新协议。</text>
+
+        <text class="legal-section-title">八、联系方式</text>
+        <text class="legal-text">如有问题请通过关注公众号"生日通"联系我们。</text>
+      </block>
+
+      <block wx:elif="{{type === 'privacy'}}">
+        <text class="legal-section-title">一、信息收集</text>
+        <text class="legal-text">我们收集以下信息以提供服务：\n· 微信 OpenID（用于账号识别）\n· 您主动填写的头像、昵称\n· 您录入的生日、纪念日等提醒数据\n· 您填写的提醒邮箱地址</text>
+
+        <text class="legal-section-title">二、信息使用</text>
+        <text class="legal-text">收集的信息仅用于：\n· 提供生日和纪念日提醒服务\n· 发送邮件或微信消息提醒\n· 改善用户体验\n\n我们不会将您的个人信息出售给第三方。</text>
+
+        <text class="legal-section-title">三、信息存储</text>
+        <text class="legal-text">您的数据存储在安全的服务器中，我们采用行业标准的加密措施保护您的数据安全。</text>
+
+        <text class="legal-section-title">四、信息共享</text>
+        <text class="legal-text">我们不会向第三方共享您的个人信息，以下情况除外：\n· 您明确同意\n· 法律法规要求\n· 保护用户或公众安全的必要情形</text>
+
+        <text class="legal-section-title">五、数据删除</text>
+        <text class="legal-text">您可以随时删除您录入的生日/纪念日记录。如需删除账号及全部数据，请通过公众号"生日通"联系我们。</text>
+
+        <text class="legal-section-title">六、Cookie 及本地存储</text>
+        <text class="legal-text">本应用使用微信本地存储保存登录状态和用户偏好设置，以提升使用体验。</text>
+
+        <text class="legal-section-title">七、未成年人保护</text>
+        <text class="legal-text">本应用不面向未满14周岁的未成年人，如发现未成年人使用，请监护人联系我们处理。</text>
+
+        <text class="legal-section-title">八、政策更新</text>
+        <text class="legal-text">隐私政策如有重大变更，我们将通过应用内通知告知用户。继续使用即视为接受新政策。</text>
+
+        <text class="legal-section-title">九、联系方式</text>
+        <text class="legal-text">如对隐私政策有任何疑问，请关注公众号"生日通"与我们联系。</text>
+      </block>
+
+    </view>
+    <view style="height:60rpx" />
+  </scroll-view>
+</view>

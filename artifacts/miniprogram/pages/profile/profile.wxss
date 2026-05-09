@@ -105,6 +105,7 @@
 .green-bg  { background: #f0fdf4; }
 .wechat-bg { background: #f0fdf4; }
 .blue-bg   { background: #eff6ff; }
+.violet-bg { background: #f5f3ff; }
 
 .menu-name {
   flex: 1;

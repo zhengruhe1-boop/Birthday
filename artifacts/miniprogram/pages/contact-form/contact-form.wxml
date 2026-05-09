@@ -205,18 +205,6 @@
             maxlength="30" />
         </view>
 
-        <!-- 邮件提醒 -->
-        <view class="cf-section">
-          <text class="cf-section-label">邮件提醒（可选）</text>
-          <input class="cf-input"
-            placeholder="生日前一天发提醒邮件"
-            placeholder-class="cf-ph"
-            value="{{reminderEmail}}"
-            bindinput="onEmailInput"
-            type="email"
-            maxlength="60" />
-        </view>
-
         <!-- 消息通知 -->
         <view class="cf-section cf-notify-card">
           <view class="cf-notify-row">
@@ -234,6 +222,18 @@
           <view wx:if="{{!oaSubscribed}}" class="cf-notify-tip" bindtap="goFollowOa">
             <text class="cf-notify-tip-text">👆 点此了解如何关注公众号开通提醒</text>
           </view>
+        </view>
+
+        <!-- 邮件提醒 -->
+        <view class="cf-section">
+          <text class="cf-section-label">邮件提醒（可选）</text>
+          <input class="cf-input"
+            placeholder="生日前一天发提醒邮件"
+            placeholder-class="cf-ph"
+            value="{{reminderEmail}}"
+            bindinput="onEmailInput"
+            type="email"
+            maxlength="60" />
         </view>
 
         <!-- 操作按钮 -->

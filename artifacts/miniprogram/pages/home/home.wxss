@@ -30,7 +30,7 @@
 
 /* 游客引导横幅 */
 .guest-banner {
-  margin: 20rpx 32rpx 0;
+  margin: calc(20rpx + env(safe-area-inset-top)) 32rpx 0;
   background: linear-gradient(135deg, #fff1f2, #fff7ed);
   border: 1rpx solid rgba(244,63,94,0.15);
   border-radius: 20rpx;
@@ -141,6 +141,7 @@
 /* Search */
 .search-wrap {
   padding: 20rpx 32rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
   background: #fff;
   border-bottom: 1rpx solid rgba(0,0,0,0.05);
 }
