@@ -717,10 +717,7 @@
 
 /* ── 微信资料授权弹窗 ──────────────────────────────────────────────────────── */
 .wx-auth-sheet {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  width: 100%;
   background: #fff;
   border-radius: 32rpx 32rpx 0 0;
   padding: 0 48rpx 60rpx;
