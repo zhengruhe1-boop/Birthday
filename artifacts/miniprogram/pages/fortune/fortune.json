@@ -1,6 +1,6 @@
 {
-  "navigationBarTitleText": "今日运势",
-  "navigationBarBackgroundColor": "#1a1a2e",
-  "navigationBarTextStyle": "white",
+  "navigationBarTitleText": "我的今日运势",
+  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarTextStyle": "black",
   "usingComponents": {}
 }
