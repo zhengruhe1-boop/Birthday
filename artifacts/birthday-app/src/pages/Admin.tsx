@@ -28,6 +28,7 @@ import {
   X,
   Upload,
   Smile,
+  Lock,
 } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
@@ -3225,6 +3226,221 @@ function EmailConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+// ─── QuotaConfigPanel ─────────────────────────────────────────────────────────
+interface QuotaConfig {
+  limit: number;
+  action: "share" | "video" | "miniprogram";
+  perAction: number;
+  videoAdId: string;
+  mpAppId: string;
+  mpPath: string;
+  mpName: string;
+}
+
+function QuotaConfigPanel({ adminKey }: { adminKey: string }) {
+  const [cfg, setCfg] = useState<QuotaConfig>({
+    limit: 0,
+    action: "share",
+    perAction: 5,
+    videoAdId: "",
+    mpAppId: "",
+    mpPath: "",
+    mpName: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/quota-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: QuotaConfig | null) => {
+        if (d) setCfg(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [adminKey]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/quota-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(cfg),
+      });
+      if (res.ok) setSaved(true);
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaved(false), 3000);
+    }
+  };
+
+  if (loading)
+    return <div className="text-sm text-gray-400 py-8 text-center">加载中…</div>;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* 说明 */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 text-sm text-blue-700 leading-relaxed">
+        <p className="font-semibold mb-1">添加配额限制</p>
+        <p>
+          设置用户免费可添加的生日条数上限，超出后需完成指定操作（分享/看广告/跳转小程序）解锁更多次数。
+          条数上限设为 0 则不限制。
+        </p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <Lock className="w-4 h-4 text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">配额基本设置</h3>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* 免费条数上限 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              免费添加上限（条）
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={cfg.limit}
+              onChange={(e) => setCfg((c) => ({ ...c, limit: parseInt(e.target.value) || 0 }))}
+              placeholder="0"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">填 0 或留空则不限制</p>
+          </div>
+
+          {/* 解锁方式 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">解锁方式</label>
+            <select
+              value={cfg.action}
+              onChange={(e) =>
+                setCfg((c) => ({ ...c, action: e.target.value as QuotaConfig["action"] }))
+              }
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent bg-white"
+            >
+              <option value="share">分享小程序给好友</option>
+              <option value="video">观看视频广告</option>
+              <option value="miniprogram">跳转到其他小程序</option>
+            </select>
+          </div>
+
+          {/* 每次解锁获得条数 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              每次解锁获得条数
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={cfg.perAction}
+              onChange={(e) =>
+                setCfg((c) => ({ ...c, perAction: parseInt(e.target.value) || 5 }))
+              }
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-400">用户每次完成操作后可额外添加的条数</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 视频广告设置 */}
+      {cfg.action === "video" && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Play className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-800">视频广告设置</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                激励视频广告位 ID
+              </label>
+              <input
+                type="text"
+                value={cfg.videoAdId}
+                onChange={(e) => setCfg((c) => ({ ...c, videoAdId: e.target.value }))}
+                placeholder="adunit-xxxxxxxxxxxxxxxx"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent font-mono"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                在微信公众平台流量主 → 广告位管理中创建激励视频广告位，填入广告位 ID
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 跳转小程序设置 */}
+      {cfg.action === "miniprogram" && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <ExternalLink className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-800">跳转小程序设置</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">目标小程序名称</label>
+              <input
+                type="text"
+                value={cfg.mpName}
+                onChange={(e) => setCfg((c) => ({ ...c, mpName: e.target.value }))}
+                placeholder="如：某某小程序"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">目标小程序 AppID</label>
+              <input
+                type="text"
+                value={cfg.mpAppId}
+                onChange={(e) => setCfg((c) => ({ ...c, mpAppId: e.target.value }))}
+                placeholder="wx..."
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent font-mono"
+              />
+              <p className="mt-1 text-xs text-gray-400">需要在微信公众平台申请跳转权限</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">跳转页面路径（可选）</label>
+              <input
+                type="text"
+                value={cfg.mpPath}
+                onChange={(e) => setCfg((c) => ({ ...c, mpPath: e.target.value }))}
+                placeholder="pages/index/index"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent font-mono"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 保存按钮 */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+          {saving ? "保存中…" : "保存配置"}
+        </button>
+        {saved && (
+          <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+            <CheckCircle className="w-4 h-4" />
+            已保存
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── ShareConfigPanel ─────────────────────────────────────────────────────────
 interface ShareConfig {
   title: string;
@@ -4230,7 +4446,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
-type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools";
+type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools" | "quota";
 
 function Dashboard({
   adminKey,
@@ -4239,7 +4455,7 @@ function Dashboard({
   adminKey: string;
   onLogout: () => void;
 }) {
-  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share", "mptools"];
+  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share", "mptools", "quota"];
   const [tab, setTabState] = useState<Tab>(() => {
     const saved = localStorage.getItem(ADMIN_TAB_KEY);
     return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "users";
@@ -4263,6 +4479,7 @@ function Dashboard({
     },
     { id: "share", label: "分享配置", icon: <Share2 className="w-4 h-4" /> },
     { id: "mptools", label: "小工具配置", icon: <Wrench className="w-4 h-4" /> },
+    { id: "quota", label: "配额限制", icon: <Lock className="w-4 h-4" /> },
   ];
 
   return (
@@ -4325,6 +4542,7 @@ function Dashboard({
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
           {tab === "share" && <ShareConfigPanel adminKey={adminKey} />}
           {tab === "mptools" && <MpToolsPanel adminKey={adminKey} />}
+          {tab === "quota" && <QuotaConfigPanel adminKey={adminKey} />}
         </div>
       </main>
     </div>

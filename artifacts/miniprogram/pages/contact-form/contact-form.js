@@ -96,6 +96,14 @@ Page({
     const id = opts && opts.id;
     if (!id || id === "new") {
       wx.setNavigationBarTitle({ title: "添加生日" });
+      // ── 配额检查 ──────────────────────────────────────────────────────────
+      try {
+        const quotaStatus = await api.get("api/quota/config");
+        if (quotaStatus && quotaStatus.limit > 0 && quotaStatus.remaining === 0) {
+          wx.redirectTo({ url: "/pages/quota-paywall/quota-paywall" });
+          return;
+        }
+      } catch { /* 检查失败时放行，避免误拦截 */ }
       this.setData({ mode: "new", days: buildDays(1, false) });
     } else {
       await this.loadContact(parseInt(id, 10));

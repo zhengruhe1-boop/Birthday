@@ -12,7 +12,8 @@
     "pages/fortune/fortune",
     "pages/date-calc/date-calc",
     "pages/age-calc/age-calc",
-    "pages/hidden-events/hidden-events"
+    "pages/hidden-events/hidden-events",
+    "pages/quota-paywall/quota-paywall"
   ],
   "tabBar": {
     "color": "#94a3b8",

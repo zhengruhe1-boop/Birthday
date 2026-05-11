@@ -96,6 +96,10 @@ export async function runStartupMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "hidden" boolean NOT NULL DEFAULT false
     `);
+    // extra_quota: 用户通过分享/看广告/跳转等操作额外获得的添加次数
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "extra_quota" integer NOT NULL DEFAULT 0
+    `);
 
     // 5. mp_tools table
     await db.execute(sql`

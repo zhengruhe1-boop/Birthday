@@ -1,0 +1,152 @@
+.qp-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 40rpx 32rpx 80rpx;
+  box-sizing: border-box;
+}
+
+.qp-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 200rpx;
+}
+
+.qp-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid #f1f5f9;
+  border-top-color: #f43f5e;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.qp-loading-text {
+  margin-top: 20rpx;
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+/* Header */
+.qp-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 24rpx 40rpx;
+  text-align: center;
+}
+
+.qp-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.qp-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20rpx;
+}
+
+.qp-desc {
+  font-size: 26rpx;
+  color: #64748b;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+/* Card */
+.qp-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx 36rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0,0,0,0.06);
+  margin-bottom: 24rpx;
+}
+
+.qp-card-icon-wrap {
+  width: 88rpx;
+  height: 88rpx;
+  background: #fff1f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+
+.qp-card-icon {
+  font-size: 44rpx;
+}
+
+.qp-card-body {
+  margin-bottom: 32rpx;
+}
+
+.qp-card-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 10rpx;
+}
+
+.qp-card-sub {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* Buttons */
+.qp-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.qp-btn {
+  width: 100%;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 0;
+  height: 88rpx;
+  line-height: 88rpx;
+  border: none;
+}
+
+.qp-btn::after { border: none; }
+
+.qp-btn-primary {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+}
+
+.qp-btn-primary:active { opacity: 0.85; }
+
+.qp-btn-claim {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 2rpx solid #86efac;
+}
+
+.qp-btn-claim:active { opacity: 0.85; }
+
+/* Tips */
+.qp-tips {
+  margin-top: 32rpx;
+  padding: 24rpx 28rpx;
+  background: #fffbeb;
+  border-radius: 16rpx;
+  border: 1rpx solid #fde68a;
+}
+
+.qp-tips-text {
+  font-size: 24rpx;
+  color: #92400e;
+  line-height: 1.6;
+}

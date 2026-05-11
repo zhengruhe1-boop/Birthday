@@ -1,11 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, contactsTable } from "@workspace/db";
+import { db, contactsTable, usersTable, settingsTable } from "@workspace/db";
 import { eq, and, asc, like, ne } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
 import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName } from "../lib/birthday.js";
 import { generateBirthdayEvents, BirthdayEvent } from "../lib/birthday-events.js";
 import { sendBirthdayReminder } from "../lib/email.js";
+
+async function getSettingLocal(key: string): Promise<string | null> {
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
 
 const router: IRouter = Router();
 
@@ -118,6 +123,20 @@ router.post("/", async (req: AuthRequest, res) => {
     if (!body.success) {
       res.status(400).json({ error: "Invalid request body" });
       return;
+    }
+
+    // ── 配额检查 ──────────────────────────────────────────────────────────────
+    const limitStr = await getSettingLocal("quota_limit");
+    const limit = parseInt(limitStr || "0") || 0;
+    if (limit > 0) {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+      const extraQuota = user?.extraQuota ?? 0;
+      const allUserContacts = await db.select({ id: contactsTable.id })
+        .from(contactsTable).where(eq(contactsTable.userId, userId));
+      if (allUserContacts.length >= limit + extraQuota) {
+        res.status(403).json({ error: "quota_exceeded", message: "\u5df2\u8fbe\u5230\u6dfb\u52a0\u4e0a\u9650\uff0c\u8bf7\u89e3\u9501\u66f4\u591a\u6b21\u6570" });
+        return;
+      }
     }
 
     const inserted = await db.insert(contactsTable).values({

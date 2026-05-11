@@ -1,0 +1,79 @@
+<view class="qp-page">
+
+  <view wx:if="{{loading}}" class="qp-loading">
+    <view class="qp-spinner"></view>
+    <text class="qp-loading-text">加载中…</text>
+  </view>
+
+  <block wx:else>
+    <!-- 顶部说明 -->
+    <view class="qp-header">
+      <text class="qp-icon">🎁</text>
+      <text class="qp-title">解锁更多次数</text>
+      <text class="qp-desc">
+        你已添加 {{config.count}} 条生日，已达到上限 {{config.limit}} 条{{"\n"}}完成下方操作，即可获得 {{config.perAction}} 次额外添加机会
+      </text>
+    </view>
+
+    <!-- 分享解锁 -->
+    <view wx:if="{{config.action === 'share'}}" class="qp-card">
+      <view class="qp-card-icon-wrap">
+        <text class="qp-card-icon">📤</text>
+      </view>
+      <view class="qp-card-body">
+        <text class="qp-card-title">分享小程序给好友</text>
+        <text class="qp-card-sub">分享成功后，点击"我已分享"即可解锁 {{config.perAction}} 次添加机会</text>
+      </view>
+      <view class="qp-btns">
+        <button class="qp-btn qp-btn-primary" open-type="share" bindtap="tapShare">
+          分享给好友
+        </button>
+        <button wx:if="{{shareShown}}" class="qp-btn qp-btn-claim" bindtap="claimShare" loading="{{claiming}}">
+          我已分享，立即解锁
+        </button>
+      </view>
+    </view>
+
+    <!-- 视频广告解锁 -->
+    <view wx:if="{{config.action === 'video'}}" class="qp-card">
+      <view class="qp-card-icon-wrap">
+        <text class="qp-card-icon">🎬</text>
+      </view>
+      <view class="qp-card-body">
+        <text class="qp-card-title">观看视频广告</text>
+        <text class="qp-card-sub">完整观看视频广告后，自动解锁 {{config.perAction}} 次添加机会</text>
+      </view>
+      <view class="qp-btns">
+        <button class="qp-btn qp-btn-primary" bindtap="watchVideo" loading="{{claiming}}">
+          立即观看广告
+        </button>
+      </view>
+    </view>
+
+    <!-- 跳转小程序解锁 -->
+    <view wx:if="{{config.action === 'miniprogram'}}" class="qp-card">
+      <view class="qp-card-icon-wrap">
+        <text class="qp-card-icon">🔗</text>
+      </view>
+      <view class="qp-card-body">
+        <text class="qp-card-title">访问合作小程序</text>
+        <text class="qp-card-sub">访问「{{config.mpName || '合作小程序'}}」后，点击"我已访问"解锁 {{config.perAction}} 次添加机会</text>
+      </view>
+      <view class="qp-btns">
+        <button class="qp-btn qp-btn-primary" bindtap="jumpMiniprogram">
+          前往访问
+        </button>
+        <button wx:if="{{shareShown}}" class="qp-btn qp-btn-claim" bindtap="claimMiniprogram" loading="{{claiming}}">
+          我已访问，立即解锁
+        </button>
+      </view>
+    </view>
+
+    <!-- 规则说明 -->
+    <view class="qp-tips">
+      <text class="qp-tips-text">每次操作可解锁 {{config.perAction}} 次，可重复操作获取更多次数</text>
+    </view>
+
+  </block>
+
+</view>

@@ -766,6 +766,49 @@ router.post("/email-run", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/quota-config ───────────────────────────────────────────────
+router.get("/quota-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const limit      = parseInt(await getSetting("quota_limit")      || "0") || 0;
+    const action     = (await getSetting("quota_action"))             || "share";
+    const perAction  = parseInt(await getSetting("quota_per_action") || "5") || 5;
+    const videoAdId  = (await getSetting("quota_video_ad_id"))        || "";
+    const mpAppId    = (await getSetting("quota_mp_appid"))           || "";
+    const mpPath     = (await getSetting("quota_mp_path"))            || "";
+    const mpName     = (await getSetting("quota_mp_name"))            || "";
+    res.json({ limit, action, perAction, videoAdId, mpAppId, mpPath, mpName });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/quota-config ───────────────────────────────────────────────
+router.put("/quota-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { limit, action, perAction, videoAdId, mpAppId, mpPath, mpName } = req.body as {
+      limit?:      number;
+      action?:     string;
+      perAction?:  number;
+      videoAdId?:  string;
+      mpAppId?:    string;
+      mpPath?:     string;
+      mpName?:     string;
+    };
+    if (limit     !== undefined) await setSetting("quota_limit",       String(limit));
+    if (action    !== undefined) await setSetting("quota_action",      action.trim());
+    if (perAction !== undefined) await setSetting("quota_per_action",  String(perAction));
+    if (videoAdId !== undefined) await setSetting("quota_video_ad_id", videoAdId.trim());
+    if (mpAppId   !== undefined) await setSetting("quota_mp_appid",    mpAppId.trim());
+    if (mpPath    !== undefined) await setSetting("quota_mp_path",     mpPath.trim());
+    if (mpName    !== undefined) await setSetting("quota_mp_name",     mpName.trim());
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/admin/share-config ───────────────────────────────────────────────
 router.get("/share-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
