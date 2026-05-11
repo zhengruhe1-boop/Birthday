@@ -247,7 +247,7 @@
 
     </block>
 
-    <view style="height:80rpx" />
+    <view style="height: calc(100rpx + env(safe-area-inset-bottom))" />
   </scroll-view>
 
   <!-- FAB 遮罩 -->
