@@ -174,8 +174,6 @@
 /* Scroll */
 .home-scroll {
   height: calc(100vh - 200rpx);
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
-  box-sizing: border-box;
 }
 
 /* Content section */
