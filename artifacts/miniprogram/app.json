@@ -11,7 +11,8 @@
     "pages/legal/legal",
     "pages/fortune/fortune",
     "pages/date-calc/date-calc",
-    "pages/age-calc/age-calc"
+    "pages/age-calc/age-calc",
+    "pages/hidden-events/hidden-events"
   ],
   "tabBar": {
     "color": "#94a3b8",

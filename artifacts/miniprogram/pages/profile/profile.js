@@ -85,6 +85,10 @@ Page({
     wx.navigateTo({ url: "/pages/fortune/fortune" });
   },
 
+  goHiddenEvents() {
+    wx.navigateTo({ url: "/pages/hidden-events/hidden-events" });
+  },
+
   goUserAgreement() {
     wx.navigateTo({ url: "/pages/legal/legal?type=agreement" });
   },

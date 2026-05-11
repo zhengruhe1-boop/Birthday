@@ -53,11 +53,24 @@ router.get("/", async (req: AuthRequest, res) => {
   }
 });
 
+// ── GET /api/events/hidden ────────────────────────────────────────────────────
+router.get("/hidden", async (req: AuthRequest, res) => {
+  try {
+    const rows = await db.select().from(eventsTable)
+      .where(and(eq(eventsTable.userId, req.userId!), eq(eventsTable.hidden, true)))
+      .orderBy(asc(eventsTable.createdAt));
+    res.json(rows.map(formatEvent));
+  } catch (err) {
+    req.log.error({ err });
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── GET /api/events/upcoming ─────────────────────────────────────────────────
 router.get("/upcoming", async (req: AuthRequest, res) => {
   try {
     const rows = await db.select().from(eventsTable)
-      .where(eq(eventsTable.userId, req.userId!));
+      .where(and(eq(eventsTable.userId, req.userId!), eq(eventsTable.hidden, false)));
 
     const formatted = rows.map(formatEvent);
 
@@ -97,7 +110,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
 // ── POST /api/events ─────────────────────────────────────────────────────────
 router.post("/", async (req: AuthRequest, res) => {
   try {
-    const { type, name, eventDate, person, reminderTime, reminderEmail } = req.body as Record<string, string>;
+    const { type, name, eventDate, person, reminderTime, reminderEmail, hidden } = req.body as Record<string, string>;
     if (!type || !name) { res.status(400).json({ error: "type and name required" }); return; }
     const [row] = await db.insert(eventsTable).values({
       userId: req.userId!,
@@ -107,6 +120,7 @@ router.post("/", async (req: AuthRequest, res) => {
       person:        person        || null,
       reminderTime:  reminderTime  || null,
       reminderEmail: reminderEmail || null,
+      hidden:        hidden === "true" || hidden === true || false,
     }).returning();
     res.status(201).json(formatEvent(row));
   } catch (err) {
@@ -120,7 +134,7 @@ router.post("/", async (req: AuthRequest, res) => {
 router.put("/:id", async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, eventDate, person, reminderTime, reminderEmail } = req.body as Record<string, string>;
+    const { name, eventDate, person, reminderTime, reminderEmail, hidden } = req.body as Record<string, string>;
     const rows = await db.update(eventsTable)
       .set({
         name,
@@ -128,6 +142,7 @@ router.put("/:id", async (req: AuthRequest, res) => {
         person:        person        || null,
         reminderTime:  reminderTime  || null,
         reminderEmail: reminderEmail || null,
+        hidden:        hidden === "true" || (hidden as unknown) === true || false,
       })
       .where(and(eq(eventsTable.id, id), eq(eventsTable.userId, req.userId!)))
       .returning();

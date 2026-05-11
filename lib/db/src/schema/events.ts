@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const eventsTable = pgTable("events", {
@@ -16,6 +16,8 @@ export const eventsTable = pgTable("events", {
   reminderTime: text("reminder_time"),
   // 用户邮箱（选填，用于邮件提醒）
   reminderEmail: text("reminder_email"),
+  // 是否在列表中隐藏（不影响通知）
+  hidden: boolean("hidden").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

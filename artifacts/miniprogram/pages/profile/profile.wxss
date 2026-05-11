@@ -147,6 +147,7 @@
 .wechat-bg { background: #f0fdf4; }
 .blue-bg   { background: #eff6ff; }
 .violet-bg { background: #f5f3ff; }
+.gray-bg   { background: #f1f5f9; }
 
 .menu-name {
   flex: 1;

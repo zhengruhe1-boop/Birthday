@@ -83,6 +83,10 @@ export async function runStartupMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_email" text
     `);
+    // Add hidden column (list visibility toggle, does not affect notifications)
+    await db.execute(sql`
+      ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "hidden" boolean NOT NULL DEFAULT false
+    `);
 
     // oa_open_id: 公众号 OpenID，由 OA 事件 webhook 写入，用于发送 OA 模板消息
     await db.execute(sql`
