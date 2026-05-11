@@ -59,12 +59,11 @@ const tools = [
   {
     id: "zodiac",
     icon: <Star className="w-6 h-6" />,
-    bg: "bg-amber-50",
-    color: "text-amber-500",
-    title: "星座查询",
-    desc: "输入生日查看星座运势",
-    path: null,
-    comingSoon: true,
+    bg: "bg-violet-50",
+    color: "text-violet-500",
+    title: "今日运势",
+    desc: "选择星座，AI 生成今日运势",
+    path: "/fortune",
   },
 ];
 

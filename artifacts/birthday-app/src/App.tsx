@@ -10,6 +10,7 @@ import ContactForm from "./pages/ContactForm";
 import EventForm from "./pages/EventForm";
 import Admin from "./pages/Admin";
 import Tools from "./pages/Tools";
+import Fortune from "./pages/Fortune";
 import Profile from "./pages/Profile";
 import BottomNav from "./components/BottomNav";
 
@@ -33,6 +34,7 @@ function AppShell() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/tools" component={Tools} />
+        <Route path="/fortune" component={Fortune} />
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
         <Route path="/contact/:id" component={ContactForm} />
