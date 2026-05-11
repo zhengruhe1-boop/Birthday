@@ -45,8 +45,6 @@
       <view class="menu-item" bindtap="goFollowOA">
         <view class="menu-icon wechat-bg"><text>💬</text></view>
         <text class="menu-name">关注公众号</text>
-        <text wx:if="{{oaSubscribed}}" class="oa-badge oa-badge--ok">已关注</text>
-        <text wx:else class="oa-badge oa-badge--no">未关注</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
