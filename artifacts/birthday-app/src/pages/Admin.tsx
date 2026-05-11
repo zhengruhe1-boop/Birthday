@@ -20,6 +20,12 @@ import {
   Send,
   ShieldCheck,
   Share2,
+  Wrench,
+  ChevronUp,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
@@ -3439,7 +3445,377 @@ function ShareConfigPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
-type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share";
+// ─── MpToolsPanel ─────────────────────────────────────────────────────────────
+
+interface MpTool {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  type: "internal" | "external";
+  path: string;
+  app_id: string;
+  page_path: string;
+  sort_order: number;
+  enabled: boolean;
+}
+
+const EMPTY_TOOL: Omit<MpTool, "id" | "sort_order"> = {
+  name: "",
+  description: "",
+  icon: "🔧",
+  type: "internal",
+  path: "",
+  app_id: "",
+  page_path: "",
+  enabled: true,
+};
+
+const ICON_SUGGESTIONS = ["🔧","🎂","❤️","⭐","🧮","📅","🎁","🔮","🌈","🎵","🏆","📝","💡","🔔","🌟","🎯","💎","🌺","🎪","🎠"];
+
+function MpToolsPanel({ adminKey }: { adminKey: string }) {
+  const [tools, setTools] = useState<MpTool[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<MpTool | null>(null);
+  const [form, setForm] = useState<Omit<MpTool, "id" | "sort_order">>(EMPTY_TOOL);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [reordering, setReordering] = useState(false);
+
+  const API = "/api/mp-tools";
+  const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/admin`, { headers });
+      const data = await r.json();
+      setTools(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm(EMPTY_TOOL);
+    setShowModal(true);
+  };
+
+  const openEdit = (t: MpTool) => {
+    setEditing(t);
+    setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, enabled: t.enabled });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const url = editing ? `${API}/admin/${editing.id}` : `${API}/admin`;
+      const method = editing ? "PUT" : "POST";
+      await fetch(url, { method, headers, body: JSON.stringify(form) });
+      setShowModal(false);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("确认删除此工具？")) return;
+    setDeleting(id);
+    try {
+      await fetch(`${API}/admin/${id}`, { method: "DELETE", headers });
+      await load();
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleToggle = async (t: MpTool) => {
+    await fetch(`${API}/admin/${t.id}`, { method: "PUT", headers, body: JSON.stringify({ enabled: !t.enabled }) });
+    await load();
+  };
+
+  const handleMove = async (index: number, dir: -1 | 1) => {
+    const next = [...tools];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setReordering(true);
+    try {
+      await fetch(`${API}/admin/reorder`, { method: "PUT", headers, body: JSON.stringify({ ids: next.map((t) => t.id) }) });
+      await load();
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const typeBadge = (type: string) =>
+    type === "internal"
+      ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">内部跳转</span>
+      : <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 font-medium">外部小程序</span>;
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">小工具配置</h2>
+          <p className="text-sm text-gray-500 mt-1">管理微信小程序「小工具」页面展示的工具列表</p>
+        </div>
+        <button
+          onClick={openAdd}
+          className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          添加工具
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400 text-sm">加载中…</div>
+      ) : tools.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="text-4xl mb-3">🔧</div>
+          <p className="text-sm">暂无工具，点击「添加工具」创建第一个</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {tools.map((t, i) => (
+            <div key={t.id} className={`flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-b-0 ${!t.enabled ? "opacity-50" : ""}`}>
+              {/* 排序 */}
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={() => handleMove(i, -1)}
+                  disabled={i === 0 || reordering}
+                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
+                  title="上移"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleMove(i, 1)}
+                  disabled={i === tools.length - 1 || reordering}
+                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
+                  title="下移"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 图标 */}
+              <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">
+                {t.icon}
+              </div>
+
+              {/* 信息 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
+                  {typeBadge(t.type)}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
+                <p className="text-[10px] text-gray-300 mt-0.5 truncate font-mono">
+                  {t.type === "internal" ? (t.path || "—") : `AppID: ${t.app_id || "—"}`}
+                </p>
+              </div>
+
+              {/* 开关 */}
+              <button
+                onClick={() => handleToggle(t)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${t.enabled ? "bg-rose-500" : "bg-gray-200"}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${t.enabled ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+
+              {/* 操作 */}
+              <button
+                onClick={() => openEdit(t)}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="编辑"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(t.id)}
+                disabled={deleting === t.id}
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="删除"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 说明 */}
+      <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 space-y-1">
+        <p><strong>内部跳转：</strong>跳转到本小程序页面，填写页面路径，如 <code>/pages/fortune/fortune</code></p>
+        <p><strong>外部小程序：</strong>跳转到其他微信小程序，需填写目标小程序 AppID 及页面路径</p>
+        <p>上下拖动可调整展示顺序，关闭开关后小程序端不显示该工具</p>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900">{editing ? "编辑工具" : "添加工具"}</h3>
+              <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {/* Icon 选择 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">图标 Emoji</label>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {ICON_SUGGESTIONS.map((ic) => (
+                    <button
+                      key={ic}
+                      onClick={() => setForm((f) => ({ ...f, icon: ic }))}
+                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${form.icon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                    >
+                      {ic}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={form.icon}
+                  onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+                  placeholder="或直接输入 emoji"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                  maxLength={4}
+                />
+              </div>
+
+              {/* 名称 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">工具名称 <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="如：年龄计算器"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </div>
+
+              {/* 描述 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">副标题描述</label>
+                <input
+                  type="text"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="如：根据生日计算精确年龄"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </div>
+
+              {/* 类型 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">跳转类型</label>
+                <div className="flex gap-3">
+                  {(["internal", "external"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setForm((f) => ({ ...f, type: t }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${form.type === t ? "border-rose-400 bg-rose-50 text-rose-600" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}
+                    >
+                      {t === "internal" ? "内部跳转" : "外部小程序"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 内部跳转：路径 */}
+              {form.type === "internal" && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">页面路径 <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={form.path}
+                    onChange={(e) => setForm((f) => ({ ...f, path: e.target.value }))}
+                    placeholder="/pages/fortune/fortune"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">小程序内部页面路径，以 / 开头</p>
+                </div>
+              )}
+
+              {/* 外部小程序 */}
+              {form.type === "external" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">目标小程序 AppID <span className="text-red-400">*</span></label>
+                    <input
+                      type="text"
+                      value={form.app_id}
+                      onChange={(e) => setForm((f) => ({ ...f, app_id: e.target.value }))}
+                      placeholder="wx1234567890abcdef"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">目标页面路径</label>
+                    <input
+                      type="text"
+                      value={form.page_path}
+                      onChange={(e) => setForm((f) => ({ ...f, page_path: e.target.value }))}
+                      placeholder="pages/index/index"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">目标小程序的页面路径，留空则跳转首页</p>
+                  </div>
+                </>
+              )}
+
+              {/* 状态 */}
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">启用显示</p>
+                  <p className="text-xs text-gray-400">关闭后小程序端不显示此工具</p>
+                </div>
+                <button
+                  onClick={() => setForm((f) => ({ ...f, enabled: !f.enabled }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${form.enabled ? "bg-rose-500" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${form.enabled ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !form.name.trim()}
+                className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools";
 
 function Dashboard({
   adminKey,
@@ -3448,7 +3824,7 @@ function Dashboard({
   adminKey: string;
   onLogout: () => void;
 }) {
-  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share"];
+  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share", "mptools"];
   const [tab, setTabState] = useState<Tab>(() => {
     const saved = localStorage.getItem(ADMIN_TAB_KEY);
     return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "users";
@@ -3471,6 +3847,7 @@ function Dashboard({
       icon: <FileText className="w-4 h-4" />,
     },
     { id: "share", label: "分享配置", icon: <Share2 className="w-4 h-4" /> },
+    { id: "mptools", label: "小工具配置", icon: <Wrench className="w-4 h-4" /> },
   ];
 
   return (
@@ -3532,6 +3909,7 @@ function Dashboard({
           {tab === "email" && <EmailConfigPanel adminKey={adminKey} />}
           {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
           {tab === "share" && <ShareConfigPanel adminKey={adminKey} />}
+          {tab === "mptools" && <MpToolsPanel adminKey={adminKey} />}
         </div>
       </main>
     </div>

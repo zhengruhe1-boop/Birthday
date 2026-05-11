@@ -49,29 +49,34 @@
 
     </view>
 
-    <view class="section-label" style="margin-top:40rpx">即将上线</view>
+    <!-- 动态工具区 -->
+    <block wx:if="{{dynamicTools.length > 0}}">
 
-    <view class="tool-list">
+      <view class="section-label" style="margin-top:40rpx">更多工具</view>
 
-      <view class="tool-item tool-item-disabled">
-        <view class="tool-icon blue-bg"><text>🧮</text></view>
-        <view class="tool-info">
-          <text class="tool-name tool-name-gray">年龄计算器</text>
-          <text class="tool-desc">根据生日计算精确年龄</text>
+      <view class="tool-list">
+        <view
+          class="tool-item"
+          wx:for="{{dynamicTools}}"
+          wx:key="id"
+          bindtap="tapDynamicTool"
+          data-tool="{{item}}"
+        >
+          <view class="tool-icon dynamic-icon-bg">
+            <text>{{item.icon}}</text>
+          </view>
+          <view class="tool-info">
+            <text class="tool-name">{{item.name}}</text>
+            <text class="tool-desc">{{item.description}}</text>
+          </view>
+          <view class="tool-jump-badge" wx:if="{{item.type === 'external'}}">
+            <text class="tool-jump-badge-text">外部</text>
+          </view>
+          <text class="tool-arrow" wx:else>›</text>
         </view>
-        <view class="coming-badge"><text>即将上线</text></view>
       </view>
 
-      <view class="tool-item tool-item-disabled">
-        <view class="tool-icon amber-bg"><text>⭐</text></view>
-        <view class="tool-info">
-          <text class="tool-name tool-name-gray">星座查询</text>
-          <text class="tool-desc">输入生日查看星座运势</text>
-        </view>
-        <view class="coming-badge"><text>即将上线</text></view>
-      </view>
-
-    </view>
+    </block>
 
     <view style="height:40rpx" />
   </scroll-view>

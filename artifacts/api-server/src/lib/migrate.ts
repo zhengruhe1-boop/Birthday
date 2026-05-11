@@ -89,6 +89,23 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oa_open_id" text
     `);
 
+    // 5. mp_tools table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "mp_tools" (
+        "id"          serial    PRIMARY KEY,
+        "name"        text      NOT NULL,
+        "description" text      NOT NULL DEFAULT '',
+        "icon"        text      NOT NULL DEFAULT '🔧',
+        "type"        text      NOT NULL DEFAULT 'internal',
+        "path"        text      NOT NULL DEFAULT '',
+        "app_id"      text      NOT NULL DEFAULT '',
+        "page_path"   text      NOT NULL DEFAULT '',
+        "sort_order"  integer   NOT NULL DEFAULT 0,
+        "enabled"     boolean   NOT NULL DEFAULT true,
+        "created_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");
