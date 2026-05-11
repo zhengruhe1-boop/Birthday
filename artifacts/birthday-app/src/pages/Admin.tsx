@@ -3482,6 +3482,8 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [dateCalcEnabled, setDateCalcEnabled] = useState(true);
+  const [togglingBuiltin, setTogglingBuiltin] = useState(false);
 
   const API = "/api/mp-tools";
   const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
@@ -3497,7 +3499,29 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  const loadBuiltin = async () => {
+    try {
+      const r = await fetch(`${API}/builtin`);
+      const data = await r.json();
+      setDateCalcEnabled(data?.date_calc !== false);
+    } catch { /* default true */ }
+  };
+
+  useEffect(() => {
+    void load();
+    void loadBuiltin();
+  }, []);
+
+  const toggleDateCalc = async () => {
+    const next = !dateCalcEnabled;
+    setDateCalcEnabled(next);
+    setTogglingBuiltin(true);
+    try {
+      await fetch(`${API}/builtin/date_calc`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
+    } finally {
+      setTogglingBuiltin(false);
+    }
+  };
 
   const openAdd = () => {
     setEditing(null);
@@ -3652,6 +3676,29 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
           ))}
         </div>
       )}
+
+      {/* 内置工具开关 */}
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">内置工具管控</h3>
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="flex items-center gap-4 px-5 py-4">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0">
+              🗓️
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
+              <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
+            </div>
+            <button
+              onClick={toggleDateCalc}
+              disabled={togglingBuiltin}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${dateCalcEnabled ? "bg-rose-500" : "bg-gray-200"}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${dateCalcEnabled ? "translate-x-4" : "translate-x-0"}`} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* 说明 */}
       <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 space-y-1">

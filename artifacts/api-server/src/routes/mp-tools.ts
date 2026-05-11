@@ -125,4 +125,36 @@ router.put("/admin/reorder", async (req: Request, res: Response) => {
   }
 });
 
+// ── Public: GET /api/mp-tools/builtin ─────────────────────────────────────────
+// Returns enabled state of built-in tools
+router.get("/builtin", async (_req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT key, value FROM settings WHERE key = 'tool_date_calc_enabled'
+    `);
+    const row = result.rows[0] as { key: string; value: string } | undefined;
+    const dateCalc = row ? row.value !== "false" : true;
+    res.json({ date_calc: dateCalc });
+  } catch {
+    res.json({ date_calc: true });
+  }
+});
+
+// ── Admin: PUT /api/mp-tools/builtin/:name ────────────────────────────────────
+router.put("/builtin/:name", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { name } = req.params;
+  const { enabled } = req.body as { enabled: boolean };
+  const key = `tool_${name}_enabled`;
+  try {
+    await db.execute(sql`
+      INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${String(enabled)}, now())
+      ON CONFLICT (key) DO UPDATE SET value = ${String(enabled)}, updated_at = now()
+    `);
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

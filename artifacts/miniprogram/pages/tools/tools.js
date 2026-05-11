@@ -6,11 +6,13 @@ Page({
     loggedIn: false,
     dynamicTools: [],
     loadingTools: false,
+    dateCalcEnabled: false,
   },
 
   onShow() {
     this.setData({ loggedIn: isLoggedIn() });
     this._loadTools();
+    this._loadBuiltin();
   },
 
   _loadTools() {
@@ -24,6 +26,16 @@ Page({
       })
       .finally(() => {
         this.setData({ loadingTools: false });
+      });
+  },
+
+  _loadBuiltin() {
+    api.get("/mp-tools/builtin")
+      .then((data) => {
+        this.setData({ dateCalcEnabled: data && data.date_calc !== false });
+      })
+      .catch(() => {
+        this.setData({ dateCalcEnabled: true });
       });
   },
 
@@ -57,6 +69,10 @@ Page({
   goAddOther() {
     if (!this.data.loggedIn) { this._requireLogin("其它提醒"); return; }
     wx.navigateTo({ url: "/pages/event-form/event-form?type=other" });
+  },
+
+  goDateCalc() {
+    wx.navigateTo({ url: "/pages/date-calc/date-calc" });
   },
 
   tapDynamicTool(e) {
