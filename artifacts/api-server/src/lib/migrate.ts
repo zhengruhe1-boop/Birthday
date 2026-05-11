@@ -92,6 +92,10 @@ export async function runStartupMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oa_open_id" text
     `);
+    // hidden: 联系人隐藏开关（不在首页列表显示，不影响通知）
+    await db.execute(sql`
+      ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "hidden" boolean NOT NULL DEFAULT false
+    `);
 
     // 5. mp_tools table
     await db.execute(sql`

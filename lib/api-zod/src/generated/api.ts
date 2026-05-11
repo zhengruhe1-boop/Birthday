@@ -135,6 +135,7 @@ export const CreateContactBody = zod.object({
   hometown: zod.string().nullish(),
   reminderEmail: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
 });
 
 /**
@@ -202,6 +203,7 @@ export const UpdateContactBody = zod.object({
   relation: zod.string().nullish(),
   hometown: zod.string().nullish(),
   reminderEmail: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
   avatarUrl: zod.string().nullish(),
 });
 

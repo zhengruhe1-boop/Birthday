@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, contactsTable } from "@workspace/db";
-import { eq, and, asc, like } from "drizzle-orm";
+import { eq, and, asc, like, ne } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
 import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName } from "../lib/birthday.js";
@@ -44,17 +44,32 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
     age,
     birthdayDisplay,
     zodiac,
+    hidden: c.hidden ?? false,
     createdAt: c.createdAt,
   };
 }
 
 router.use(requireAuth);
 
+// ── GET /api/contacts/hidden ─────────────────────────────────────────────────
+router.get("/hidden", async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    const contacts = await db.select().from(contactsTable)
+      .where(and(eq(contactsTable.userId, userId), eq(contactsTable.hidden, true)))
+      .orderBy(asc(contactsTable.name));
+    res.json(contacts.map(formatContact));
+  } catch (err) {
+    req.log.error({ err }, "Get hidden contacts error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/upcoming", async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const allContacts = await db.select().from(contactsTable)
-      .where(eq(contactsTable.userId, userId))
+      .where(and(eq(contactsTable.userId, userId), ne(contactsTable.hidden, true)))
       .orderBy(asc(contactsTable.name));
 
     const formatted = allContacts.map(formatContact);
@@ -79,11 +94,11 @@ router.get("/", async (req: AuthRequest, res) => {
     let contacts;
     if (search) {
       contacts = await db.select().from(contactsTable)
-        .where(and(eq(contactsTable.userId, userId), like(contactsTable.name, `%${search}%`)))
+        .where(and(eq(contactsTable.userId, userId), ne(contactsTable.hidden, true), like(contactsTable.name, `%${search}%`)))
         .orderBy(asc(contactsTable.name));
     } else {
       contacts = await db.select().from(contactsTable)
-        .where(eq(contactsTable.userId, userId))
+        .where(and(eq(contactsTable.userId, userId), ne(contactsTable.hidden, true)))
         .orderBy(asc(contactsTable.name));
     }
 

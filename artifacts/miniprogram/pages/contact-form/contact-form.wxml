@@ -236,6 +236,20 @@
             maxlength="60" />
         </view>
 
+        <!-- 展示到列表 -->
+        <view class="cf-section cf-notify-card">
+          <view class="cf-notify-row">
+            <view class="cf-notify-left">
+              <text class="cf-notify-label">展示到列表</text>
+              <text class="cf-notify-sub">关闭后不在首页列表显示，不影响通知提醒</text>
+            </view>
+            <switch
+              checked="{{!hiddenInList}}"
+              bindchange="onHiddenToggle"
+              color="#f43f5e" />
+          </view>
+        </view>
+
         <!-- 操作按钮 -->
         <view class="cf-actions">
           <button class="cf-save-btn" bindtap="handleSave" loading="{{saving}}">

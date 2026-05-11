@@ -118,22 +118,6 @@
         </view>
       </view>
 
-      <!-- 列表显示 -->
-      <view class="form-card notify-card">
-        <view class="notify-row">
-          <view class="notify-left">
-            <text class="notify-label">展示到列表</text>
-            <text class="notify-sub">关闭后不在首页列表显示，不影响通知提醒</text>
-          </view>
-          <switch
-            class="notify-switch"
-            checked="{{!hiddenInList}}"
-            bindchange="onHiddenToggle"
-            color="#f43f5e"
-          />
-        </view>
-      </view>
-
     </view>
     <view style="height:180rpx" />
   </scroll-view>

@@ -41,15 +41,16 @@ Page({
   async load() {
     this.setData({ loading: true });
     try {
-      var list = await api.get("api/events/hidden");
-      var events = (list || []).map(function(e) {
-        var meta = TYPE_META[e.type] || TYPE_META.other;
-        return Object.assign({}, e, {
-          icon: meta.icon,
-          color: meta.color,
-          bg: meta.bg,
-          sub: buildSub(e),
-        });
+      var list = await api.get("api/contacts/hidden");
+      var events = (list || []).map(function(c) {
+        var gender = c.gender || "";
+        var bg = gender === "female" ? "#fce7f3" : "#e0f2fe";
+        var color = gender === "female" ? "#db2777" : "#0284c7";
+        var icon = "\ud83c\udf82";
+        var lunar = c.birthdayLunar ? "(\u519c\u5386)" : "";
+        var sub = c.birthdayMonth + "\u6708" + c.birthdayDay + "\u65e5" + lunar
+          + (c.relation ? " \u00b7 " + c.relation : "");
+        return { id: c.id, name: c.name, icon: icon, color: color, bg: bg, sub: sub };
       });
       this.setData({ events: events });
     } catch(err) {
@@ -61,6 +62,6 @@ Page({
 
   goEdit(e) {
     var id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: "/pages/event-form/event-form?id=" + id });
+    wx.navigateTo({ url: "/pages/contact-form/contact-form?id=" + id });
   },
 });

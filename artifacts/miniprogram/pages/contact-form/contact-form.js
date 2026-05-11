@@ -73,6 +73,9 @@ Page({
     oaSubscribed: false,
     notifyEnabled: false,
     oaChecked: false,
+
+    // 展示到列表
+    hiddenInList: false,
   },
 
   // ── 生命周期 ────────────────────────────────────────────────────────────────
@@ -133,6 +136,11 @@ Page({
 
   goFollowOa() {
     wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
+  },
+
+  onHiddenToggle(e) {
+    // switch 是"展示到列表"，开 = 不隐藏，关 = 隐藏
+    this.setData({ hiddenInList: !e.detail.value });
   },
 
   // ── 头像上传 ─────────────────────────────────────────────────────────────────
@@ -223,6 +231,7 @@ Page({
       dayIndex,
       genderIndex,
       relationIndex: relationIndex >= 0 ? relationIndex : -1,
+      hiddenInList: !!c.hidden,
     });
     wx.setNavigationBarTitle({ title: c.name || "生日详情" });
   },
@@ -354,6 +363,7 @@ Page({
       hometown: d.hometown.trim() || null,
       reminderEmail: d.reminderEmail.trim() || null,
       avatarUrl: d.avatarUrl || null,
+      hidden: d.hiddenInList,
     };
     if (d.gender === "male" || d.gender === "female") {
       body.gender = d.gender;

@@ -51,9 +51,6 @@ Page({
     oaSubscribed: false,
     notifyEnabled: false,
     oaChecked: false,
-
-    // 列表显示控制
-    hiddenInList: false,
   },
 
   async onLoad(opts) {
@@ -140,7 +137,6 @@ Page({
         reminderTimeVal,
         reminderTime: rt,
         reminderEmail: e.reminderEmail || "",
-        hiddenInList: !!e.hidden,
         loading: false,
       });
       wx.setNavigationBarTitle({ title: "编辑" + meta.label });
@@ -210,11 +206,6 @@ Page({
     return true;
   },
 
-  onHiddenToggle(e) {
-    // switch 是"展示到列表"，开 = 不隐藏，关 = 隐藏
-    this.setData({ hiddenInList: !e.detail.value });
-  },
-
   buildBody() {
     const d = this.data;
     return {
@@ -224,7 +215,6 @@ Page({
       person: d.person.trim() || undefined,
       reminderTime: d.reminderTime || undefined,
       reminderEmail: d.reminderEmail.trim() || undefined,
-      hidden: d.hiddenInList,
     };
   },
 
