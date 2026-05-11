@@ -325,4 +325,18 @@
     </view>
   </view>
 
+  <!-- 公众号关注引导弹窗（每天最多一次） -->
+  <view wx:if="{{showOaPrompt}}" class="oa-prompt-mask" bindtap="closeOaPrompt">
+    <view class="oa-prompt-sheet" catchtap="noop">
+      <view class="oa-prompt-handle"></view>
+      <view class="oa-prompt-icon-wrap">
+        <view class="oa-prompt-icon">💬</view>
+      </view>
+      <text class="oa-prompt-title">关注【生日通】公众号</text>
+      <text class="oa-prompt-body">您还未关注【生日通】公众号，关注后才能正常接收生日、纪念日等提醒通知～</text>
+      <button class="oa-prompt-btn-primary" bindtap="goFollowOaFromPrompt">立即关注</button>
+      <button class="oa-prompt-btn-secondary" bindtap="closeOaPrompt">暂不关注</button>
+    </view>
+  </view>
+
 </view>

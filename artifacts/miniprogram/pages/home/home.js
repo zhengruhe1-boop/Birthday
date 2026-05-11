@@ -98,6 +98,9 @@ Page({
 
     // 微信授权弹窗临时数据
     wxProfileTemp: { avatarUrl: "", nickname: "" },
+
+    // 公众号关注引导弹窗
+    showOaPrompt: false,
   },
 
   async onLoad() {
@@ -136,6 +139,34 @@ Page({
     this.setData({ loggedIn });
     if (!loggedIn) return;
     this.loadAll();
+    this._checkOaPrompt();
+  },
+
+  // 每天最多弹一次：检测是否关注公众号，未关注则弹引导框
+  _checkOaPrompt() {
+    var today = new Date();
+    var dateStr = today.getFullYear() + '-'
+      + String(today.getMonth() + 1).padStart(2, '0') + '-'
+      + String(today.getDate()).padStart(2, '0');
+    var stored = wx.getStorageSync('oa_prompt_date') || '';
+    if (stored === dateStr) return; // 今天已经弹过，跳过
+    var self = this;
+    api.get('api/auth/wechat/subscribe-status')
+      .then(function(res) {
+        if (res && res.subscribed) return; // 已关注，不弹
+        wx.setStorageSync('oa_prompt_date', dateStr);
+        self.setData({ showOaPrompt: true });
+      })
+      .catch(function() { /* 网络失败静默跳过 */ });
+  },
+
+  closeOaPrompt() {
+    this.setData({ showOaPrompt: false });
+  },
+
+  goFollowOaFromPrompt() {
+    this.setData({ showOaPrompt: false });
+    wx.navigateTo({ url: '/pages/follow-oa/follow-oa' });
   },
 
   onPullDownRefresh() {
