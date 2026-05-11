@@ -39,7 +39,7 @@
 
       <view class="cf-detail-row">
         <text class="cf-detail-label">🎂 生日</text>
-        <text class="cf-detail-val">{{contact.birthdayDisplay}}{{contact.birthdayLunar ? '（农历）' : ''}}</text>
+        <text class="cf-detail-val">{{contact.birthYear ? contact.birthYear + '年' : ''}}{{contact.birthdayLunar ? '农历' : '公历'}}{{contact.birthdayMonth}}月{{contact.birthdayDay}}日</text>
       </view>
       <view wx:if="{{contact.daysUntilBirthday === 0}}" class="cf-birthday-today">
         <text>🎉 今天就是生日！</text>
