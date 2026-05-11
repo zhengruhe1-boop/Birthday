@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
   Users,
   CalendarDays,
@@ -1365,7 +1365,203 @@ const PROVIDERS = [
   },
 ];
 
+// ─── FortuneAiSubPanel ────────────────────────────────────────────────────────
+function FortuneAiSubPanel({ adminKey }: { adminKey: string }) {
+  const FORTUNE_MODELS = ["deepseek-chat", "deepseek-reasoner"];
+  const [model, setModel] = useState("deepseek-chat");
+  const [apiKeySet, setApiKeySet] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}api/admin/fortune-config`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then((r) => r.json())
+      .then((d: { model: string; apiKeySet: boolean }) => {
+        setModel(d.model ?? "deepseek-chat");
+        setApiKeySet(d.apiKeySet);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [adminKey]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/fortune-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ model, apiKey }),
+      });
+      if (res.ok) {
+        setSaveMsg({ ok: true, text: "保存成功" });
+        if (apiKey) { setApiKeySet(true); setApiKey(""); }
+      } else {
+        setSaveMsg({ ok: false, text: "保存失败" });
+      }
+    } catch {
+      setSaveMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestMsg(null);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/fortune-test`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      setTestMsg(data.ok !== false
+        ? { ok: true, text: data.message ?? "连接成功" }
+        : { ok: false, text: data.message ?? data.error ?? "连接失败" });
+    } catch {
+      setTestMsg({ ok: false, text: "网络错误" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
+        <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
+      </div>
+    );
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* 模型选择 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">AI 模型</h2>
+          <p className="text-xs text-gray-400 mt-0.5">用于微信小程序「今日运势」生成的模型</p>
+        </div>
+        <div className="p-6 space-y-4">
+          {/* Provider card */}
+          <div className="flex items-center gap-4 px-4 py-4 rounded-xl border-2 border-rose-400 bg-rose-50">
+            <CheckCircle className="absolute hidden" />
+            <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">DeepSeek</p>
+              <p className="text-xs text-gray-500 mt-0.5">platform.deepseek.com</p>
+            </div>
+            <CheckCircle className="ml-auto w-4 h-4 text-rose-500" />
+          </div>
+
+          {/* 模型版本 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">模型版本</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 font-mono"
+            >
+              {FORTUNE_MODELS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* API Key */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">API Key</h2>
+            <p className="text-xs text-gray-400 mt-0.5">运势专属 Key；留空时自动使用「历史事件」的 Key</p>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${apiKeySet ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-600"}`}>
+            {apiKeySet ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+            {apiKeySet ? "已配置" : "未配置"}
+          </span>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              DeepSeek API Key
+              {apiKeySet && <span className="ml-2 text-xs text-green-600 font-normal">（已设置，输入新值可覆盖）</span>}
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={apiKeySet ? "••••••••（已设置）" : "sk-xxxxxxxxxxxxxxxx"}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 font-mono"
+            />
+            <p className="mt-1.5 text-xs text-gray-400">
+              在 <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">platform.deepseek.com</a> 获取 API Key
+            </p>
+          </div>
+
+          {saveMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${saveMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {saveMsg.text}
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {saving ? "保存中..." : "保存配置"}
+          </button>
+        </div>
+      </div>
+
+      {/* 连通性测试 */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">连通性测试</h2>
+          <p className="text-xs text-gray-400 mt-0.5">验证 API Key 和模型配置是否可用</p>
+        </div>
+        <div className="p-6 space-y-4">
+          {testMsg && (
+            <div className={`flex items-start gap-2 text-sm px-3 py-2.5 rounded-lg ${testMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {testMsg.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
+              {testMsg.text}
+            </div>
+          )}
+          <button
+            onClick={handleTest}
+            disabled={testing}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            {testing ? "测试中..." : "测试连接"}
+          </button>
+        </div>
+      </div>
+
+      {/* 说明 */}
+      <div className="bg-rose-50 border border-rose-100 rounded-xl p-5 text-sm text-rose-700 space-y-2">
+        <p className="font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4" />功能说明</p>
+        <ul className="space-y-1.5 list-disc list-inside text-rose-600 text-xs">
+          <li>微信小程序「我的」页面可进入今日运势，选择星座后调用 DeepSeek 生成</li>
+          <li>返回总运、爱情 / 事业 / 财运 / 健康四维指数、穿搭推荐和今日小贴士</li>
+          <li>此处 API Key 优先级高于「历史事件 AI」的 Key，留空则自动共用后者</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ─── AiConfigPanel ────────────────────────────────────────────────────────────
 function AiConfigPanel({ adminKey }: { adminKey: string }) {
+  const [subTab, setSubTab] = useState<"history" | "fortune">("history");
   const [cfg, setCfg] = useState<AiConfig>({
     enabled: true,
     provider: "deepseek",
@@ -1465,7 +1661,7 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
     }
   };
 
-  if (loading)
+  if (loading && subTab === "history")
     return (
       <div className="flex items-center gap-2 py-20 justify-center text-gray-400">
         <RefreshCw className="w-4 h-4 animate-spin" /> 加载中...
@@ -1474,6 +1670,35 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      {/* ── 子 Tab 切换 ── */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setSubTab("history")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === "history"
+              ? "bg-white text-violet-700 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          🎂 历史事件 AI
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab("fortune")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === "fortune"
+              ? "bg-white text-rose-600 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          🔮 今日运势 AI
+        </button>
+      </div>
+
+      {subTab === "fortune" && <FortuneAiSubPanel adminKey={adminKey} />}
+
+      {subTab === "history" && <Fragment>
       {/* ── 开关 ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 flex items-center justify-between">
@@ -1801,6 +2026,7 @@ function AiConfigPanel({ adminKey }: { adminKey: string }) {
           </li>
         </ul>
       </div>
+      </Fragment>}
     </div>
   );
 }

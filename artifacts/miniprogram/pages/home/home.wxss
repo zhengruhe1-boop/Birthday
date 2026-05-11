@@ -174,7 +174,7 @@
 /* Scroll */
 .home-scroll {
   height: calc(100vh - 200rpx);
-}
+}*/
 
 /* Content section */
 .content-section {

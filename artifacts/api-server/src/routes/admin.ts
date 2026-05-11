@@ -242,6 +242,63 @@ router.put("/content-config", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/fortune-config ─────────────────────────────────────────────
+router.get("/fortune-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const model     = await getSetting("fortune_model");
+    const apiKey    = await getSetting("fortune_api_key");
+    res.json({
+      model:     model   ?? "deepseek-chat",
+      apiKeySet: !!apiKey,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PUT /api/admin/fortune-config ──────────────────────────────────────────────
+router.put("/fortune-config", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { model, apiKey } = req.body as { model?: string; apiKey?: string };
+    if (model   !== undefined) await setSetting("fortune_model",   model.trim());
+    if (apiKey && !apiKey.startsWith("•")) {
+      await setSetting("fortune_api_key", apiKey.trim());
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/admin/fortune-test ───────────────────────────────────────────────
+router.post("/fortune-test", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const apiKey =
+      (await getSetting("fortune_api_key")) ||
+      (await getSetting("ai_api_key_custom")) ||
+      process.env.DEEPSEEK_API_KEY || "";
+    const model = (await getSetting("fortune_model")) || (await getSetting("ai_model")) || "deepseek-chat";
+    if (!apiKey) {
+      res.json({ ok: false, message: "未配置 API Key" });
+      return;
+    }
+    const { default: OpenAI } = await import("openai");
+    const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
+    const completion = await client.chat.completions.create({
+      model,
+      messages: [{ role: "user", content: "你好，请回复【连接成功】四个字。" }],
+      max_tokens: 20,
+    });
+    const reply = completion.choices[0]?.message?.content ?? "";
+    res.json({ ok: true, message: `连接成功，模型回复：${reply.slice(0, 30)}` });
+  } catch (err: any) {
+    res.json({ ok: false, message: err?.message ?? "连接失败" });
+  }
+});
+
 // ── GET /api/admin/ai-config ──────────────────────────────────────────────────
 router.get("/ai-config", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;

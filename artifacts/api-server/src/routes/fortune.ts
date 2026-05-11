@@ -20,8 +20,9 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "无效的日期格式" });
   }
 
-  // 优先用管理后台配置的 key，其次 fallback 到环境变量
+  // 优先用运势专属 key → 历史事件 key → 环境变量
   const apiKey =
+    (await getSetting("fortune_api_key")) ||
     (await getSetting("ai_api_key_custom")) ||
     process.env.DEEPSEEK_API_KEY ||
     "";
@@ -29,11 +30,14 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
   if (!apiKey) {
     return res
       .status(503)
-      .json({ error: "运势服务暂未配置 API Key，请在管理后台 AI 模型设置中填写" });
+      .json({ error: "运势服务暂未配置 API Key，请在管理后台「AI 模型 → 今日运势」中填写" });
   }
 
-  // 管理后台设置的模型（默认 deepseek-chat）
-  const model = (await getSetting("ai_model")) || "deepseek-chat";
+  // 优先用运势专属模型 → 历史事件模型 → 默认
+  const model =
+    (await getSetting("fortune_model")) ||
+    (await getSetting("ai_model")) ||
+    "deepseek-chat";
 
   const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
 
