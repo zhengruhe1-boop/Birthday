@@ -162,6 +162,23 @@
   flex-shrink: 0;
 }
 
+.oa-badge {
+  font-size: 20rpx;
+  font-weight: 500;
+  border-radius: 20rpx;
+  padding: 4rpx 14rpx;
+  flex-shrink: 0;
+  margin-right: 4rpx;
+}
+.oa-badge--ok {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.oa-badge--no {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
 /* Logout / Login */
 .logout-wrap {
   margin: 40rpx 24rpx 0;

@@ -34,6 +34,7 @@ Page({
     wxProfileTemp: { avatarUrl: "", nickname: "" },
     avatarUploading: false,
     fortuneSign: "",
+    oaSubscribed: false,
   },
 
   onLoad() {
@@ -47,7 +48,7 @@ Page({
     const loggedIn = isLoggedIn();
     this.setData({ loggedIn });
     if (!loggedIn) {
-      this.setData({ displayNickname: "未登录", displayAvatarUrl: "" });
+      this.setData({ displayNickname: "未登录", displayAvatarUrl: "", oaSubscribed: false });
       return;
     }
     // 从缓存读取用户信息
@@ -61,6 +62,18 @@ Page({
         displayNickname: nickname || "用户",
       });
     }
+    // 加载公众号订阅状态
+    this._loadOaStatus();
+  },
+
+  _loadOaStatus() {
+    api.get("api/auth/wechat/subscribe-status")
+      .then((res) => {
+        this.setData({ oaSubscribed: !!(res && res.subscribed) });
+      })
+      .catch(() => {
+        this.setData({ oaSubscribed: false });
+      });
   },
 
   onAvatarError() {
