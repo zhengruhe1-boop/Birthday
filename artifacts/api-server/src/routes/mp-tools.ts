@@ -187,12 +187,18 @@ router.delete("/admin/:id", async (req: Request, res: Response) => {
 router.get("/builtin", async (_req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
-      SELECT key, value FROM settings WHERE key = 'tool_date_calc_enabled'
+      SELECT key, value FROM settings
+      WHERE key IN ('tool_date_calc_enabled', 'tool_date_calc_icon')
     `);
-    const row = result.rows[0] as { key: string; value: string } | undefined;
-    res.json({ date_calc: row ? row.value !== "false" : true });
+    const rows = result.rows as { key: string; value: string }[];
+    const byKey: Record<string, string> = {};
+    rows.forEach((r) => { byKey[r.key] = r.value; });
+    res.json({
+      date_calc: byKey["tool_date_calc_enabled"] !== "false",
+      date_calc_icon: byKey["tool_date_calc_icon"] || null,
+    });
   } catch {
-    res.json({ date_calc: true });
+    res.json({ date_calc: true, date_calc_icon: null });
   }
 });
 
@@ -200,16 +206,46 @@ router.get("/builtin", async (_req: Request, res: Response) => {
 router.put("/builtin/:name", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   const { name } = req.params;
-  const { enabled } = req.body as { enabled: boolean };
-  const key = `tool_${name}_enabled`;
+  const { enabled, icon } = req.body as { enabled?: boolean; icon?: string };
   try {
-    await db.execute(sql`
-      INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${String(enabled)}, now())
-      ON CONFLICT (key) DO UPDATE SET value = ${String(enabled)}, updated_at = now()
-    `);
+    if (enabled !== undefined) {
+      const key = `tool_${name}_enabled`;
+      await db.execute(sql`
+        INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${String(enabled)}, now())
+        ON CONFLICT (key) DO UPDATE SET value = ${String(enabled)}, updated_at = now()
+      `);
+    }
+    if (icon !== undefined) {
+      const iconKey = `tool_${name}_icon`;
+      await db.execute(sql`
+        INSERT INTO settings (key, value, updated_at) VALUES (${iconKey}, ${icon}, now())
+        ON CONFLICT (key) DO UPDATE SET value = ${icon}, updated_at = now()
+      `);
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin: POST /api/mp-tools/builtin/:name/upload-icon ──────────────────────
+router.post("/builtin/:name/upload-icon", iconUpload.single("image"), async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  if (!req.file) { res.status(400).json({ error: "No file" }); return; }
+  try {
+    const file = req.file as Express.Multer.File & { buffer: Buffer };
+    const ext = path.extname(file.originalname).toLowerCase() || ".png";
+    const filename = "builtin_icon_" + req.params.name + "_" + crypto.randomBytes(8).toString("hex") + ext;
+    if (useObjectStorage()) {
+      const contentType = resolveMime(file.originalname, file.mimetype);
+      await getBucket().file(`uploads/${filename}`).save(file.buffer, { contentType, resumable: false });
+    } else {
+      if (!fs.existsSync(LOCAL_UPLOAD_DIR)) fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
+      fs.writeFileSync(path.join(LOCAL_UPLOAD_DIR, filename), file.buffer);
+    }
+    res.json({ url: `/api/uploads/${filename}` });
+  } catch {
+    res.status(500).json({ error: "Upload failed" });
   }
 });
 

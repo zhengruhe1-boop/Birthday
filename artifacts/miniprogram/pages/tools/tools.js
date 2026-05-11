@@ -7,6 +7,8 @@ Page({
     dynamicTools: [],
     loadingTools: false,
     dateCalcEnabled: false,
+    dateCalcIcon: '🗓️',
+    dateCalcIconIsUrl: false,
   },
 
   onShow() {
@@ -37,10 +39,16 @@ Page({
   _loadBuiltin() {
     api.get("/mp-tools/builtin")
       .then((data) => {
-        this.setData({ dateCalcEnabled: data && data.date_calc !== false });
+        var icon = (data && data.date_calc_icon) || '🗓️';
+        var iconIsUrl = !!(icon && (icon.indexOf('http') === 0 || icon.indexOf('/api/') === 0));
+        this.setData({
+          dateCalcEnabled: data && data.date_calc !== false,
+          dateCalcIcon: icon,
+          dateCalcIconIsUrl: iconIsUrl,
+        });
       })
       .catch(() => {
-        this.setData({ dateCalcEnabled: true });
+        this.setData({ dateCalcEnabled: true, dateCalcIcon: '🗓️', dateCalcIconIsUrl: false });
       });
   },
 

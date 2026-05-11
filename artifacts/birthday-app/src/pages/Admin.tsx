@@ -3485,7 +3485,12 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
   const [dateCalcEnabled, setDateCalcEnabled] = useState(true);
+  const [dateCalcIcon, setDateCalcIcon] = useState<string>("🗓️");
+  const [dateCalcIconMode, setDateCalcIconMode] = useState<"emoji" | "image">("emoji");
   const [togglingBuiltin, setTogglingBuiltin] = useState(false);
+  const [uploadingBuiltinIcon, setUploadingBuiltinIcon] = useState(false);
+  const [savingBuiltinIcon, setSavingBuiltinIcon] = useState(false);
+  const [showDateCalcIconEditor, setShowDateCalcIconEditor] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
   const [uploadingIcon, setUploadingIcon] = useState(false);
 
@@ -3510,7 +3515,49 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
       const r = await fetch(`${API}/builtin`);
       const data = await r.json();
       setDateCalcEnabled(data?.date_calc !== false);
+      if (data?.date_calc_icon) {
+        setDateCalcIcon(data.date_calc_icon);
+        setDateCalcIconMode(isIconUrl(data.date_calc_icon) ? "image" : "emoji");
+      }
     } catch { /* default true */ }
+  };
+
+  const handleBuiltinIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBuiltinIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`${API}/builtin/date_calc/upload-icon`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+        body: fd,
+      });
+      const data = await r.json();
+      if (data.url) {
+        setDateCalcIcon(data.url);
+        setDateCalcIconMode("image");
+      }
+    } catch { /* ignore */ } finally {
+      setUploadingBuiltinIcon(false);
+      e.target.value = "";
+    }
+  };
+
+  const saveBuiltinIcon = async (icon: string) => {
+    setSavingBuiltinIcon(true);
+    try {
+      await fetch(`${API}/builtin/date_calc`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ icon }),
+      });
+      setDateCalcIcon(icon);
+      setShowDateCalcIconEditor(false);
+    } finally {
+      setSavingBuiltinIcon(false);
+    }
   };
 
   useEffect(() => {
@@ -3712,9 +3759,21 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
         <h3 className="text-sm font-semibold text-gray-700 mb-2">内置工具管控</h3>
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="flex items-center gap-4 px-5 py-4">
-            <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0">
-              🗓️
-            </div>
+            {/* 图标（可点击编辑） */}
+            <button
+              onClick={() => setShowDateCalcIconEditor((v) => !v)}
+              className="relative w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-rose-300 transition-all group"
+              title="点击更换图标"
+            >
+              {isIconUrl(dateCalcIcon) ? (
+                <img src={dateCalcIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
+              ) : (
+                <span>{dateCalcIcon}</span>
+              )}
+              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+              </span>
+            </button>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
               <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
@@ -3727,6 +3786,90 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
               <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${dateCalcEnabled ? "translate-x-4" : "translate-x-0"}`} />
             </button>
           </div>
+
+          {/* 图标编辑展开区 */}
+          {showDateCalcIconEditor && (
+            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setDateCalcIconMode("emoji")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${dateCalcIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Smile className="w-3 h-3" /> Emoji
+                </button>
+                <button
+                  onClick={() => setDateCalcIconMode("image")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${dateCalcIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Upload className="w-3 h-3" /> 上传图片
+                </button>
+              </div>
+
+              {dateCalcIconMode === "emoji" ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {["🗓️","📅","📆","🗒️","⏰","🕐","📊","🔢","✏️","🧮"].map((ic) => (
+                      <button
+                        key={ic}
+                        onClick={() => setDateCalcIcon(ic)}
+                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${dateCalcIcon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                      >{ic}</button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={isIconUrl(dateCalcIcon) ? "" : dateCalcIcon}
+                    onChange={(e) => setDateCalcIcon(e.target.value)}
+                    placeholder="或直接输入 emoji"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    maxLength={4}
+                  />
+                  <button
+                    onClick={() => saveBuiltinIcon(isIconUrl(dateCalcIcon) ? "🗓️" : dateCalcIcon)}
+                    disabled={savingBuiltinIcon}
+                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60"
+                  >
+                    {savingBuiltinIcon ? "保存中…" : "保存图标"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingBuiltinIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
+                    {uploadingBuiltinIcon ? (
+                      <span className="text-sm text-gray-400">上传中…</span>
+                    ) : isIconUrl(dateCalcIcon) ? (
+                      <img src={dateCalcIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
+                    ) : (
+                      <>
+                        <Upload className="w-7 h-7 text-rose-300 mb-1" />
+                        <span className="text-sm text-gray-400">点击选择图片</span>
+                        <span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span>
+                      </>
+                    )}
+                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleBuiltinIconUpload} disabled={uploadingBuiltinIcon} />
+                  </label>
+                  {isIconUrl(dateCalcIcon) && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveBuiltinIcon(dateCalcIcon)}
+                        disabled={savingBuiltinIcon}
+                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60"
+                      >
+                        {savingBuiltinIcon ? "保存中…" : "保存图标"}
+                      </button>
+                      <button
+                        onClick={() => { setDateCalcIcon("🗓️"); setDateCalcIconMode("emoji"); }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        移除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

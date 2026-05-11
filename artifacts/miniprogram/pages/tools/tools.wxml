@@ -54,7 +54,10 @@
       <view class="section-label" style="margin-top:40rpx">实用工具</view>
       <view class="tool-list">
         <view class="tool-item" bindtap="goDateCalc">
-          <view class="tool-icon blue-bg"><text>🗓️</text></view>
+          <view class="tool-icon blue-bg">
+            <image wx:if="{{dateCalcIconIsUrl}}" src="{{dateCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
+            <text wx:else>{{dateCalcIcon}}</text>
+          </view>
           <view class="tool-info">
             <text class="tool-name">日期计算器</text>
             <text class="tool-desc">计算日期间隔与前后日期</text>
