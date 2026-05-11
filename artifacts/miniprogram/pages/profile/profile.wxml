@@ -54,6 +54,11 @@
     <!-- 其他 -->
     <view class="group-label">其他</view>
     <view class="menu-group">
+      <view class="menu-item" bindtap="goHiddenEvents">
+        <view class="menu-icon slate-bg"><text>🙈</text></view>
+        <text class="menu-name">隐藏的生日</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" bindtap="goUserAgreement">
         <view class="menu-icon blue-bg"><text>📄</text></view>
         <text class="menu-name">用户协议</text>
