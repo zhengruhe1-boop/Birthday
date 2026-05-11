@@ -34,9 +34,7 @@ Page({
   onLoad() {
     const d = new Date();
     const todayStr = this._fmt(d);
-    const defYear = d.getFullYear() - 25;
-    const defBirth = new Date(defYear, d.getMonth(), d.getDate());
-    this.setData({ todayStr, birthDate: this._fmt(defBirth) });
+    this.setData({ todayStr });
   },
 
   onUnload() {
@@ -61,7 +59,19 @@ Page({
   },
 
   onBirthDateChange(e) {
-    this.setData({ birthDate: e.detail.value });
+    const val = e.detail.value;
+    this.setData({ birthDate: val });
+    // \u67e5\u8be2\u540e\u66f4\u6539\u65e5\u671f\u7acb\u5373\u91cd\u8ba1\u7b97
+    if (this.data.hasResult) {
+      this._calc();
+    }
+  },
+
+  onQuery() {
+    if (!this.data.birthDate) {
+      wx.showToast({ title: '\u8bf7\u9009\u62e9\u51fa\u751f\u65e5\u671f', icon: 'none' });
+      return;
+    }
     this._calc();
   },
 
@@ -72,11 +82,14 @@ Page({
     const by = parts[0], bm = parts[1], bd = parts[2];
     const birth = new Date(by, bm - 1, bd, 0, 0, 0, 0);
     const now = new Date();
-    if (birth > now) { this.setData({ hasResult: false }); return; }
+    if (birth > now) {
+      wx.showToast({ title: '\u51fa\u751f\u65e5\u671f\u4e0d\u80fd\u5927\u4e8e\u4eca\u5929', icon: 'none' });
+      return;
+    }
 
     this._birth = birth;
 
-    // 周岁
+    // \u5468\u5c81
     let age = now.getFullYear() - by;
     let ageM = now.getMonth() + 1 - bm;
     let ageD = now.getDate() - bd;
@@ -87,14 +100,14 @@ Page({
     if (ageM < 0) { age--; ageM += 12; }
     const ageDetail = age + '\u5e74' + ageM + '\u6708' + ageD + '\u5929';
 
-    // 虚岁
+    // \u865a\u5c81
     const xuAge = now.getFullYear() - by + 1;
 
-    // 生肖
+    // \u751f\u8096
     const SX = ['\u9f20','\u725b','\u864e','\u5154','\u9f99','\u86c7','\u9a6c','\u7f8a','\u7334','\u9e21','\u72d7','\u732a'];
     const shengXiao = SX[((by - 1900) % 12 + 12) % 12];
 
-    // 星座
+    // \u661f\u5ea7
     const md = bm * 100 + bd;
     let xingZuo = '';
     if (md >= 1222 || md <= 119) xingZuo = '\u6469\u7faf\u5ea7';
@@ -110,22 +123,22 @@ Page({
     else if (md <= 1122) xingZuo = '\u5929\u874e\u5ea7';
     else xingZuo = '\u5c04\u624b\u5ea7';
 
-    // 五行
+    // \u4e94\u884c
     const WX = ['\u6728','\u6728','\u706b','\u706b','\u571f','\u571f','\u91d1','\u91d1','\u6c34','\u6c34'];
     const wuXing = WX[((by - 4) % 10 + 10) % 10];
 
-    // 本命年
+    // \u672c\u547d\u5e74
     const curYear = now.getFullYear();
     const benMingNian = (curYear - by) % 12 === 0;
     let nextBMN = by;
     while (nextBMN <= curYear) nextBMN += 12;
     if (benMingNian) nextBMN = curYear + 12;
 
-    // 出生星期
+    // \u51fa\u751f\u661f\u671f
     const WD = ['\u65e5','\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d'];
     const birthWeekday = '\u661f\u671f' + WD[birth.getDay()];
 
-    // 人生阶段
+    // \u4eba\u751f\u9636\u6bb5
     let lifeStage = '';
     if (age < 1) lifeStage = '\u5a74\u513f\u671f';
     else if (age < 3) lifeStage = '\u5e7c\u513f\u671f';
@@ -138,13 +151,13 @@ Page({
     else if (age < 75) lifeStage = '\u8001\u5e74\u671f';
     else lifeStage = '\u9ad8\u9f84\u671f';
 
-    // 下一生日
+    // \u4e0b\u4e00\u751f\u65e5
     let nextBD = new Date(curYear, bm - 1, bd);
     if (nextBD <= now) nextBD = new Date(curYear + 1, bm - 1, bd);
     const nextBirthdayDays = Math.ceil((nextBD.getTime() - now.getTime()) / 86400000);
     const nextBirthdayWeekday = '\u661f\u671f' + WD[nextBD.getDay()];
 
-    // 里程碑
+    // \u91cc\u7a0b\u789a
     const ms2days = function(targetAge) {
       const t = new Date(by + targetAge, bm - 1, bd);
       return Math.ceil((t.getTime() - now.getTime()) / 86400000);

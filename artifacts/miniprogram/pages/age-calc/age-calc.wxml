@@ -1,17 +1,30 @@
 <view class="page">
 
-  <!-- 日期选择 -->
-  <view class="picker-card">
-    <text class="picker-label">出生日期</text>
+  <!-- ① 未查询：大日期选择器 + 查询按钮 -->
+  <block wx:if="{{!hasResult}}">
     <picker mode="date" value="{{birthDate}}" end="{{todayStr}}" bindchange="onBirthDateChange">
-      <view class="picker-row">
-        <text class="picker-date-text">{{birthDate || '请选择出生日期'}}</text>
-        <text class="picker-date-icon">🎂</text>
+      <view class="picker-large">
+        <text class="picker-large-text {{birthDate ? 'picker-large-text--filled' : ''}}">
+          {{birthDate || '选择出生日期'}}
+        </text>
+        <text class="picker-large-icon">📅</text>
       </view>
     </picker>
-  </view>
 
-  <block wx:if="{{hasResult}}">
+    <button class="query-btn" bindtap="onQuery">查询年龄信息</button>
+  </block>
+
+  <!-- ② 已查询：紧凑日期行 + 结果 -->
+  <block wx:else>
+    <view class="picker-compact">
+      <text class="picker-compact-label">出生日期</text>
+      <picker mode="date" value="{{birthDate}}" end="{{todayStr}}" bindchange="onBirthDateChange">
+        <view class="picker-compact-right">
+          <text class="picker-compact-date">{{birthDate}}</text>
+          <text class="picker-compact-icon">🎂</text>
+        </view>
+      </picker>
+    </view>
 
     <!-- Hero：核心年龄展示 -->
     <view class="hero-card">
@@ -40,12 +53,12 @@
           <text class="timer-hms-num">{{remHours}}</text>
           <text class="timer-hms-unit">时</text>
         </view>
-        <text class="timer-sep">:</text>
+        <text class="timer-sep"> </text>
         <view class="timer-hms-item">
           <text class="timer-hms-num">{{remMinutes}}</text>
           <text class="timer-hms-unit">分</text>
         </view>
-        <text class="timer-sep">:</text>
+        <text class="timer-sep"> </text>
         <view class="timer-hms-item">
           <text class="timer-hms-num">{{remSeconds}}</text>
           <text class="timer-hms-unit">秒</text>
@@ -55,23 +68,19 @@
 
     <!-- 信息网格 -->
     <view class="grid-row">
-      <!-- 出生星期 -->
       <view class="grid-cell">
         <text class="cell-label">出生星期</text>
         <text class="cell-val">{{birthWeekday}}</text>
       </view>
-      <!-- 人生阶段 -->
       <view class="grid-cell">
         <text class="cell-label">人生阶段</text>
         <text class="cell-val">{{lifeStage}}</text>
       </view>
-      <!-- 下一生日 -->
       <view class="grid-cell">
         <text class="cell-label">下次生日</text>
         <text class="cell-val primary">{{nextBirthdayDays}}天</text>
         <text class="cell-sub">{{nextBirthdayWeekday}}</text>
       </view>
-      <!-- 下一本命年 -->
       <view class="grid-cell">
         <text class="cell-label">下次本命年</text>
         <text class="cell-val">{{nextBenMingNian}}年</text>
