@@ -1,8 +1,17 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { objectStorageClient } from "../lib/objectStorage.js";
+import { LOCAL_UPLOAD_DIR } from "./upload.js";
 
 const router = Router();
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function requireAdmin(req: Request, res: Response): boolean {
   const key = req.headers["x-admin-key"];
@@ -14,8 +23,35 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
+function useObjectStorage(): boolean {
+  return !!process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+}
+
+function getBucket() {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) throw new Error("DEFAULT_OBJECT_STORAGE_BUCKET_ID not set");
+  return objectStorageClient.bucket(bucketId);
+}
+
+function resolveMime(originalname: string, declaredMime: string): string {
+  const ext = path.extname(originalname).toLowerCase();
+  const extMap: Record<string, string> = {
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp",
+  };
+  return extMap[ext] ?? (declaredMime.startsWith("image/") ? declaredMime : "image/jpeg");
+}
+
+const iconUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = file.mimetype.startsWith("image/") || file.mimetype === "application/octet-stream";
+    cb(ok ? null : new Error("只支持图片格式"), ok);
+  },
+});
+
 // ── Public: GET /api/mp-tools ─────────────────────────────────────────────────
-// Returns only enabled tools, ordered by sort_order
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
@@ -25,7 +61,7 @@ router.get("/", async (_req: Request, res: Response) => {
       ORDER BY sort_order ASC, id ASC
     `);
     res.json(result.rows);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -34,12 +70,37 @@ router.get("/", async (_req: Request, res: Response) => {
 router.get("/admin", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const result = await db.execute(sql`
-      SELECT * FROM mp_tools ORDER BY sort_order ASC, id ASC
-    `);
+    const result = await db.execute(sql`SELECT * FROM mp_tools ORDER BY sort_order ASC, id ASC`);
     res.json(result.rows);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin: POST /api/mp-tools/admin/upload-icon ───────────────────────────────
+// Must be before /admin/:id to avoid param capture
+router.post("/admin/upload-icon", (req: Request, res: Response, next) => {
+  if (!requireAdmin(req, res)) return;
+  next();
+}, iconUpload.single("image"), async (req: Request, res: Response) => {
+  if (!req.file) return void res.status(400).json({ error: "请上传图片" });
+  try {
+    const file = req.file as Express.Multer.File & { buffer: Buffer };
+    const ext = path.extname(file.originalname).toLowerCase() || ".png";
+    const filename = "icon_" + crypto.randomBytes(12).toString("hex") + ext;
+
+    if (useObjectStorage()) {
+      const objectPath = `uploads/${filename}`;
+      const contentType = resolveMime(file.originalname, file.mimetype);
+      const bucket = getBucket();
+      await bucket.file(objectPath).save(file.buffer, { contentType, resumable: false });
+    } else {
+      if (!fs.existsSync(LOCAL_UPLOAD_DIR)) fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
+      fs.writeFileSync(path.join(LOCAL_UPLOAD_DIR, filename), file.buffer);
+    }
+    res.json({ url: `/api/uploads/${filename}` });
+  } catch (err) {
+    res.status(500).json({ error: "上传失败" });
   }
 });
 
@@ -47,22 +108,36 @@ router.get("/admin", async (req: Request, res: Response) => {
 router.post("/admin", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { name, description = "", icon = "🔧", type = "internal", path = "", app_id = "", page_path = "", enabled = true } = req.body as {
+    const { name, description = "", icon = "🔧", type = "internal", path: p = "", app_id = "", page_path = "", enabled = true } = req.body as {
       name: string; description?: string; icon?: string; type?: string;
       path?: string; app_id?: string; page_path?: string; enabled?: boolean;
     };
     if (!name) return void res.status(400).json({ error: "name is required" });
-
     const maxOrderResult = await db.execute(sql`SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM mp_tools`);
     const maxOrder = Number((maxOrderResult.rows[0] as any)?.max_order ?? -1);
-
     const result = await db.execute(sql`
       INSERT INTO mp_tools (name, description, icon, type, path, app_id, page_path, sort_order, enabled)
-      VALUES (${name}, ${description}, ${icon}, ${type}, ${path}, ${app_id}, ${page_path}, ${maxOrder + 1}, ${enabled})
+      VALUES (${name}, ${description}, ${icon}, ${type}, ${p}, ${app_id}, ${page_path}, ${maxOrder + 1}, ${enabled})
       RETURNING *
     `);
     res.json(result.rows[0]);
-  } catch (err) {
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin: PUT /api/mp-tools/admin/reorder ────────────────────────────────────
+// Must be before /admin/:id to avoid param capture
+router.put("/admin/reorder", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { ids } = req.body as { ids: number[] };
+    if (!Array.isArray(ids)) return void res.status(400).json({ error: "ids must be an array" });
+    for (let i = 0; i < ids.length; i++) {
+      await db.execute(sql`UPDATE mp_tools SET sort_order = ${i} WHERE id = ${ids[i]}`);
+    }
+    res.json({ success: true });
+  } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -72,18 +147,17 @@ router.put("/admin/:id", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, description, icon, type, path, app_id, page_path, enabled } = req.body as {
+    const { name, description, icon, type, path: p, app_id, page_path, enabled } = req.body as {
       name?: string; description?: string; icon?: string; type?: string;
       path?: string; app_id?: string; page_path?: string; enabled?: boolean;
     };
-
     const result = await db.execute(sql`
       UPDATE mp_tools SET
         name        = COALESCE(${name ?? null}, name),
         description = COALESCE(${description ?? null}, description),
         icon        = COALESCE(${icon ?? null}, icon),
         type        = COALESCE(${type ?? null}, type),
-        path        = COALESCE(${path ?? null}, path),
+        path        = COALESCE(${p ?? null}, path),
         app_id      = COALESCE(${app_id ?? null}, app_id),
         page_path   = COALESCE(${page_path ?? null}, page_path),
         enabled     = COALESCE(${enabled ?? null}, enabled)
@@ -92,7 +166,7 @@ router.put("/admin/:id", async (req: Request, res: Response) => {
     `);
     if (!result.rows.length) return void res.status(404).json({ error: "Not found" });
     res.json(result.rows[0]);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -104,37 +178,19 @@ router.delete("/admin/:id", async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
     await db.execute(sql`DELETE FROM mp_tools WHERE id = ${id}`);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ── Admin: PUT /api/mp-tools/admin/reorder ────────────────────────────────────
-// Body: { ids: number[] } — ordered array of tool IDs
-router.put("/admin/reorder", async (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
-  try {
-    const { ids } = req.body as { ids: number[] };
-    if (!Array.isArray(ids)) return void res.status(400).json({ error: "ids must be an array" });
-    for (let i = 0; i < ids.length; i++) {
-      await db.execute(sql`UPDATE mp_tools SET sort_order = ${i} WHERE id = ${ids[i]}`);
-    }
-    res.json({ success: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // ── Public: GET /api/mp-tools/builtin ─────────────────────────────────────────
-// Returns enabled state of built-in tools
 router.get("/builtin", async (_req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT key, value FROM settings WHERE key = 'tool_date_calc_enabled'
     `);
     const row = result.rows[0] as { key: string; value: string } | undefined;
-    const dateCalc = row ? row.value !== "false" : true;
-    res.json({ date_calc: dateCalc });
+    res.json({ date_calc: row ? row.value !== "false" : true });
   } catch {
     res.json({ date_calc: true });
   }

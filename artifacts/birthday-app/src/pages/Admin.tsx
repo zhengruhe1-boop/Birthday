@@ -26,6 +26,8 @@ import {
   Pencil,
   Trash2,
   X,
+  Upload,
+  Smile,
 } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
@@ -3484,6 +3486,10 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [reordering, setReordering] = useState(false);
   const [dateCalcEnabled, setDateCalcEnabled] = useState(true);
   const [togglingBuiltin, setTogglingBuiltin] = useState(false);
+  const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  const isIconUrl = (s: string) => s.startsWith("http") || s.startsWith("/api/");
 
   const API = "/api/mp-tools";
   const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
@@ -3526,13 +3532,35 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const openAdd = () => {
     setEditing(null);
     setForm(EMPTY_TOOL);
+    setIconMode("emoji");
     setShowModal(true);
   };
 
   const openEdit = (t: MpTool) => {
     setEditing(t);
     setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, enabled: t.enabled });
+    setIconMode(isIconUrl(t.icon) ? "image" : "emoji");
     setShowModal(true);
+  };
+
+  const handleIconFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`${API}/admin/upload-icon`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+        body: fd,
+      });
+      const data = await r.json();
+      if (data.url) setForm((f) => ({ ...f, icon: data.url }));
+    } catch { /* ignore */ } finally {
+      setUploadingIcon(false);
+      e.target.value = "";
+    }
   };
 
   const handleSave = async () => {
@@ -3632,9 +3660,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
               </div>
 
               {/* 图标 */}
-              <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">
-                {t.icon}
-              </div>
+              {isIconUrl(t.icon) ? (
+                <img src={t.icon} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">{t.icon}</div>
+              )}
 
               {/* 信息 */}
               <div className="flex-1 min-w-0">
@@ -3721,26 +3751,77 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
             <div className="px-6 py-5 space-y-4">
               {/* Icon 选择 */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">图标 Emoji</label>
-                <div className="flex gap-2 flex-wrap mb-2">
-                  {ICON_SUGGESTIONS.map((ic) => (
-                    <button
-                      key={ic}
-                      onClick={() => setForm((f) => ({ ...f, icon: ic }))}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${form.icon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
-                    >
-                      {ic}
-                    </button>
-                  ))}
+                <label className="block text-xs font-medium text-gray-600 mb-2">工具图标</label>
+                {/* 模式切换 */}
+                <div className="flex gap-1 mb-3 bg-gray-100 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setIconMode("emoji")}
+                    className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${iconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    <Smile className="w-3 h-3" /> Emoji
+                  </button>
+                  <button
+                    onClick={() => setIconMode("image")}
+                    className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${iconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    <Upload className="w-3 h-3" /> 上传图片
+                  </button>
                 </div>
-                <input
-                  type="text"
-                  value={form.icon}
-                  onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
-                  placeholder="或直接输入 emoji"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
-                  maxLength={4}
-                />
+
+                {iconMode === "emoji" ? (
+                  <>
+                    <div className="flex gap-2 flex-wrap mb-2">
+                      {ICON_SUGGESTIONS.map((ic) => (
+                        <button
+                          key={ic}
+                          onClick={() => setForm((f) => ({ ...f, icon: ic }))}
+                          className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${form.icon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                        >
+                          {ic}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={isIconUrl(form.icon) ? "" : form.icon}
+                      onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+                      placeholder="或直接输入 emoji"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                      maxLength={4}
+                    />
+                  </>
+                ) : (
+                  <div>
+                    <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
+                      {uploadingIcon ? (
+                        <span className="text-sm text-gray-400">上传中…</span>
+                      ) : isIconUrl(form.icon) ? (
+                        <img src={form.icon} alt="" className="h-20 w-20 object-cover rounded-xl" />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-rose-300 mb-2" />
+                          <span className="text-sm text-gray-400">点击选择图片</span>
+                          <span className="text-xs text-gray-300 mt-1">JPG / PNG / WebP，最大 5MB</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleIconFileChange}
+                        disabled={uploadingIcon}
+                      />
+                    </label>
+                    {isIconUrl(form.icon) && (
+                      <button
+                        onClick={() => setForm((f) => ({ ...f, icon: "🔧" }))}
+                        className="mt-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        移除图片，改用 Emoji
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* 名称 */}

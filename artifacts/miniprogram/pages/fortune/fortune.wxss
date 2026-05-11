@@ -29,6 +29,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  line-height: 0px;
 }
 .field-value {
   font-size: 28rpx;

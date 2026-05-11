@@ -111,7 +111,14 @@
   color: #94a3b8;
 }
 
-.dynamic-icon-bg { background: #fff1f2; }
+.dynamic-icon-bg { background: #fff1f2; overflow: hidden; }
+
+.tool-icon-img {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
+  display: block;
+}
 
 .tool-jump-badge {
   background: #f5f3ff;

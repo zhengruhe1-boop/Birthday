@@ -19,7 +19,12 @@ Page({
     this.setData({ loadingTools: true });
     api.get("/mp-tools")
       .then((list) => {
-        this.setData({ dynamicTools: Array.isArray(list) ? list : [] });
+        const tools = (Array.isArray(list) ? list : []).map(function(t) {
+          return Object.assign({}, t, {
+            iconIsUrl: !!(t.icon && (t.icon.indexOf('http') === 0 || t.icon.indexOf('/api/') === 0)),
+          });
+        });
+        this.setData({ dynamicTools: tools });
       })
       .catch(() => {
         this.setData({ dynamicTools: [] });
