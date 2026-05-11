@@ -10,7 +10,8 @@
     "pages/follow-oa/follow-oa",
     "pages/legal/legal",
     "pages/fortune/fortune",
-    "pages/date-calc/date-calc"
+    "pages/date-calc/date-calc",
+    "pages/age-calc/age-calc"
   ],
   "tabBar": {
     "color": "#94a3b8",

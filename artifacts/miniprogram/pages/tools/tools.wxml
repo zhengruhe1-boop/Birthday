@@ -49,21 +49,39 @@
 
     </view> -->
 
-    <!-- 内置工具区：日期计算器 -->
-    <block wx:if="{{dateCalcEnabled}}">
+    <!-- 内置工具区 -->
+    <block wx:if="{{dateCalcEnabled || ageCalcEnabled}}">
       <view class="section-label" style="margin-top:40rpx">实用工具</view>
       <view class="tool-list">
-        <view class="tool-item" bindtap="goDateCalc">
-          <view class="tool-icon blue-bg">
-            <image wx:if="{{dateCalcIconIsUrl}}" src="{{dateCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
-            <text wx:else>{{dateCalcIcon}}</text>
+
+        <block wx:if="{{dateCalcEnabled}}">
+          <view class="tool-item" bindtap="goDateCalc">
+            <view class="tool-icon blue-bg">
+              <image wx:if="{{dateCalcIconIsUrl}}" src="{{dateCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
+              <text wx:else>{{dateCalcIcon}}</text>
+            </view>
+            <view class="tool-info">
+              <text class="tool-name">日期计算器</text>
+              <text class="tool-desc">计算日期间隔与前后日期</text>
+            </view>
+            <text class="tool-arrow">›</text>
           </view>
-          <view class="tool-info">
-            <text class="tool-name">日期计算器</text>
-            <text class="tool-desc">计算日期间隔与前后日期</text>
+        </block>
+
+        <block wx:if="{{ageCalcEnabled}}">
+          <view class="tool-item" bindtap="goAgeCalc">
+            <view class="tool-icon rose-bg">
+              <image wx:if="{{ageCalcIconIsUrl}}" src="{{ageCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
+              <text wx:else>{{ageCalcIcon}}</text>
+            </view>
+            <view class="tool-info">
+              <text class="tool-name">年龄计算器</text>
+              <text class="tool-desc">生肖星座五行人生阶段一览</text>
+            </view>
+            <text class="tool-arrow">›</text>
           </view>
-          <text class="tool-arrow">›</text>
-        </view>
+        </block>
+
       </view>
     </block>
 

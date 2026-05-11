@@ -188,7 +188,8 @@ router.get("/builtin", async (_req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT key, value FROM settings
-      WHERE key IN ('tool_date_calc_enabled', 'tool_date_calc_icon')
+      WHERE key IN ('tool_date_calc_enabled', 'tool_date_calc_icon',
+                    'tool_age_calc_enabled', 'tool_age_calc_icon')
     `);
     const rows = result.rows as { key: string; value: string }[];
     const byKey: Record<string, string> = {};
@@ -196,6 +197,8 @@ router.get("/builtin", async (_req: Request, res: Response) => {
     res.json({
       date_calc: byKey["tool_date_calc_enabled"] !== "false",
       date_calc_icon: byKey["tool_date_calc_icon"] || null,
+      age_calc: byKey["tool_age_calc_enabled"] !== "false",
+      age_calc_icon: byKey["tool_age_calc_icon"] || null,
     });
   } catch {
     res.json({ date_calc: true, date_calc_icon: null });

@@ -3487,10 +3487,17 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [dateCalcEnabled, setDateCalcEnabled] = useState(true);
   const [dateCalcIcon, setDateCalcIcon] = useState<string>("🗓️");
   const [dateCalcIconMode, setDateCalcIconMode] = useState<"emoji" | "image">("emoji");
+  const [ageCalcEnabled, setAgeCalcEnabled] = useState(true);
+  const [ageCalcIcon, setAgeCalcIcon] = useState<string>("🎂");
+  const [ageCalcIconMode, setAgeCalcIconMode] = useState<"emoji" | "image">("emoji");
   const [togglingBuiltin, setTogglingBuiltin] = useState(false);
+  const [togglingAgeBuiltin, setTogglingAgeBuiltin] = useState(false);
   const [uploadingBuiltinIcon, setUploadingBuiltinIcon] = useState(false);
   const [savingBuiltinIcon, setSavingBuiltinIcon] = useState(false);
   const [showDateCalcIconEditor, setShowDateCalcIconEditor] = useState(false);
+  const [uploadingAgeCalcIcon, setUploadingAgeCalcIcon] = useState(false);
+  const [savingAgeCalcIcon, setSavingAgeCalcIcon] = useState(false);
+  const [showAgeCalcIconEditor, setShowAgeCalcIconEditor] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
   const [uploadingIcon, setUploadingIcon] = useState(false);
 
@@ -3518,6 +3525,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
       if (data?.date_calc_icon) {
         setDateCalcIcon(data.date_calc_icon);
         setDateCalcIconMode(isIconUrl(data.date_calc_icon) ? "image" : "emoji");
+      }
+      setAgeCalcEnabled(data?.age_calc !== false);
+      if (data?.age_calc_icon) {
+        setAgeCalcIcon(data.age_calc_icon);
+        setAgeCalcIconMode(isIconUrl(data.age_calc_icon) ? "image" : "emoji");
       }
     } catch { /* default true */ }
   };
@@ -3548,15 +3560,53 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const saveBuiltinIcon = async (icon: string) => {
     setSavingBuiltinIcon(true);
     try {
-      await fetch(`${API}/builtin/date_calc`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({ icon }),
-      });
+      await fetch(`${API}/builtin/date_calc`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
       setDateCalcIcon(icon);
       setShowDateCalcIconEditor(false);
     } finally {
       setSavingBuiltinIcon(false);
+    }
+  };
+
+  const toggleAgeCalc = async () => {
+    const next = !ageCalcEnabled;
+    setAgeCalcEnabled(next);
+    setTogglingAgeBuiltin(true);
+    try {
+      await fetch(`${API}/builtin/age_calc`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
+    } finally {
+      setTogglingAgeBuiltin(false);
+    }
+  };
+
+  const handleAgeCalcIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAgeCalcIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`${API}/builtin/age_calc/upload-icon`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+        body: fd,
+      });
+      const data = await r.json();
+      if (data.url) { setAgeCalcIcon(data.url); setAgeCalcIconMode("image"); }
+    } catch { /* ignore */ } finally {
+      setUploadingAgeCalcIcon(false);
+      e.target.value = "";
+    }
+  };
+
+  const saveAgeCalcIcon = async (icon: string) => {
+    setSavingAgeCalcIcon(true);
+    try {
+      await fetch(`${API}/builtin/age_calc`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
+      setAgeCalcIcon(icon);
+      setShowAgeCalcIconEditor(false);
+    } finally {
+      setSavingAgeCalcIcon(false);
     }
   };
 
@@ -3872,6 +3922,100 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
           )}
         </div>
       </div>
+
+        {/* 年龄计算器卡片 */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-3">
+          <div className="flex items-center gap-4 px-5 py-4">
+            <button
+              onClick={() => setShowAgeCalcIconEditor((v) => !v)}
+              className="relative w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-rose-300 transition-all group"
+              title="点击更换图标"
+            >
+              {isIconUrl(ageCalcIcon) ? (
+                <img src={ageCalcIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
+              ) : (
+                <span>{ageCalcIcon}</span>
+              )}
+              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+              </span>
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
+              <p className="text-xs text-gray-400 mt-0.5">生肖星座五行人生阶段一览</p>
+            </div>
+            <button
+              onClick={toggleAgeCalc}
+              disabled={togglingAgeBuiltin}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${ageCalcEnabled ? "bg-rose-500" : "bg-gray-200"}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${ageCalcEnabled ? "translate-x-4" : "translate-x-0"}`} />
+            </button>
+          </div>
+
+          {showAgeCalcIconEditor && (
+            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setAgeCalcIconMode("emoji")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${ageCalcIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Smile className="w-3 h-3" /> Emoji
+                </button>
+                <button
+                  onClick={() => setAgeCalcIconMode("image")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${ageCalcIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Upload className="w-3 h-3" /> 上传图片
+                </button>
+              </div>
+
+              {ageCalcIconMode === "emoji" ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {["🎂","🎈","🎉","👶","🧒","🧑","👨","👴","🧮","📊","🔢","⏳"].map((ic) => (
+                      <button key={ic} onClick={() => setAgeCalcIcon(ic)}
+                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${ageCalcIcon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                      >{ic}</button>
+                    ))}
+                  </div>
+                  <input type="text" value={isIconUrl(ageCalcIcon) ? "" : ageCalcIcon}
+                    onChange={(e) => setAgeCalcIcon(e.target.value)}
+                    placeholder="或直接输入 emoji"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    maxLength={4} />
+                  <button onClick={() => saveAgeCalcIcon(isIconUrl(ageCalcIcon) ? "🎂" : ageCalcIcon)}
+                    disabled={savingAgeCalcIcon}
+                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
+                    {savingAgeCalcIcon ? "保存中…" : "保存图标"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingAgeCalcIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
+                    {uploadingAgeCalcIcon ? <span className="text-sm text-gray-400">上传中…</span>
+                      : isIconUrl(ageCalcIcon) ? <img src={ageCalcIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
+                      : (<><Upload className="w-7 h-7 text-rose-300 mb-1" /><span className="text-sm text-gray-400">点击选择图片</span><span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span></>)}
+                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleAgeCalcIconUpload} disabled={uploadingAgeCalcIcon} />
+                  </label>
+                  {isIconUrl(ageCalcIcon) && (
+                    <div className="flex gap-2">
+                      <button onClick={() => saveAgeCalcIcon(ageCalcIcon)} disabled={savingAgeCalcIcon}
+                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
+                        {savingAgeCalcIcon ? "保存中…" : "保存图标"}
+                      </button>
+                      <button onClick={() => { setAgeCalcIcon("🎂"); setAgeCalcIconMode("emoji"); }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors">
+                        移除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
       {/* 说明 */}
       <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 space-y-1">

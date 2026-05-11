@@ -9,6 +9,9 @@ Page({
     dateCalcEnabled: false,
     dateCalcIcon: '🗓️',
     dateCalcIconIsUrl: false,
+    ageCalcEnabled: false,
+    ageCalcIcon: '🎂',
+    ageCalcIconIsUrl: false,
   },
 
   onShow() {
@@ -39,16 +42,24 @@ Page({
   _loadBuiltin() {
     api.get("/mp-tools/builtin")
       .then((data) => {
-        var icon = (data && data.date_calc_icon) || '🗓️';
-        var iconIsUrl = !!(icon && (icon.indexOf('http') === 0 || icon.indexOf('/api/') === 0));
+        var dcIcon = (data && data.date_calc_icon) || '🗓️';
+        var dcIsUrl = !!(dcIcon && (dcIcon.indexOf('http') === 0 || dcIcon.indexOf('/api/') === 0));
+        var acIcon = (data && data.age_calc_icon) || '🎂';
+        var acIsUrl = !!(acIcon && (acIcon.indexOf('http') === 0 || acIcon.indexOf('/api/') === 0));
         this.setData({
           dateCalcEnabled: data && data.date_calc !== false,
-          dateCalcIcon: icon,
-          dateCalcIconIsUrl: iconIsUrl,
+          dateCalcIcon: dcIcon,
+          dateCalcIconIsUrl: dcIsUrl,
+          ageCalcEnabled: data && data.age_calc !== false,
+          ageCalcIcon: acIcon,
+          ageCalcIconIsUrl: acIsUrl,
         });
       })
       .catch(() => {
-        this.setData({ dateCalcEnabled: true, dateCalcIcon: '🗓️', dateCalcIconIsUrl: false });
+        this.setData({
+          dateCalcEnabled: true, dateCalcIcon: '🗓️', dateCalcIconIsUrl: false,
+          ageCalcEnabled: true, ageCalcIcon: '🎂', ageCalcIconIsUrl: false,
+        });
       });
   },
 
@@ -86,6 +97,10 @@ Page({
 
   goDateCalc() {
     wx.navigateTo({ url: "/pages/date-calc/date-calc" });
+  },
+
+  goAgeCalc() {
+    wx.navigateTo({ url: "/pages/age-calc/age-calc" });
   },
 
   tapDynamicTool(e) {
