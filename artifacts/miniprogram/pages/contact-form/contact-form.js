@@ -198,12 +198,23 @@ Page({
 
   // ── 加载联系人 ───────────────────────────────────────────────────────────────
 
+  // 判断缓存事件年份是否与出生年份不符（年份已知但缓存里没有对应年份的事件）
+  _eventsStale(events, birthYear) {
+    if (!birthYear || !events || events.length === 0) return false;
+    var yearStr = String(birthYear);
+    return !events.some(function(e) {
+      return e && e.year && String(e.year).indexOf(yearStr) !== -1;
+    });
+  },
+
   async loadContact(id) {
     this.setData({ mode: "loading" });
     try {
       const c = await api.get("api/contacts/" + id);
       this._applyContact(c, "view");
-      if (!c.birthdayEvents || c.birthdayEvents.length === 0) {
+      const empty = !c.birthdayEvents || c.birthdayEvents.length === 0;
+      const stale = this._eventsStale(c.birthdayEvents, c.birthYear);
+      if (empty || stale) {
         this._autoGenerateEvents(id, c.birthdayMonth, c.birthdayDay, c.birthYear);
       }
     } catch {
@@ -251,7 +262,10 @@ Page({
     try {
       await new Promise(r => setTimeout(r, 1500));
       const fresh = await api.get("api/contacts/" + id);
-      if (fresh.birthdayEvents && fresh.birthdayEvents.length > 0) {
+      // 仅当缓存不为空且年份也匹配时才使用缓存，否则重新生成
+      const freshGood = fresh.birthdayEvents && fresh.birthdayEvents.length > 0
+        && !this._eventsStale(fresh.birthdayEvents, year);
+      if (freshGood) {
         this.setData({ "contact.birthdayEvents": fresh.birthdayEvents });
         return;
       }
