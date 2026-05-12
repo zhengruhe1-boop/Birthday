@@ -50,7 +50,7 @@ Page({
         var lunar = c.birthdayLunar ? "(\u519c\u5386)" : "";
         var sub = c.birthdayMonth + "\u6708" + c.birthdayDay + "\u65e5" + lunar
           + (c.relation ? " \u00b7 " + c.relation : "");
-        return { id: c.id, name: c.name, icon: icon, color: color, bg: bg, sub: sub };
+        return { id: c.id, name: c.name, avatarUrl: c.avatarUrl || "", icon: icon, color: color, bg: bg, sub: sub };
       });
       this.setData({ events: events });
     } catch(err) {

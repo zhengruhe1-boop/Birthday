@@ -25,8 +25,9 @@
           bindtap="goEdit"
           data-id="{{item.id}}"
         >
-          <view class="item-icon" style="background:{{item.bg}}">
-            <text style="color:{{item.color}}">{{item.icon}}</text>
+          <view class="item-avatar">
+            <image wx:if="{{item.avatarUrl}}" class="item-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
+            <text wx:else class="item-avatar-letter">{{item.name[0]}}</text>
           </view>
           <view class="item-body">
             <text class="item-name">{{item.name}}</text>
