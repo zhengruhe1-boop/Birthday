@@ -212,6 +212,8 @@ Page({
     try {
       const c = await api.get("api/contacts/" + id);
       this._applyContact(c, "view");
+      // 无出生年份时不生成（由 WXML 展示提示文案）
+      if (!c.birthYear) return;
       const empty = !c.birthdayEvents || c.birthdayEvents.length === 0;
       const stale = this._eventsStale(c.birthdayEvents, c.birthYear);
       if (empty || stale) {
@@ -286,6 +288,10 @@ Page({
   async onRefreshEvents() {
     const { contactId, contact } = this.data;
     if (!contactId || this.data.eventsLoading) return;
+    if (!contact.birthYear) {
+      wx.showToast({ title: "请先填写出生年份", icon: "none" });
+      return;
+    }
     this.setData({ eventsLoading: true });
     try {
       var qs = "month=" + contact.birthdayMonth + "&day=" + contact.birthdayDay +

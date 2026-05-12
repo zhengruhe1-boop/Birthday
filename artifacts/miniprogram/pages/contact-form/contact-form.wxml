@@ -62,30 +62,38 @@
     <view class="cf-card cf-events-card">
       <view class="cf-events-header">
         <text class="cf-events-title">🌏 出生那天的历史大事</text>
-        <view wx:if="{{!eventsLoading}}" class="cf-refresh-btn" bindtap="onRefreshEvents">
+        <view wx:if="{{contact.birthYear && !eventsLoading}}" class="cf-refresh-btn" bindtap="onRefreshEvents">
           <text class="cf-refresh-text">刷新</text>
         </view>
       </view>
 
-      <view wx:if="{{eventsLoading}}" class="cf-events-loading">
-        <view class="cf-spinner cf-spinner-sm"></view>
-        <text class="cf-events-loading-text">正在查询历史大事…</text>
+      <!-- 无出生年份：提示填写 -->
+      <view wx:if="{{!contact.birthYear}}" class="cf-events-empty">
+        <text class="cf-events-empty-text">需填写出生年份后展示数据。</text>
       </view>
 
-      <view wx:elif="{{contact.birthdayEvents && contact.birthdayEvents.length > 0}}">
-        <view wx:for="{{contact.birthdayEvents}}" wx:key="index" class="cf-event-item">
-          <view class="cf-event-header">
-            <text class="cf-event-year">{{item.year}}</text>
-            <text class="cf-event-cat {{item.category === '中国' ? 'cf-cat-cn' : 'cf-cat-world'}}">{{item.category}}</text>
-          </view>
-          <text class="cf-event-title">{{item.title}}</text>
-          <text class="cf-event-desc">{{item.description}}</text>
+      <!-- 有出生年份：正常流程 -->
+      <block wx:else>
+        <view wx:if="{{eventsLoading}}" class="cf-events-loading">
+          <view class="cf-spinner cf-spinner-sm"></view>
+          <text class="cf-events-loading-text">正在查询历史大事…</text>
         </view>
-      </view>
 
-      <view wx:else class="cf-events-empty">
-        <text class="cf-events-empty-text">暂无历史大事，点击"刷新"重新生成</text>
-      </view>
+        <view wx:elif="{{contact.birthdayEvents && contact.birthdayEvents.length > 0}}">
+          <view wx:for="{{contact.birthdayEvents}}" wx:key="index" class="cf-event-item">
+            <view class="cf-event-header">
+              <text class="cf-event-year">{{item.year}}</text>
+              <text class="cf-event-cat {{item.category === '中国' ? 'cf-cat-cn' : 'cf-cat-world'}}">{{item.category}}</text>
+            </view>
+            <text class="cf-event-title">{{item.title}}</text>
+            <text class="cf-event-desc">{{item.description}}</text>
+          </view>
+        </view>
+
+        <view wx:else class="cf-events-empty">
+          <text class="cf-events-empty-text">暂无历史大事，点击"刷新"重新生成</text>
+        </view>
+      </block>
     </view>
 
     <!-- 删除按钮 -->
