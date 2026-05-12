@@ -41,8 +41,13 @@ function request(method, path, data) {
           wx.reLaunch({ url: '/pages/login/login' });
           reject(new Error('登录已过期，请重新登录'));
         } else {
-          const msg = (res.data && res.data.error) ? res.data.error : ('请求失败 ' + res.statusCode);
-          reject(new Error(msg));
+          // 优先使用 message（人类可读），并在 err.errorCode 上保留机器码
+          const errorCode = (res.data && res.data.error) || '';
+          const msg = (res.data && res.data.message) || errorCode || ('请求失败 ' + res.statusCode);
+          const err = new Error(msg);
+          err.errorCode = errorCode;
+          err.statusCode = res.statusCode;
+          reject(err);
         }
       },
       fail(err) {

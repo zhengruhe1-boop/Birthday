@@ -413,6 +413,11 @@ Page({
         this._autoGenerateEvents(created.id, created.birthdayMonth, created.birthdayDay);
       }
     } catch (err) {
+      // 配额超限 → 跳转解锁页
+      if (err && (err.errorCode === 'quota_exceeded' || err.message === 'quota_exceeded')) {
+        wx.redirectTo({ url: '/pages/quota-paywall/quota-paywall' });
+        return;
+      }
       wx.showToast({ title: (err && err.message) || "保存失败", icon: "none" });
     } finally {
       this.setData({ saving: false });
