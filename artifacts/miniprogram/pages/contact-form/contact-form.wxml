@@ -76,9 +76,7 @@
         <view wx:for="{{contact.birthdayEvents}}" wx:key="index" class="cf-event-item">
           <view class="cf-event-header">
             <text class="cf-event-year">{{item.year}}</text>
-            <text class="cf-event-cat {{item.category === '中国' ? 'cf-cat-cn' : 'cf-cat-world'}}">
-              {{item.category}}
-            </text>
+            <text class="cf-event-cat {{item.category === '中国' ? 'cf-cat-cn' : 'cf-cat-world'}}">{{item.category}}</text>
           </view>
           <text class="cf-event-title">{{item.title}}</text>
           <text class="cf-event-desc">{{item.description}}</text>
