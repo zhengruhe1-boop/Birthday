@@ -6,7 +6,7 @@ Page({
     loading: true,
     claiming: false,
     config: null,
-    shareShown: false,
+    sharePending: false, // 已点击分享，等待返回后自动领取
     mpShown: false,
   },
 
@@ -19,8 +19,16 @@ Page({
   },
 
   onShow: function() {
+    // 从跳转小程序返回：自动领取
     if (this.data.mpShown) {
-      this.setData({ mpShown: false, shareShown: true });
+      this.setData({ mpShown: false });
+      this.doClaim("miniprogram");
+      return;
+    }
+    // 从分享面板返回：自动领取
+    if (this.data.sharePending) {
+      this.setData({ sharePending: false });
+      this.doClaim("share");
     }
   },
 
@@ -36,8 +44,6 @@ Page({
   },
 
   onShareAppMessage: function() {
-    // \u5206\u4eab\u9762\u677f\u6253\u5f00\u540e\u5c55\u793a\u300c\u6211\u5df2\u5206\u4eab\u300d\u6309\u9215
-    this.setData({ shareShown: true });
     var cfg = this.data.config;
     return {
       title: "\u751f\u65e5\u901a - \u4e0d\u518d\u9519\u8fc7\u91cd\u8981\u751f\u65e5",
@@ -47,12 +53,8 @@ Page({
   },
 
   tapShare: function() {
-    // \u70b9\u51fb\u5206\u4eab\u6309\u9215\u65f6\u540c\u6b65\u5c55\u793a\u9886\u53d6\u6309\u9215\uff08open-type=share\u4f1a\u81ea\u52a8\u89e6\u53d1\u5206\u4eab\u9762\u677f\uff09
-    this.setData({ shareShown: true });
-  },
-
-  claimShare: async function() {
-    await this.doClaim("share");
+    // open-type="share" 会自动弹出分享面板；这里仅标记"等待返回后领取"
+    this.setData({ sharePending: true });
   },
 
   watchVideo: function() {
@@ -98,27 +100,21 @@ Page({
     });
   },
 
-  claimMiniprogram: async function() {
-    await this.doClaim("miniprogram");
-  },
-
   doClaim: async function(action) {
     if (this.data.claiming) return;
     this.setData({ claiming: true });
     try {
       var result = await api.post("api/quota/claim", { action: action });
       var added = (result && result.added) ? result.added : (this.data.config && this.data.config.perAction) || 5;
-      // \u5c55\u793a\u89e3\u9501\u6210\u529f\u63d0\u793a\uff08\u542b\u89e3\u9501\u6570\u91cf\uff09
       wx.showToast({
-        title: "\u5df2\u89e3\u9501 " + added + " \u6761\uff01",
+        title: "\u5206\u4eab\u6210\u529f\uff01\u60a8\u5df2\u83b7\u5f97 " + added + " \u6b21\u989d\u5916\u6dfb\u52a0\u673a\u4f1a",
         icon: "success",
-        duration: 1500,
+        duration: 2000,
       });
-      // 1.5\u79d2\u540e\u81ea\u52a8\u8df3\u8f6c\u56de\u6dfb\u52a0\u9875
       var self = this;
       setTimeout(function() {
         wx.redirectTo({ url: "/pages/contact-form/contact-form" });
-      }, 1500);
+      }, 2000);
     } catch(err) {
       this.setData({ claiming: false });
       var msg = (err && err.message) || "\u9886\u53d6\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5";
