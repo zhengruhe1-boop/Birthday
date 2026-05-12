@@ -22,7 +22,7 @@ Page({
 
   _loadTools() {
     this.setData({ loadingTools: true });
-    api.get("/mp-tools")
+    api.get("api/mp-tools")
       .then((list) => {
         const tools = (Array.isArray(list) ? list : []).map(function(t) {
           return Object.assign({}, t, {
@@ -40,7 +40,7 @@ Page({
   },
 
   _loadBuiltin() {
-    api.get("/mp-tools/builtin")
+    api.get("api/mp-tools/builtin")
       .then((data) => {
         var dcIcon = (data && data.date_calc_icon) || '🗓️';
         var dcIsUrl = !!(dcIcon && (dcIcon.indexOf('http') === 0 || dcIcon.indexOf('/api/') === 0));
