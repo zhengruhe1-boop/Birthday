@@ -215,8 +215,9 @@
 }
 
 .grid-cell {
-  flex: 1 1 calc(50% - 8rpx);
-  min-width: calc(50% - 8rpx);
+  width: calc(50% - 8rpx);
+  flex-shrink: 0;
+  flex-grow: 0;
   background: #fff;
   border-radius: 20rpx;
   padding: 20rpx 24rpx;
