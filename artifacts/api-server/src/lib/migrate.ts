@@ -118,6 +118,23 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
+    // 6. fortune_cache table — server-side cache keyed by (sign, date)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "fortune_cache" (
+        "id"          serial    PRIMARY KEY,
+        "sign"        text      NOT NULL,
+        "date"        text      NOT NULL,
+        "data"        jsonb     NOT NULL,
+        "created_at"  timestamp NOT NULL DEFAULT now(),
+        UNIQUE("sign", "date")
+      )
+    `);
+
+    // fortune_sign: user's last selected zodiac sign for auto pre-generation
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "fortune_sign" text
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

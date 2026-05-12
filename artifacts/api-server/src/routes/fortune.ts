@@ -1,7 +1,10 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import OpenAI from "openai";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { getSetting } from "./admin.js";
+import { generateAndCacheFortune } from "../lib/fortune-scheduler.js";
 
 const router = Router();
 
@@ -10,7 +13,41 @@ const SIGNS = [
   "天秤座","天蝎座","射手座","摩羯座","水瓶座","双鱼座",
 ];
 
-router.post("/", requireAuth, async (req: AuthRequest, res) => {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function getFromServerCache(sign: string, date: string): Promise<object | null> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT data FROM fortune_cache WHERE sign = ${sign} AND date = ${date} LIMIT 1
+    `);
+    if ((rows.rows as any[]).length > 0) {
+      const data = (rows.rows[0] as any).data;
+      return typeof data === "string" ? JSON.parse(data) : data;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+// ── GET /api/fortune/:sign/:date — public cache check ─────────────────────────
+router.get("/:sign/:date", async (req: Request, res: Response) => {
+  const { sign, date } = req.params;
+  if (!sign || !SIGNS.includes(decodeURIComponent(sign))) {
+    return res.status(400).json({ error: "无效的星座" });
+  }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: "无效的日期格式" });
+  }
+
+  const decodedSign = decodeURIComponent(sign);
+  const fortune = await getFromServerCache(decodedSign, date);
+  if (fortune) {
+    return res.json({ ok: true, sign: decodedSign, date, fortune, fromCache: true });
+  }
+  return res.status(404).json({ ok: false, message: "未找到缓存运势" });
+});
+
+// ── POST /api/fortune — generate (with cache + user sign tracking) ─────────────
+router.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
   const { sign, date } = req.body as { sign?: string; date?: string };
 
   if (!sign || !SIGNS.includes(sign)) {
@@ -20,7 +57,17 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "无效的日期格式" });
   }
 
-  // 优先用运势专属 key → 历史事件 key → 环境变量
+  // 1. Check server cache first
+  const cached = await getFromServerCache(sign, date);
+  if (cached) {
+    // Also update user's fortune_sign if needed (fire-and-forget)
+    void db.execute(sql`
+      UPDATE users SET fortune_sign = ${sign} WHERE id = ${req.userId!}
+    `).catch(() => {});
+    return res.json({ ok: true, sign, date, fortune: cached, fromCache: true });
+  }
+
+  // 2. Get API key and model
   const apiKey =
     (await getSetting("fortune_api_key")) ||
     (await getSetting("ai_api_key_custom")) ||
@@ -33,14 +80,12 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       .json({ error: "运势服务暂未配置 API Key，请在管理后台「AI 模型 → 今日运势」中填写" });
   }
 
-  // 优先用运势专属模型 → 历史事件模型 → 默认
   const model =
     (await getSetting("fortune_model")) ||
     (await getSetting("ai_model")) ||
     "deepseek-chat";
 
-  const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
-
+  // 3. Generate via DeepSeek
   const prompt = `你是一位专业的星座运势分析师。请为以下用户生成今日运势，严格以 JSON 格式返回，不要任何额外内容。
 
 用户星座：${sign}
@@ -58,6 +103,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 }`;
 
   try {
+    const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
     const completion = await client.chat.completions.create({
       model,
       messages: [{ role: "user", content: prompt }],
@@ -70,6 +116,19 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     if (!jsonMatch) throw new Error("无法解析运势数据");
 
     const fortune = JSON.parse(jsonMatch[0]);
+
+    // 4. Save to server cache + update user's saved sign (parallel, fire-and-forget errors)
+    void Promise.all([
+      db.execute(sql`
+        INSERT INTO fortune_cache (sign, date, data)
+        VALUES (${sign}, ${date}, ${JSON.stringify(fortune)})
+        ON CONFLICT (sign, date) DO UPDATE SET data = ${JSON.stringify(fortune)}, created_at = now()
+      `),
+      db.execute(sql`
+        UPDATE users SET fortune_sign = ${sign} WHERE id = ${req.userId!}
+      `),
+    ]).catch(() => {});
+
     return res.json({ ok: true, sign, date, fortune });
   } catch (err: any) {
     const msg = err?.message || "生成运势失败";

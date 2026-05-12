@@ -4,6 +4,7 @@ import { scheduleDailyReminders } from "./lib/reminder.js";
 import { scheduleWechatNotifications } from "./lib/wechat-notify.js";
 import { scheduleMpNotifications } from "./lib/wechat-mp-notify.js";
 import { runStartupMigrations } from "./lib/migrate.js";
+import { scheduleFortunePreGeneration } from "./lib/fortune-scheduler.js";
 
 const rawPort = process.env["PORT"];
 
@@ -37,5 +38,8 @@ app.listen(port, (err) => {
 
     // Start the MP subscribe birthday notification scheduler
     scheduleMpNotifications();
+
+    // Start the fortune pre-generation scheduler (runs at midnight Beijing time)
+    scheduleFortunePreGeneration();
   });
 });
