@@ -101,16 +101,8 @@
             <text class="trait-value">{{signData[currentSign].element}}</text>
           </view>
           <view class="trait-item">
-            <text class="trait-label">掌管宫位</text>
-            <text class="trait-value">{{signData[currentSign].house}}</text>
-          </view>
-          <view class="trait-item">
             <text class="trait-label">阴阳属性</text>
             <text class="trait-value">{{signData[currentSign].yinyang}}</text>
-          </view>
-          <view class="trait-item">
-            <text class="trait-label">最大特征</text>
-            <text class="trait-value">{{signData[currentSign].trait}}</text>
           </view>
           <view class="trait-item">
             <text class="trait-label">主管行星</text>
@@ -131,6 +123,14 @@
           <view class="trait-item">
             <text class="trait-label">开运金属</text>
             <text class="trait-value">{{signData[currentSign].metal}}</text>
+          </view>
+          <view class="trait-item trait-item-wide">
+            <text class="trait-label">掌管宫位</text>
+            <text class="trait-value">{{signData[currentSign].house}}</text>
+          </view>
+          <view class="trait-item trait-item-wide">
+            <text class="trait-label">最大特征</text>
+            <text class="trait-value">{{signData[currentSign].trait}}</text>
           </view>
         </view>
       </view>
