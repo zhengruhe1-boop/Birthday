@@ -151,8 +151,8 @@ router.post("/", async (req: AuthRequest, res) => {
     const contact = inserted[0];
     res.status(201).json(formatContact(contact));
 
-    // Generate birthday events in the background (uses birth month+day only now)
-    generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay)
+    // Generate birthday events in the background (uses birth year+month+day)
+    generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay, contact.birthYear)
       .then(async (events) => {
         if (events.length > 0) {
           await db.update(contactsTable)
@@ -213,11 +213,12 @@ router.post("/:id/birthday-events", async (req: AuthRequest, res) => {
 
     const contact = contacts[0];
 
-    // Allow override month/day from query string (for refresh-before-save scenario)
+    // Allow override month/day/year from query string (for refresh-before-save scenario)
     const birthdayMonth = req.query.month ? parseInt(req.query.month as string) : contact.birthdayMonth;
     const birthdayDay   = req.query.day   ? parseInt(req.query.day   as string) : contact.birthdayDay;
+    const birthdayYear  = req.query.year  ? parseInt(req.query.year  as string) : (contact.birthYear ?? null);
 
-    const events = await generateBirthdayEvents(birthdayMonth, birthdayDay);
+    const events = await generateBirthdayEvents(birthdayMonth, birthdayDay, birthdayYear);
 
     await db.update(contactsTable)
       .set({ birthdayEvents: JSON.stringify(events) })

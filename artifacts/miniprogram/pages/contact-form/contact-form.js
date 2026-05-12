@@ -204,7 +204,7 @@ Page({
       const c = await api.get("api/contacts/" + id);
       this._applyContact(c, "view");
       if (!c.birthdayEvents || c.birthdayEvents.length === 0) {
-        this._autoGenerateEvents(id, c.birthdayMonth, c.birthdayDay);
+        this._autoGenerateEvents(id, c.birthdayMonth, c.birthdayDay, c.birthYear);
       }
     } catch {
       wx.showToast({ title: "加载失败", icon: "none" });
@@ -246,7 +246,7 @@ Page({
 
   // ── 历史大事记 ────────────────────────────────────────────────────────────────
 
-  async _autoGenerateEvents(id, month, day) {
+  async _autoGenerateEvents(id, month, day, year) {
     this.setData({ eventsLoading: true, eventsGenerated: false });
     try {
       await new Promise(r => setTimeout(r, 1500));
@@ -255,8 +255,9 @@ Page({
         this.setData({ "contact.birthdayEvents": fresh.birthdayEvents });
         return;
       }
+      var qs = "month=" + month + "&day=" + day + (year ? "&year=" + year : "");
       const res = await api.post(
-        "api/contacts/" + id + "/birthday-events?month=" + month + "&day=" + day,
+        "api/contacts/" + id + "/birthday-events?" + qs,
         {}
       );
       if (res && res.events) {
@@ -273,9 +274,10 @@ Page({
     if (!contactId || this.data.eventsLoading) return;
     this.setData({ eventsLoading: true });
     try {
+      var qs = "month=" + contact.birthdayMonth + "&day=" + contact.birthdayDay +
+               (contact.birthYear ? "&year=" + contact.birthYear : "");
       const res = await api.post(
-        "api/contacts/" + contactId +
-        "/birthday-events?month=" + contact.birthdayMonth + "&day=" + contact.birthdayDay,
+        "api/contacts/" + contactId + "/birthday-events?" + qs,
         {}
       );
       if (res && res.events) {
@@ -403,14 +405,14 @@ Page({
         if (birthdayChanged || eventsEmpty) {
           this.setData({ "contact.birthdayEvents": [] });
           setTimeout(() => {
-            this._autoGenerateEvents(updated.id, updated.birthdayMonth, updated.birthdayDay);
+            this._autoGenerateEvents(updated.id, updated.birthdayMonth, updated.birthdayDay, updated.birthYear);
           }, 400);
         }
       } else {
         const created = await api.post("api/contacts", body);
         wx.showToast({ title: "添加成功", icon: "success" });
         this._applyContact(created, "view");
-        this._autoGenerateEvents(created.id, created.birthdayMonth, created.birthdayDay);
+        this._autoGenerateEvents(created.id, created.birthdayMonth, created.birthdayDay, created.birthYear);
       }
     } catch (err) {
       // 配额超限 → 跳转解锁页

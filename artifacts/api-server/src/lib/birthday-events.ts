@@ -115,10 +115,11 @@ function isNegativeEvent(event: BirthdayEvent, keywords: string[]): boolean {
   return keywords.some(kw => kw && text.includes(kw));
 }
 
-// ── Main generator: historical events on a specific month/day ─────────────────
+// ── Main generator: historical events on a specific month/day (optionally year) ─
 export async function generateBirthdayEvents(
   month: number,
   day:   number,
+  year?: number | null,
 ): Promise<BirthdayEvent[]> {
   const [ai, cfg] = await Promise.all([buildAiClient(), getAiConfig()]);
   if (!ai) {
@@ -128,9 +129,31 @@ export async function generateBirthdayEvents(
 
   const filterKeywords = cfg.filterKeywords.length > 0 ? cfg.filterKeywords : DEFAULT_FILTER_KEYWORDS;
   const kwStr = filterKeywords.join("、");
-  const dateLabel = `${month}月${day}日`;
 
-  const prompt = `历史上的${dateLabel}：请从古代到现代中，找出不同年代真实发生在${month}月${day}日（允许±1天）的5件重大历史事件。
+  let prompt: string;
+
+  if (year) {
+    // 有出生年份：生成那一天（当年）发生的事件
+    const dateLabel = `${year}年${month}月${day}日`;
+    prompt = `TA的生日是${dateLabel}，请找出这一天在世界上真实发生的5件重大事件或值得纪念的大事。
+
+要求：
+1. 事件必须真实，不能编造
+2. 优先选取${year}年${month}月${day}日当天发生的事件；若当天事件不足，可扩展到${year}年${month}月内（±7天）的重大事件，year字段仍填写${year}年
+3. 中国历史事件与世界历史事件均可，尽量兼顾
+4. year字段填写"${year}年"，title不超过20字，description不超过60字（须含具体月日）
+5. 【严格禁止】绝对不能包含任何涉及以下内容的事件：${kwStr}
+   - 只选取积极、振奋人心或中性的历史事件，例如：科技发明、体育赛事、重要会议、经济建设、文化艺术、重大发现、条约签订等
+
+只返回JSON数组，不加任何说明：
+[
+  {"year":"${year}年","category":"中国","title":"事件标题","description":"具体描述含月日"},
+  {"year":"${year}年","category":"世界","title":"事件标题","description":"具体描述含月日"}
+]`;
+  } else {
+    // 无出生年份：生成该日期跨历史的大事件（原有行为）
+    const dateLabel = `${month}月${day}日`;
+    prompt = `历史上的${dateLabel}：请从古代到现代中，找出不同年代真实发生在${month}月${day}日（允许±1天）的5件重大历史事件。
 
 要求：
 1. 事件必须真实，不能编造
@@ -145,6 +168,7 @@ export async function generateBirthdayEvents(
   {"year":"XXXX年","category":"中国","title":"事件标题","description":"具体描述含月日"},
   {"year":"XXXX年","category":"世界","title":"事件标题","description":"具体描述含月日"}
 ]`;
+  }
 
   try {
     const response = await ai.client.chat.completions.create({
