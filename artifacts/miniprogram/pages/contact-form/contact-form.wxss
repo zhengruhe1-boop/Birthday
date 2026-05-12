@@ -197,8 +197,8 @@
   border-radius: 12rpx;
   font-weight: 600;
 }
-.cf-cat-cn    { background: #fff1f2; color: #e11d48; }
-.cf-cat-world { background: #eff6ff; color: #2563eb; }
+.cf-cat-cn    { background: #fff1f2; color: #e11d48; 9px;height: 26px;}
+.cf-cat-world { background: #eff6ff; color: #2563eb; 9px;height: 26px;}
 .cf-event-title {
   font-size: 28rpx;
   font-weight: 600;

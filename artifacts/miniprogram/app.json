@@ -17,8 +17,8 @@
   ],
   "tabBar": {
     "color": "#94a3b8",
-    "selectedColor": "#f43f5e",
-    "backgroundColor": "#ffffff",
+    "selectedColor": "#000000",
+    "backgroundColor": "#F4ECE8",
     "borderStyle": "white",
     "list": [
       {
@@ -44,7 +44,7 @@
   "window": {
     "backgroundColor": "#f8fafc",
     "backgroundTextStyle": "dark",
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarBackgroundColor": "#F4ECE8",
     "navigationBarTitleText": "生日通",
     "navigationBarTextStyle": "black"
   },

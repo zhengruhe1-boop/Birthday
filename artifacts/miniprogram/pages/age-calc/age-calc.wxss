@@ -21,6 +21,7 @@
   font-size: 32rpx;
   color: #c0cad8;
   font-weight: 500;
+  line-height: 2px;
 }
 
 .picker-large-text--filled {

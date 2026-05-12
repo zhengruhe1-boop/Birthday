@@ -23,8 +23,8 @@
 
   <scroll-view class="home-scroll" scroll-y enhanced>
 
-    <!-- ── 今日运势卡片 ── -->
-    <view wx:if="{{!search}}" class="fortune-widget" bindtap="goFortune">
+    <!-- ── 今日运势卡片（仅登录后展示） ── -->
+    <view wx:if="{{!search && loggedIn}}" class="fortune-widget" bindtap="goFortune">
       <!-- 未设置星座 -->
       <block wx:if="{{!fortuneSign}}">
         <view class="fortune-widget-inner fortune-no-sign">
