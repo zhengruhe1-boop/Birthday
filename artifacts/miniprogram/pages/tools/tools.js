@@ -20,13 +20,26 @@ Page({
     this._loadBuiltin();
   },
 
+  _toAbsIcon(icon) {
+    if (!icon) return icon;
+    if (icon.indexOf('http') === 0) return icon;
+    if (icon.indexOf('/api/') === 0) {
+      const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
+      return base + icon;
+    }
+    return icon;
+  },
+
   _loadTools() {
     this.setData({ loadingTools: true });
     api.get("api/mp-tools")
       .then((list) => {
+        const self = this;
         const tools = (Array.isArray(list) ? list : []).map(function(t) {
+          const absIcon = self._toAbsIcon(t.icon);
           return Object.assign({}, t, {
-            iconIsUrl: !!(t.icon && (t.icon.indexOf('http') === 0 || t.icon.indexOf('/api/') === 0)),
+            icon: absIcon,
+            iconIsUrl: !!(absIcon && (absIcon.indexOf('http') === 0)),
           });
         });
         this.setData({ dynamicTools: tools });
@@ -42,10 +55,10 @@ Page({
   _loadBuiltin() {
     api.get("api/mp-tools/builtin")
       .then((data) => {
-        var dcIcon = (data && data.date_calc_icon) || '🗓️';
-        var dcIsUrl = !!(dcIcon && (dcIcon.indexOf('http') === 0 || dcIcon.indexOf('/api/') === 0));
-        var acIcon = (data && data.age_calc_icon) || '🎂';
-        var acIsUrl = !!(acIcon && (acIcon.indexOf('http') === 0 || acIcon.indexOf('/api/') === 0));
+        var dcIcon = this._toAbsIcon((data && data.date_calc_icon) || '🗓️');
+        var dcIsUrl = !!(dcIcon && dcIcon.indexOf('http') === 0);
+        var acIcon = this._toAbsIcon((data && data.age_calc_icon) || '🎂');
+        var acIsUrl = !!(acIcon && acIcon.indexOf('http') === 0);
         this.setData({
           dateCalcEnabled: data && data.date_calc !== false,
           dateCalcIcon: dcIcon,

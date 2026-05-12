@@ -147,10 +147,11 @@ router.put("/admin/:id", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, description, icon, type, path: p, app_id, page_path, enabled } = req.body as {
+    const { name, description, icon, type, path: p, app_id, page_path, enabled, sort_order } = req.body as {
       name?: string; description?: string; icon?: string; type?: string;
-      path?: string; app_id?: string; page_path?: string; enabled?: boolean;
+      path?: string; app_id?: string; page_path?: string; enabled?: boolean; sort_order?: number;
     };
+    const sortOrderVal = (sort_order !== undefined && sort_order !== null) ? Number(sort_order) : null;
     const result = await db.execute(sql`
       UPDATE mp_tools SET
         name        = COALESCE(${name ?? null}, name),
@@ -160,7 +161,8 @@ router.put("/admin/:id", async (req: Request, res: Response) => {
         path        = COALESCE(${p ?? null}, path),
         app_id      = COALESCE(${app_id ?? null}, app_id),
         page_path   = COALESCE(${page_path ?? null}, page_path),
-        enabled     = COALESCE(${enabled ?? null}, enabled)
+        enabled     = COALESCE(${enabled ?? null}, enabled),
+        sort_order  = COALESCE(${sortOrderVal}, sort_order)
       WHERE id = ${id}
       RETURNING *
     `);

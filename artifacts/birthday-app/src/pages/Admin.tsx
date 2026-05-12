@@ -3678,7 +3678,7 @@ interface MpTool {
   enabled: boolean;
 }
 
-const EMPTY_TOOL: Omit<MpTool, "id" | "sort_order"> = {
+const EMPTY_TOOL: Omit<MpTool, "id"> = {
   name: "",
   description: "",
   icon: "🔧",
@@ -3686,6 +3686,7 @@ const EMPTY_TOOL: Omit<MpTool, "id" | "sort_order"> = {
   path: "",
   app_id: "",
   page_path: "",
+  sort_order: 0,
   enabled: true,
 };
 
@@ -3696,7 +3697,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<MpTool | null>(null);
-  const [form, setForm] = useState<Omit<MpTool, "id" | "sort_order">>(EMPTY_TOOL);
+  const [form, setForm] = useState<Omit<MpTool, "id">>(EMPTY_TOOL);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -3851,7 +3852,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
 
   const openEdit = (t: MpTool) => {
     setEditing(t);
-    setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, enabled: t.enabled });
+    setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, sort_order: t.sort_order, enabled: t.enabled });
     setIconMode(isIconUrl(t.icon) ? "image" : "emoji");
     setShowModal(true);
   };
@@ -4421,6 +4422,20 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                 >
                   <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${form.enabled ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
+              </div>
+
+              {/* 排序 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">排序数值</label>
+                <input
+                  type="number"
+                  value={form.sort_order}
+                  onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))}
+                  placeholder="0"
+                  min={0}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">数值越小越靠前，相同时按创建时间排序</p>
               </div>
             </div>
 
