@@ -2,7 +2,6 @@ const api = require("../../utils/api");
 const { isLoggedIn, clearToken } = require("../../utils/auth");
 
 const PREF_EMAIL_NOTIFY = "birthday_pref_email_notify";
-const FORTUNE_SIGN_KEY = "fortune_sign";
 const INVALID_NICKNAMES = ["获取微信昵称", "微信昵称", "用户昵称", "微信用户"];
 
 function cleanNickname(nickname) {
@@ -33,7 +32,6 @@ Page({
     showWxProfileModal: false,
     wxProfileTemp: { avatarUrl: "", nickname: "" },
     avatarUploading: false,
-    fortuneSign: "",
     oaSubscribed: false,
   },
 
@@ -43,8 +41,6 @@ Page({
   },
 
   onShow() {
-    const fortuneSign = wx.getStorageSync(FORTUNE_SIGN_KEY) || "";
-    this.setData({ fortuneSign });
     const loggedIn = isLoggedIn();
     this.setData({ loggedIn });
     if (!loggedIn) {
@@ -92,10 +88,6 @@ Page({
 
   goFollowOA() {
     wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
-  },
-
-  goFortune() {
-    wx.navigateTo({ url: "/pages/fortune/fortune" });
   },
 
   goHiddenEvents() {
