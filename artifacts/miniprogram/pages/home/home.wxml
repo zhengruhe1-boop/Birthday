@@ -23,6 +23,60 @@
 
   <scroll-view class="home-scroll" scroll-y enhanced>
 
+    <!-- ── 今日运势卡片 ── -->
+    <view wx:if="{{!search}}" class="fortune-widget" bindtap="goFortune">
+      <!-- 未设置星座 -->
+      <block wx:if="{{!fortuneSign}}">
+        <view class="fortune-widget-inner fortune-no-sign">
+          <view class="fortune-widget-left">
+            <text class="fortune-widget-icon">✨</text>
+            <view class="fortune-widget-text">
+              <text class="fortune-widget-title">今日运势</text>
+              <text class="fortune-widget-sub">设置星座，每天查看运势</text>
+            </view>
+          </view>
+          <text class="fortune-widget-arrow">›</text>
+        </view>
+      </block>
+      <!-- 已设置星座但尚未加载缓存 -->
+      <block wx:elif="{{fortuneSign && !fortuneFortune}}">
+        <view class="fortune-widget-inner fortune-no-cache">
+          <view class="fortune-widget-left">
+            <text class="fortune-widget-icon">{{fortuneSignEmoji || '✨'}}</text>
+            <view class="fortune-widget-text">
+              <text class="fortune-widget-title">{{fortuneSign}} · 今日运势</text>
+              <text class="fortune-widget-sub">点击查看今日运势详情</text>
+            </view>
+          </view>
+          <text class="fortune-widget-arrow">›</text>
+        </view>
+      </block>
+      <!-- 有缓存运势数据 -->
+      <block wx:else>
+        <view class="fortune-widget-inner fortune-has-data">
+          <view class="fortune-widget-top">
+            <view class="fortune-widget-left">
+              <text class="fortune-widget-icon">{{fortuneSignEmoji}}</text>
+              <view class="fortune-widget-text">
+                <text class="fortune-widget-title">{{fortuneSign}} · 今日运势</text>
+                <text class="fortune-widget-summary">{{fortuneSummary}}</text>
+              </view>
+            </view>
+            <text class="fortune-widget-arrow">›</text>
+          </view>
+          <view class="fortune-indices-row">
+            <view wx:for="{{fortuneIndices}}" wx:key="name" class="fortune-index-item">
+              <text class="fortune-index-emoji">{{item.emoji}}</text>
+              <view class="fortune-index-bar-wrap">
+                <view class="fortune-index-bar" style="width:{{item.score}}%;background:{{item.color}}" />
+              </view>
+              <text class="fortune-index-score" style="color:{{item.color}}">{{item.score}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
     <!-- ── 搜索结果 ── -->
     <block wx:if="{{search}}">
       <view class="content-section">

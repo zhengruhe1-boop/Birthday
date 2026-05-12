@@ -138,6 +138,120 @@
 }
 .icon-btn:active { background: #fce7eb; }
 
+/* ── 今日运势卡片 ── */
+.fortune-widget {
+  margin: 20rpx 32rpx 0;
+}
+.fortune-widget:active { opacity: 0.85; }
+
+.fortune-widget-inner {
+  background: linear-gradient(135deg, #fff5f7 0%, #fff9f0 100%);
+  border: 1rpx solid rgba(244,63,94,0.15);
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+}
+
+.fortune-widget-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.fortune-widget-left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.fortune-widget-icon {
+  font-size: 52rpx;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fortune-widget-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.fortune-widget-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.fortune-widget-sub {
+  font-size: 24rpx;
+  color: #f43f5e;
+  opacity: 0.8;
+}
+
+.fortune-widget-summary {
+  font-size: 24rpx;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.fortune-widget-arrow {
+  font-size: 40rpx;
+  color: #f43f5e;
+  opacity: 0.6;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  align-self: center;
+}
+
+/* 有数据时的底部指数条 */
+.fortune-indices-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.fortune-index-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.fortune-index-emoji {
+  font-size: 24rpx;
+  width: 32rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.fortune-index-bar-wrap {
+  flex: 1;
+  height: 10rpx;
+  background: rgba(0,0,0,0.06);
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.fortune-index-bar {
+  height: 10rpx;
+  border-radius: 8rpx;
+  transition: width 0.4s ease;
+}
+
+.fortune-index-score {
+  font-size: 22rpx;
+  font-weight: 700;
+  width: 52rpx;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* Search */
 .search-wrap {
   padding: 20rpx 32rpx;

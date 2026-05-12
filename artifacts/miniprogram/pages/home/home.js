@@ -61,6 +61,31 @@ function buildDisplayNickname(nickname) {
 const PREF_EMAIL_NOTIFY = "birthday_pref_email_notify";
 const DEFAULT_AVATAR = "/images/logo.jpg";
 
+// ── 今日运势（首页紧凑卡片） ──────────────────────────────────────
+const FORTUNE_SIGN_KEY = 'fortune_sign';
+const FORTUNE_CACHE_PFX = 'fortune_cache_';
+const SIGN_EMOJI_MAP = {
+  '\u767d\u7f8a\u5ea7':'\u2648','\u91d1\u725b\u5ea7':'\u2649','\u53cc\u5b50\u5ea7':'\u264a',
+  '\u5de8\u87f9\u5ea7':'\u264b','\u72ee\u5b50\u5ea7':'\u264c','\u5904\u5973\u5ea7':'\u264d',
+  '\u5929\u79e4\u5ea7':'\u264e','\u5929\u874e\u5ea7':'\u264f','\u5c04\u624b\u5ea7':'\u2650',
+  '\u6469\u7faf\u5ea7':'\u2651','\u6c34\u74f6\u5ea7':'\u2652','\u53cc\u9c7c\u5ea7':'\u2653',
+};
+function fortuneTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+function buildFortuneIndices(fortune) {
+  if (!fortune) return [];
+  return [
+    { name:'\u7231\u60c5', emoji:'\ud83d\udc95', score: (fortune.love   && fortune.love.score)   || 0, color:'#f43f5e' },
+    { name:'\u4e8b\u4e1a', emoji:'\ud83d\udcbc', score: (fortune.career && fortune.career.score) || 0, color:'#3b82f6' },
+    { name:'\u8d22\u8fd0', emoji:'\ud83d\udcb0', score: (fortune.wealth && fortune.wealth.score) || 0, color:'#f59e0b' },
+    { name:'\u5065\u5eb7', emoji:'\ud83c\udf3f', score: (fortune.health && fortune.health.score) || 0, color:'#10b981' },
+  ];
+}
+
 // 只有以 http 开头且非微信默认灰色头像（/0/0）的才展示，否则返回空（显示 logo）
 function toDisplayAvatar(url) {
   if (!url || !url.startsWith("http")) return "";
@@ -101,6 +126,13 @@ Page({
 
     // 公众号关注引导弹窗
     showOaPrompt: false,
+
+    // 今日运势（首页卡片）
+    fortuneSign: '',
+    fortuneSignEmoji: '',
+    fortuneFortune: null,
+    fortuneIndices: [],
+    fortuneSummary: '',
   },
 
   async onLoad() {
@@ -137,9 +169,36 @@ Page({
   onShow() {
     const loggedIn = isLoggedIn();
     this.setData({ loggedIn });
+    this._loadFortune();
     if (!loggedIn) return;
     this.loadAll();
     this._checkOaPrompt();
+  },
+
+  _loadFortune() {
+    const sign = wx.getStorageSync(FORTUNE_SIGN_KEY) || '';
+    const emoji = sign ? (SIGN_EMOJI_MAP[sign] || '') : '';
+    if (!sign) {
+      this.setData({ fortuneSign: '', fortuneSignEmoji: '', fortuneFortune: null, fortuneIndices: [], fortuneSummary: '' });
+      return;
+    }
+    const cacheKey = FORTUNE_CACHE_PFX + sign + '_' + fortuneTodayStr();
+    let fortune = null;
+    try {
+      const cached = wx.getStorageSync(cacheKey);
+      if (cached && cached.fortune) fortune = cached.fortune;
+    } catch (e) {}
+    this.setData({
+      fortuneSign: sign,
+      fortuneSignEmoji: emoji,
+      fortuneFortune: fortune,
+      fortuneIndices: buildFortuneIndices(fortune),
+      fortuneSummary: fortune ? (fortune.summary || '') : '',
+    });
+  },
+
+  goFortune() {
+    wx.navigateTo({ url: '/pages/fortune/fortune' });
   },
 
   // 每天最多弹一次：检测是否关注公众号，未关注则弹引导框
