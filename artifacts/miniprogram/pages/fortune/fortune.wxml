@@ -149,7 +149,7 @@
 
       <!-- 免责声明 -->
       <view class="disclaimer">
-        <text class="disclaimer-text">⚠️ 以上内容由 AI 生成，仅供娱乐参考，请理性看待，不作为任何决策依据。</text>
+        <text class="disclaimer-text">内容仅供娱乐参考，请理性看待。</text>
       </view>
 
     </block>

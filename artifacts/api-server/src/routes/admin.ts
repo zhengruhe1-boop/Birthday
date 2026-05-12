@@ -796,7 +796,19 @@ router.put("/quota-config", async (req: Request, res: Response) => {
       mpPath?:     string;
       mpName?:     string;
     };
-    if (limit     !== undefined) await setSetting("quota_limit",       String(limit));
+    if (limit !== undefined) {
+      const prevLimitStr = await getSetting("quota_limit");
+      const prevLimit = parseInt(prevLimitStr || "0") || 0;
+      await setSetting("quota_limit", String(limit));
+      // 从0改为非0时，记录开启时间（从此刻起计算新增联系人）
+      if (limit > 0 && prevLimit === 0) {
+        await setSetting("quota_enabled_at", new Date().toISOString());
+      }
+      // 关闭配额时，清除开启时间
+      if (limit === 0) {
+        await setSetting("quota_enabled_at", "");
+      }
+    }
     if (action    !== undefined) await setSetting("quota_action",      action.trim());
     if (perAction !== undefined) await setSetting("quota_per_action",  String(perAction));
     if (videoAdId !== undefined) await setSetting("quota_video_ad_id", videoAdId.trim());

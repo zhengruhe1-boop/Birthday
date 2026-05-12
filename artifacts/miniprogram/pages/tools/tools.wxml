@@ -51,7 +51,7 @@
 
     <!-- 内置工具区 -->
     <block wx:if="{{dateCalcEnabled || ageCalcEnabled}}">
-      <view class="section-label" style="margin-top:40rpx">实用工具</view>
+      <!-- <view class="section-label" style="margin-top:40rpx">实用工具</view> -->
       <view class="tool-list">
 
         <block wx:if="{{dateCalcEnabled}}">

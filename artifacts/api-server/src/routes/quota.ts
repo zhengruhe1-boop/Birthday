@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, contactsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
 import { settingsTable } from "@workspace/db";
 
@@ -25,11 +25,16 @@ export async function getQuotaStatus(userId: number) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   const extraQuota = user?.extraQuota ?? 0;
 
-  const contacts = await db.select({ id: contactsTable.id }).from(contactsTable)
-    .where(eq(contactsTable.userId, userId));
+  // ── 只统计配额开启后添加的联系人 ─────────────────────────────────────────
+  const enabledAt = await getSetting("quota_enabled_at");
+  const whereClause = enabledAt
+    ? and(eq(contactsTable.userId, userId), gte(contactsTable.createdAt, new Date(enabledAt)))
+    : eq(contactsTable.userId, userId);
+
+  const contacts = await db.select({ id: contactsTable.id }).from(contactsTable).where(whereClause);
   const count = contacts.length;
 
-  let remaining = -1;
+  let remaining: number | null = null;
   if (limit > 0) {
     remaining = Math.max(0, limit + extraQuota - count);
   }
@@ -73,7 +78,7 @@ router.post("/claim", async (req: AuthRequest, res) => {
       .where(eq(usersTable.id, userId));
 
     const status = await getQuotaStatus(userId);
-    res.json({ success: true, ...status });
+    res.json({ success: true, added: perAction, ...status });
   } catch (err) {
     req.log.error({ err }, "Claim quota error");
     res.status(500).json({ error: "Internal server error" });
