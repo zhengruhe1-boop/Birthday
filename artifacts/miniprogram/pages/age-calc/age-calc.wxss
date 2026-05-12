@@ -216,7 +216,7 @@
 }
 
 .grid-cell {
-  width: calc(50% - 8rpx);
+  width: 343rpx;
   flex-shrink: 0;
   flex-grow: 0;
   background: #fff;
