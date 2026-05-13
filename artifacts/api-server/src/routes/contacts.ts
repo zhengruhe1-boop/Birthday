@@ -6,6 +6,7 @@ import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
 import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName, getChineseZodiac, getGanZhi } from "../lib/birthday.js";
 import { generateBirthdayEvents, BirthdayEvent } from "../lib/birthday-events.js";
 import { sendBirthdayReminder } from "../lib/email.js";
+import { triggerImmediateNotifyIfNeeded } from "../lib/immediate-notify.js";
 
 async function getSettingLocal(key: string): Promise<string | null> {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
@@ -168,6 +169,9 @@ router.post("/", async (req: AuthRequest, res) => {
 
     const contact = inserted[0];
     res.status(201).json(formatContact(contact));
+
+    // 补发当天已过推送时刻但还未收到通知的提醒（fire-and-forget）
+    triggerImmediateNotifyIfNeeded(userId, "contact", contact.id).catch(() => {});
 
     // Generate birthday events in the background (uses birth year+month+day)
     generateBirthdayEvents(contact.birthdayMonth, contact.birthdayDay, contact.birthYear)
@@ -340,6 +344,9 @@ router.put("/:id", async (req: AuthRequest, res) => {
 
     const contact = updated[0];
     res.json(formatContact(contact));
+
+    // 补发当天已过推送时刻但还未收到通知的提醒（fire-and-forget）
+    triggerImmediateNotifyIfNeeded(userId, "contact", contact.id).catch(() => {});
   } catch (err) {
     req.log.error({ err }, "Update contact error");
     res.status(500).json({ error: "Internal server error" });
