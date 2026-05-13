@@ -19,7 +19,7 @@
     <!-- Hero 区域 -->
     <view class="login-hero">
       <view class="logo-wrap">
-        <text class="logo-emoji">🎂</text>
+        <image class="logo-img" src="/images/logo.jpg" mode="aspectFill" />
       </view>
       <text class="app-name">生日通</text>
       <text class="app-tagline">记住每一个重要的日子</text>
