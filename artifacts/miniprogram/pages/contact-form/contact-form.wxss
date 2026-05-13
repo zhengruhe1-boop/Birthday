@@ -81,9 +81,26 @@
   border-radius: 20rpx;
   font-weight: 500;
 }
-.cf-tag-rel  { background: #fff7ed; color: #ea580c; }
-.cf-tag-zodiac { background: #f0fdf4; color: #16a34a; }
-.cf-tag-age  { background: #eff6ff; color: #2563eb; }
+.cf-tag-rel      { background: #fff7ed; color: #ea580c; }
+.cf-tag-zodiac   { background: #f0fdf4; color: #16a34a; }
+.cf-tag-shengxiao { background: #fdf4ff; color: #9333ea; }
+.cf-tag-age      { background: #eff6ff; color: #2563eb; }
+
+.cf-ganzhi-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+  flex-wrap: wrap;
+}
+.cf-ganzhi-main {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #7c3aed;
+}
+.cf-ganzhi-sub {
+  font-size: 22rpx;
+  color: #94a3b8;
+}
 
 .cf-edit-btn {
   width: 64rpx;

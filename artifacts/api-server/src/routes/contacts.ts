@@ -3,7 +3,7 @@ import { db, contactsTable, usersTable, settingsTable } from "@workspace/db";
 import { eq, and, gte, asc, like, ne } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { CreateContactBody, UpdateContactBody } from "@workspace/api-zod";
-import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName } from "../lib/birthday.js";
+import { formatBirthdayDisplay, calcDaysUntilBirthday, getZodiacName, getChineseZodiac, getGanZhi } from "../lib/birthday.js";
 import { generateBirthdayEvents, BirthdayEvent } from "../lib/birthday-events.js";
 import { sendBirthdayReminder } from "../lib/email.js";
 
@@ -30,7 +30,9 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
 
   const today = new Date();
   const age = c.birthYear ? today.getFullYear() - c.birthYear : null;
-  
+  const chineseZodiac = c.birthYear ? getChineseZodiac(c.birthYear) : '';
+  const ganZhi = c.birthYear ? getGanZhi(c.birthYear) : '';
+
   return {
     id: c.id,
     userId: c.userId,
@@ -49,6 +51,8 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
     age,
     birthdayDisplay,
     zodiac,
+    chineseZodiac,
+    ganZhi,
     hidden: c.hidden ?? false,
     createdAt: c.createdAt,
   };

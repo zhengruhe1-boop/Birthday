@@ -1,6 +1,24 @@
 // @ts-ignore — lunar-javascript 没有官方 TS 类型声明
 import { Lunar, Solar } from "lunar-javascript";
 
+const CHINESE_ZODIAC = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+const HEAVENLY_STEMS   = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const EARTHLY_BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+/** 根据出生年（公历）返回生肖，例如 1990 → '马' */
+export function getChineseZodiac(year: number): string {
+  if (!year) return '';
+  return CHINESE_ZODIAC[((year - 2020) % 12 + 1200) % 12];
+}
+
+/** 根据出生年（公历）返回天干地支年名，例如 1990 → '庚午' */
+export function getGanZhi(year: number): string {
+  if (!year) return '';
+  const stem   = HEAVENLY_STEMS[((year - 4) % 10 + 1000) % 10];
+  const branch = EARTHLY_BRANCHES[((year - 4) % 12 + 1200) % 12];
+  return stem + branch;
+}
+
 const LUNAR_MONTHS = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"];
 const LUNAR_DAYS_1_10 = ["初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十"];
 const LUNAR_DAYS_11_20 = ["十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"];

@@ -27,6 +27,7 @@
           <view class="cf-tags">
             <text wx:if="{{contact.relation}}" class="cf-tag cf-tag-rel">{{contact.relation}}</text>
             <text wx:if="{{contact.zodiac}}" class="cf-tag cf-tag-zodiac">{{contact.zodiac}}</text>
+            <text wx:if="{{contact.chineseZodiac}}" class="cf-tag cf-tag-shengxiao">{{contact.chineseZodiac}}年</text>
             <text wx:if="{{contact.age}}" class="cf-tag cf-tag-age">{{contact.age}}岁</text>
           </view>
         </view>
@@ -47,6 +48,13 @@
       <view wx:elif="{{contact.daysUntilBirthday > 0}}" class="cf-detail-row">
         <text class="cf-detail-label">⏳ 倒计时</text>
         <text class="cf-detail-val cf-countdown">还有 {{contact.daysUntilBirthday}} 天</text>
+      </view>
+      <view wx:if="{{contact.ganZhi}}" class="cf-detail-row">
+        <text class="cf-detail-label">🀄 天干地支</text>
+        <view class="cf-ganzhi-wrap">
+          <text class="cf-ganzhi-main">{{contact.ganZhi}}年</text>
+          <text class="cf-ganzhi-sub">（{{contact.chineseZodiac}}年·{{contact.birthYear}}年）</text>
+        </view>
       </view>
       <view wx:if="{{contact.hometown}}" class="cf-detail-row">
         <text class="cf-detail-label">📍 故乡</text>
