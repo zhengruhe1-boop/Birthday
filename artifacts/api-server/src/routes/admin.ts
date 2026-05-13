@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, contactsTable, settingsTable, eventsTable } from "@workspace/db";
+import { db, usersTable, contactsTable, settingsTable, eventsTable, timeCapsulesTable } from "@workspace/db";
 import { eq, desc, isNull, isNotNull, and, not, like } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -53,10 +53,14 @@ router.get("/stats", async (req: Request, res: Response) => {
     const allEvents = await db.select().from(eventsTable);
     const totalEvents = allEvents.length;
 
-    // Only attach contacts/events for users on this page
+    const allCapsules = await db.select().from(timeCapsulesTable);
+    const totalCapsules = allCapsules.length;
+
+    // Only attach contacts/events/capsules for users on this page
     const userIds = new Set(users.map(u => u.id));
     const pageContacts = allContacts.filter(c => userIds.has(c.userId!));
     const pageEvents   = allEvents.filter(e => userIds.has(e.userId));
+    const pageCapsules = allCapsules.filter(c => userIds.has(c.userId));
 
     const result = users.map((u) => {
       const userContacts = pageContacts.filter((c) => c.userId === u.id).map((c) => ({
@@ -70,6 +74,7 @@ router.get("/stats", async (req: Request, res: Response) => {
         createdAt: c.createdAt,
       }));
       const userEventCount = pageEvents.filter(e => e.userId === u.id).length;
+      const userCapsuleCount = pageCapsules.filter(c => c.userId === u.id).length;
       return {
         id: u.id,
         openId: u.openId,
@@ -82,6 +87,7 @@ router.get("/stats", async (req: Request, res: Response) => {
         lastAccessAt: u.lastAccessAt,
         contactCount: userContacts.length,
         eventCount: userEventCount,
+        capsuleCount: userCapsuleCount,
         contacts: userContacts,
       };
     });
@@ -90,7 +96,8 @@ router.get("/stats", async (req: Request, res: Response) => {
       totalUsers,
       totalContacts,
       totalEvents,
-      totalEntries: totalContacts + totalEvents,
+      totalCapsules,
+      totalEntries: totalContacts + totalEvents + totalCapsules,
       page,
       pageSize: PAGE_SIZE,
       totalPages: Math.ceil(totalUsers / PAGE_SIZE),

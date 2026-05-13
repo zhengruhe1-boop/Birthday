@@ -133,6 +133,10 @@ Page({
     fortuneFortune: null,
     fortuneIndices: [],
     fortuneSummary: '',
+
+    // 时间胶囊
+    capsules: [],
+    loadingCapsules: false,
   },
 
   async onLoad() {
@@ -276,7 +280,7 @@ Page({
   async loadAll(done) {
     this.setData({ loadingUpcoming: true, loadingEvents: true });
     try {
-      const [me, upcoming, events] = await Promise.all([
+      const [me, upcoming, events, capsules] = await Promise.all([
         api.get("api/auth/me").catch(() => null),
         api
           .get("api/contacts/upcoming")
@@ -284,6 +288,7 @@ Page({
         api
           .get("api/events/upcoming")
           .catch(() => ({ anniversaries: [], countdowns: [], others: [] })),
+        api.get("api/capsules").catch(() => []),
       ]);
       const serverAvatar = toAbsUrl(me && me.avatarUrl);
       // 优先用本次上传成功后记录的永久 URL，防止 loadAll 旧快照覆盖刚上传的头像
@@ -313,6 +318,7 @@ Page({
         anniversaries: ann,
         countdowns: events.countdowns || [],
         others: events.others || [],
+        capsules: Array.isArray(capsules) ? capsules : [],
         loadingUpcoming: false,
         loadingEvents: false,
       });
@@ -540,6 +546,14 @@ Page({
     wx.navigateTo({ url: "/pages/event-form/event-form?type=other" });
     this.closeFab();
   },
+  goAddCapsule() {
+    if (!this.data.loggedIn) {
+      this._requireLogin("\u6dfb\u52a0\u65f6\u95f4\u80f6\u56ca");
+      return;
+    }
+    wx.navigateTo({ url: "/pages/time-capsule-form/time-capsule-form" });
+    this.closeFab();
+  },
 
   goContact(e) {
     wx.navigateTo({
@@ -549,6 +563,11 @@ Page({
   goEvent(e) {
     wx.navigateTo({
       url: "/pages/event-form/event-form?id=" + e.currentTarget.dataset.id,
+    });
+  },
+  goCapsule(e) {
+    wx.navigateTo({
+      url: "/pages/time-capsule-form/time-capsule-form?id=" + e.currentTarget.dataset.id,
     });
   },
 

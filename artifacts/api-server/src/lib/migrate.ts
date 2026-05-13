@@ -135,6 +135,21 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "fortune_sign" text
     `);
 
+    // 7. time_capsules table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "time_capsules" (
+        "id"              serial    PRIMARY KEY,
+        "user_id"         integer   NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "message"         text      NOT NULL,
+        "photo_urls"      text,
+        "open_at"         text      NOT NULL,
+        "reminder_email"  text,
+        "notify_enabled"  boolean   NOT NULL DEFAULT true,
+        "opened"          boolean   NOT NULL DEFAULT false,
+        "created_at"      timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

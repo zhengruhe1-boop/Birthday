@@ -1,0 +1,117 @@
+<view class="tc-page" wx:if="{{!loading}}">
+
+  <view class="tc-body">
+
+    <!-- 心情卡片 -->
+    <view class="tc-hero">
+      <text class="tc-hero-icon">⏳</text>
+      <view class="tc-hero-text">
+        <text class="tc-hero-title">{{isEdit ? '编辑时间胶囊' : '创建时间胶囊'}}</text>
+        <text class="tc-hero-sub">写下现在，留给未来的自己</text>
+      </view>
+    </view>
+
+    <!-- 留言 -->
+    <view class="tc-card">
+      <text class="tc-label">写给未来的自己<text class="tc-required">*</text></text>
+      <textarea class="tc-textarea"
+        placeholder="写下此刻的心情、愿望或想对未来自己说的话…"
+        placeholder-class="tc-ph"
+        value="{{message}}"
+        bindinput="onMessageInput"
+        maxlength="2000"
+        auto-height
+        cursor-spacing="20" />
+      <text class="tc-char-count">{{message.length}}/2000</text>
+    </view>
+
+    <!-- 照片上传 -->
+    <view class="tc-card">
+      <text class="tc-label">留存照片<text class="tc-optional">（选填，最多3张）</text></text>
+      <view class="tc-photos">
+        <view wx:for="{{photoUrls}}" wx:key="*this" class="tc-photo-wrap">
+          <image class="tc-photo" src="{{item}}" mode="aspectFill"
+            data-idx="{{index}}" bindtap="previewPhoto" />
+          <view class="tc-photo-del" data-idx="{{index}}" bindtap="removePhoto">
+            <text>✕</text>
+          </view>
+        </view>
+        <view wx:if="{{photoUrls.length < 3}}" class="tc-photo-add" bindtap="choosePhoto">
+          <view wx:if="{{uploading}}" class="tc-upload-spin" />
+          <block wx:else>
+            <text class="tc-add-icon">📷</text>
+            <text class="tc-add-text">上传照片</text>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <!-- 开启时间 -->
+    <view class="tc-card">
+      <text class="tc-label">设置开启时间<text class="tc-required">*</text></text>
+      <view class="tc-row">
+        <picker mode="date" value="{{openDate}}" start="{{minDate}}" bindchange="onOpenDateChange">
+          <view class="tc-picker {{openDate ? '' : 'tc-picker-ph'}}">
+            <text>{{openDate || '选择日期'}}</text>
+            <text class="tc-arrow">›</text>
+          </view>
+        </picker>
+        <picker mode="time" value="{{openTimeVal}}" bindchange="onOpenTimeChange">
+          <view class="tc-picker tc-picker-time">
+            <text>{{openTimeVal || '08:00'}}</text>
+            <text class="tc-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+      <text class="tc-field-hint">到达该时间后，微信公众号和邮件将提醒您开启胶囊</text>
+    </view>
+
+    <!-- 消息通知 -->
+    <view class="tc-card tc-notify-card">
+      <view class="tc-notify-row">
+        <view class="tc-notify-left">
+          <text class="tc-notify-label">微信公众号提醒</text>
+          <text class="tc-notify-sub">
+            {{oaSubscribed ? '已关注公众号，到期将推送提醒' : '关注生日通公众号后可开启'}}
+          </text>
+        </view>
+        <switch checked="{{notifyEnabled}}" bindchange="onNotifyToggle" color="#f43f5e" />
+      </view>
+      <view wx:if="{{!oaSubscribed}}" class="tc-notify-tip" bindtap="goFollowOa">
+        <text class="tc-notify-tip-text">👆 点此了解如何关注公众号</text>
+      </view>
+    </view>
+
+    <!-- 邮件提醒 -->
+    <view class="tc-card">
+      <text class="tc-label">邮件提醒<text class="tc-optional">（选填）</text></text>
+      <input class="tc-input"
+        type="email"
+        placeholder="输入邮箱，到期发送提醒"
+        placeholder-class="tc-ph"
+        value="{{reminderEmail}}"
+        bindinput="onEmailInput"
+        maxlength="60"
+        cursor-spacing="20" />
+    </view>
+
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="tc-footer">
+    <view wx:if="{{isEdit}}" class="tc-del-wrap">
+      <button class="tc-del-btn" bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting || saving}}">
+        🗑️
+      </button>
+    </view>
+    <button class="tc-save-btn {{(saving || deleting) ? 'tc-btn-disabled' : ''}}"
+      bindtap="handleSave" disabled="{{saving || deleting}}" loading="{{saving}}">
+      {{saving ? '保存中...' : (isEdit ? '保存修改' : '封存胶囊')}}
+    </button>
+  </view>
+
+</view>
+
+<view wx:if="{{loading}}" class="tc-loading">
+  <text>加载中...</text>
+</view>

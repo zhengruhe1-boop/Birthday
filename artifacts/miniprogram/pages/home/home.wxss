@@ -561,6 +561,7 @@
 .rose-bg { background: #fff1f2; }
 .orange-bg { background: #fff7ed; }
 .violet-bg { background: #f5f3ff; }
+.green-bg { background: #ecfdf5; }
 
 .fab-item-label {
   font-size: 24rpx;
@@ -570,6 +571,66 @@
   border-radius: 100rpx;
   color: #1e293b;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.1);
+}
+
+/* 时间胶囊卡片 */
+.capsule-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(16,185,129,0.12);
+  padding: 24rpx 20rpx;
+  margin-bottom: 16rpx;
+  gap: 20rpx;
+}
+.capsule-card:active { opacity: 0.85; }
+.capsule-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  flex-shrink: 0;
+}
+.capsule-locked { background: #f8fafc; }
+.capsule-open { background: #ecfdf5; }
+.capsule-info {
+  flex: 1;
+  min-width: 0;
+}
+.capsule-msg {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1e293b;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 340rpx;
+}
+.capsule-date {
+  font-size: 22rpx;
+  color: #94a3b8;
+  display: block;
+  margin-top: 6rpx;
+}
+.capsule-meta { flex-shrink: 0; }
+.capsule-badge {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 8rpx 18rpx;
+  border-radius: 100rpx;
+}
+.capsule-badge-locked {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.capsule-badge-open {
+  background: #ecfdf5;
+  color: #059669;
 }
 
 .fab-btn {

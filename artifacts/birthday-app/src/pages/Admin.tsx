@@ -56,6 +56,7 @@ interface UserRecord {
   lastAccessAt: string | null;
   contactCount: number;
   eventCount: number;
+  capsuleCount: number;
   contacts: ContactRecord[];
 }
 
@@ -63,6 +64,7 @@ interface StatsData {
   totalUsers: number;
   totalContacts: number;
   totalEvents: number;
+  totalCapsules: number;
   totalEntries: number;
   page: number;
   pageSize: number;
@@ -1020,9 +1022,9 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 录入总条数
-                {data.totalEvents > 0 && (
+                {(data.totalEvents > 0 || data.totalCapsules > 0) && (
                   <span className="ml-1 text-gray-300">
-                    ({data.totalContacts} 生日 · {data.totalEvents} 事件)
+                    ({data.totalContacts} 生日 · {data.totalEvents} 事件{data.totalCapsules > 0 ? ` · ${data.totalCapsules} 胶囊` : ''})
                   </span>
                 )}
               </p>
@@ -1110,11 +1112,11 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                       <td className="px-4 py-4">
                         <span className="inline-flex items-center gap-1.5 text-gray-700 font-medium">
                           <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
-                          {user.contactCount + (user.eventCount ?? 0)} 条
+                          {user.contactCount + (user.eventCount ?? 0) + (user.capsuleCount ?? 0)} 条
                         </span>
-                        {(user.eventCount ?? 0) > 0 && (
+                        {((user.eventCount ?? 0) > 0 || (user.capsuleCount ?? 0) > 0) && (
                           <div className="text-xs text-gray-400 mt-0.5 pl-5">
-                            {user.contactCount} 生日 · {user.eventCount} 事件
+                            {user.contactCount} 生日 · {user.eventCount} 事件{(user.capsuleCount ?? 0) > 0 ? ` · ${user.capsuleCount} 胶囊` : ''}
                           </div>
                         )}
                       </td>

@@ -11,6 +11,7 @@ import wechatOaRouter from "./wechat-oa.js";
 import fortuneRouter from "./fortune.js";
 import mpToolsRouter from "./mp-tools.js";
 import quotaRouter from "./quota.js";
+import capsulesRouter from "./time-capsules.js";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/wechat/oa", wechatOaRouter);
 router.use("/fortune", fortuneRouter);
 router.use("/mp-tools", mpToolsRouter);
 router.use("/quota", quotaRouter);
+router.use("/capsules", capsulesRouter);
 
 export default router;

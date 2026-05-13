@@ -283,10 +283,36 @@
         </view>
       </block>
 
+      <!-- 时间胶囊 -->
+      <block wx:if="{{capsules.length > 0}}">
+        <view class="content-section">
+          <view class="section-header">
+            <view class="section-bar" style="background:#10b981" />
+            <text class="section-title" style="color:#10b981">时间胶囊</text>
+            <view class="section-count" style="background:#ecfdf5;color:#10b981">{{capsules.length}}</view>
+          </view>
+          <view wx:for="{{capsules}}" wx:key="id" class="capsule-card"
+            data-id="{{item.id}}" bindtap="goCapsule">
+            <view class="capsule-icon-wrap {{item.isOpened ? 'capsule-open' : 'capsule-locked'}}">
+              <text>{{item.isOpened ? '🔓' : '🔒'}}</text>
+            </view>
+            <view class="capsule-info">
+              <text class="capsule-msg">{{item.message}}</text>
+              <text class="capsule-date">开启时间：{{item.openAt}}</text>
+            </view>
+            <view class="capsule-meta">
+              <text wx:if="{{item.isOpened}}" class="capsule-badge capsule-badge-open">已开启</text>
+              <text wx:else class="capsule-badge capsule-badge-locked">{{item.daysUntil}}天后</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
       <!-- 空状态 -->
       <block wx:if="{{!loadingUpcoming && !loadingEvents &&
         !upcoming.imminent.length && !upcoming.soon.length && !upcoming.monthly.length &&
-        anniversaries.length === 0 && countdowns.length === 0 && others.length === 0}}">
+        anniversaries.length === 0 && countdowns.length === 0 && others.length === 0 &&
+        capsules.length === 0}}">
         <view class="empty-state">
           <view class="empty-icon-wrap"><text style="font-size:64rpx">🎂</text></view>
           <text class="empty-title">还没有添加任何记录</text>
@@ -326,6 +352,10 @@
         <view class="fab-item" bindtap="goAddOther">
           <view class="fab-item-icon violet-bg"><text>✨</text></view>
           <text class="fab-item-label">添加其它提醒</text>
+        </view>
+        <view class="fab-item" bindtap="goAddCapsule">
+          <view class="fab-item-icon green-bg"><text>⏳</text></view>
+          <text class="fab-item-label">添加时间胶囊</text>
         </view>
       </view>
     </block>
