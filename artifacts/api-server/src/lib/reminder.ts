@@ -35,14 +35,15 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
   try {
     const contacts = await db
       .select({
-        id:            contactsTable.id,
-        name:          contactsTable.name,
-        birthdayMonth: contactsTable.birthdayMonth,
-        birthdayDay:   contactsTable.birthdayDay,
-        birthdayLunar: contactsTable.birthdayLunar,
-        birthYear:     contactsTable.birthYear,
-        relation:      contactsTable.relation,
-        reminderEmail: contactsTable.reminderEmail,
+        id:                 contactsTable.id,
+        name:               contactsTable.name,
+        birthdayMonth:      contactsTable.birthdayMonth,
+        birthdayDay:        contactsTable.birthdayDay,
+        birthdayLunar:      contactsTable.birthdayLunar,
+        birthYear:          contactsTable.birthYear,
+        relation:           contactsTable.relation,
+        reminderEmail:      contactsTable.reminderEmail,
+        reminderDaysBefore: contactsTable.reminderDaysBefore,
       })
       .from(contactsTable)
       .where(isNotNull(contactsTable.reminderEmail));
@@ -52,7 +53,10 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
     for (const contact of contacts) {
       try {
         const daysUntil = calcDaysUntilBirthday(contact.birthdayMonth, contact.birthdayDay, contact.birthYear ?? undefined, contact.birthdayLunar);
-        if (!cfg.daysBefore.includes(daysUntil)) continue;
+        const effectiveDays = (contact as Record<string, unknown>).reminderDaysBefore
+          ? String((contact as Record<string, unknown>).reminderDaysBefore).split(",").map(Number).filter(n => !isNaN(n))
+          : cfg.daysBefore;
+        if (!effectiveDays.includes(daysUntil)) continue;
 
         const birthdayDisplay = formatBirthdayDisplay(contact.birthdayMonth, contact.birthdayDay, contact.birthdayLunar);
         const today = new Date();

@@ -225,7 +225,10 @@ async function buildItems(
   const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
   for (const c of contacts) {
     const days = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
-    if (!daysBefore.includes(days)) continue;
+    const effectiveDays = c.reminderDaysBefore
+      ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+      : daysBefore;
+    if (!effectiveDays.includes(days)) continue;
     const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
     items.push({
       openId:    oaOpenId,
@@ -238,9 +241,12 @@ async function buildItems(
   // 2. Events（纪念日 / 倒数日 / 其它）
   const events = await db.select().from(eventsTable).where(eq(eventsTable.userId, userId));
   for (const e of events) {
+    const evtEffDays = e.reminderDaysBefore
+      ? e.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+      : daysBefore;
     if (e.type === "anniversary" && e.eventDate) {
       const { days, targetDate } = daysUntilAnniversary(e.eventDate);
-      if (!daysBefore.includes(days)) continue;
+      if (!evtEffDays.includes(days)) continue;
       const rawName = `${e.name}${e.person ? `(${e.person})` : ""} · 纪念日`;
       items.push({
         openId:    oaOpenId,
@@ -250,7 +256,7 @@ async function buildItems(
       });
     } else if (e.type === "countdown" && e.eventDate) {
       const days = daysUntilDate(e.eventDate);
-      if (!daysBefore.includes(days)) continue;
+      if (!evtEffDays.includes(days)) continue;
       items.push({
         openId:    oaOpenId,
         nameField: truncateThing(`${e.name} · 倒数日`),
@@ -261,7 +267,7 @@ async function buildItems(
       // 其它提醒有具体时分，完整显示
       const dateStr = e.reminderTime.slice(0, 10);
       const days    = daysUntilDate(dateStr);
-      if (!daysBefore.includes(days)) continue;
+      if (!evtEffDays.includes(days)) continue;
       const hh = e.reminderTime.slice(11, 13);
       const mm = e.reminderTime.slice(14, 16);
       items.push({

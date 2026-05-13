@@ -45,6 +45,10 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
     relation: c.relation,
     hometown: c.hometown,
     reminderEmail: c.reminderEmail,
+    reminderDaysBefore: c.reminderDaysBefore
+      ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+      : null,
+    reminderSendHour: c.reminderSendHour ?? null,
     avatarUrl: c.avatarUrl,
     birthdayEvents: parseBirthdayEvents(c.birthdayEvents),
     daysUntilBirthday: daysUntil,
@@ -147,9 +151,19 @@ router.post("/", async (req: AuthRequest, res) => {
       }
     }
 
+    const rawBody = req.body as Record<string, unknown>;
+    const reminderDaysBefore = Array.isArray(rawBody.reminderDaysBefore)
+      ? (rawBody.reminderDaysBefore as number[]).join(",")
+      : (typeof rawBody.reminderDaysBefore === "string" ? rawBody.reminderDaysBefore : null);
+    const reminderSendHour = rawBody.reminderSendHour !== undefined && rawBody.reminderSendHour !== null
+      ? Number(rawBody.reminderSendHour)
+      : null;
+
     const inserted = await db.insert(contactsTable).values({
       userId,
       ...body.data,
+      reminderDaysBefore: reminderDaysBefore || null,
+      reminderSendHour: isNaN(reminderSendHour as number) ? null : reminderSendHour,
     }).returning();
 
     const contact = inserted[0];
@@ -302,7 +316,19 @@ router.put("/:id", async (req: AuthRequest, res) => {
       return;
     }
 
-    const updatePayload: Record<string, unknown> = { ...body.data };
+    const rawBody2 = req.body as Record<string, unknown>;
+    const updReminderDays = Array.isArray(rawBody2.reminderDaysBefore)
+      ? (rawBody2.reminderDaysBefore as number[]).join(",")
+      : (typeof rawBody2.reminderDaysBefore === "string" ? rawBody2.reminderDaysBefore : undefined);
+    const updReminderHour = rawBody2.reminderSendHour !== undefined && rawBody2.reminderSendHour !== null
+      ? Number(rawBody2.reminderSendHour)
+      : undefined;
+
+    const updatePayload: Record<string, unknown> = {
+      ...body.data,
+      ...(updReminderDays !== undefined ? { reminderDaysBefore: updReminderDays || null } : {}),
+      ...(updReminderHour !== undefined ? { reminderSendHour: isNaN(updReminderHour) ? null : updReminderHour } : {}),
+    };
     // Never touch birthdayEvents on save — events are managed exclusively via the
     // dedicated birthday-events endpoint (refresh button). This preserves any
     // events the user already generated before clicking save.

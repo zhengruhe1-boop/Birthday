@@ -165,20 +165,26 @@ async function buildMpItems(userId: number, openId: string, daysBefore: number[]
       c.birthYear ?? undefined,
       c.birthdayLunar ?? false
     );
-    if (!daysBefore.includes(days)) continue;
+    const effectiveDays = c.reminderDaysBefore
+      ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+      : daysBefore;
+    if (!effectiveDays.includes(days)) continue;
     const dateDisplay = thisYearDate(c.birthdayMonth, c.birthdayDay);
     items.push({ openId, name: c.name, dateDisplay, label: `contact:${c.id}` });
   }
 
   const events = await db.select().from(eventsTable).where(eq(eventsTable.userId, userId));
   for (const e of events) {
+    const evtEffDays = e.reminderDaysBefore
+      ? e.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+      : daysBefore;
     if (e.type === "anniversary" && e.eventDate) {
       const { days, dateDisplay } = daysUntilAnniversary(e.eventDate);
-      if (!daysBefore.includes(days)) continue;
+      if (!evtEffDays.includes(days)) continue;
       items.push({ openId, name: e.name, dateDisplay, label: `event:${e.id}` });
     } else if (e.type === "countdown" && e.eventDate) {
       const days = daysUntilDate(e.eventDate);
-      if (!daysBefore.includes(days)) continue;
+      if (!evtEffDays.includes(days)) continue;
       const d = new Date(e.eventDate + "T00:00:00");
       const dateDisplay = `${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
       items.push({ openId, name: e.name, dateDisplay, label: `event:${e.id}` });

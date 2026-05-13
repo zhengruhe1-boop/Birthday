@@ -1,6 +1,21 @@
 const api = require("../../utils/api");
 const { isLoggedIn } = require("../../utils/auth");
 
+const REMINDER_OPTS = [
+  { value: 0, label: "\u5f53\u5929" },
+  { value: 1, label: "\u63d0\u524d1\u5929" },
+  { value: 3, label: "\u63d0\u524d3\u5929" },
+  { value: 7, label: "\u63d0\u524d7\u5929" },
+];
+const SEND_HOURS = Array.from({ length: 24 }, function(_, i) {
+  return (i < 10 ? '0' : '') + i + ':00';
+});
+function buildReminderOpts(selectedDays) {
+  return REMINDER_OPTS.map(function(o) {
+    return { value: o.value, label: o.label, selected: selectedDays.indexOf(o.value) !== -1 };
+  });
+}
+
 const RELATIONS = ["家人", "朋友", "同事", "恋人", "同学", "其他"];
 const GENDERS = [
   { value: "male",    label: "男" },
@@ -76,6 +91,11 @@ Page({
 
     // 展示到列表
     hiddenInList: false,
+
+    // 提醒时机（多选）+ 每天发送时间
+    reminderDayOptions: buildReminderOpts([0, 1]),
+    reminderSendHour: 8,
+    sendHours: SEND_HOURS,
   },
 
   // ── 生命周期 ────────────────────────────────────────────────────────────────
@@ -109,6 +129,7 @@ Page({
       await this.loadContact(parseInt(id, 10));
     }
     this.loadOaStatus();
+    this._loadReminderDefaults();
   },
 
   async onShow() {
@@ -144,6 +165,46 @@ Page({
 
   goFollowOa() {
     wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
+  },
+
+  // ── 提醒时机 ─────────────────────────────────────────────────────────────────
+
+  async _loadReminderDefaults() {
+    try {
+      const res = await api.get('api/reminders/defaults');
+      this._adminDefaults = {
+        days: res.mpDaysBefore || [0, 1],
+        hour: (res.mpSendHour !== undefined && res.mpSendHour !== null) ? res.mpSendHour : 8,
+      };
+      this._refreshReminderUI();
+    } catch { /* 静默失败 */ }
+  },
+
+  _refreshReminderUI() {
+    const d = this._adminDefaults;
+    const defaultDays = d ? d.days : [0, 1];
+    const defaultHour = d ? d.hour : 8;
+    const c = this.data.contact;
+    const savedDays = c && Array.isArray(c.reminderDaysBefore) && c.reminderDaysBefore.length
+      ? c.reminderDaysBefore : defaultDays;
+    const savedHour = c && c.reminderSendHour !== null && c.reminderSendHour !== undefined
+      ? c.reminderSendHour : defaultHour;
+    this.setData({
+      reminderDayOptions: buildReminderOpts(savedDays),
+      reminderSendHour: savedHour,
+    });
+  },
+
+  onReminderDayToggle(e) {
+    const val = e.currentTarget.dataset.value;
+    const opts = this.data.reminderDayOptions.map(function(o) {
+      return o.value === val ? { value: o.value, label: o.label, selected: !o.selected } : o;
+    });
+    this.setData({ reminderDayOptions: opts });
+  },
+
+  onReminderHourChange(e) {
+    this.setData({ reminderSendHour: parseInt(e.detail.value, 10) });
   },
 
   onHiddenToggle(e) {
@@ -254,6 +315,7 @@ Page({
       relationIndex: relationIndex >= 0 ? relationIndex : -1,
       hiddenInList: !!c.hidden,
     });
+    this._refreshReminderUI();
     wx.setNavigationBarTitle({ title: c.name || "生日详情" });
   },
 
@@ -383,6 +445,9 @@ Page({
     const d = this.data;
     const year = parseInt(d.birthYear, 10);
     const validYear = !isNaN(year) && year >= 1900 && year <= new Date().getFullYear();
+    const selectedDays = d.reminderDayOptions
+      .filter(function(o) { return o.selected; })
+      .map(function(o) { return o.value; });
     const body = {
       name: d.name.trim(),
       birthdayMonth: d.birthdayMonth,
@@ -394,6 +459,8 @@ Page({
       reminderEmail: d.reminderEmail.trim() || null,
       avatarUrl: d.avatarUrl || null,
       hidden: d.hiddenInList,
+      reminderDaysBefore: selectedDays,
+      reminderSendHour: d.reminderSendHour,
     };
     if (d.gender === "male" || d.gender === "female") {
       body.gender = d.gender;

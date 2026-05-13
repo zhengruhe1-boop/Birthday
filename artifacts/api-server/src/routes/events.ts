@@ -37,7 +37,14 @@ function formatEvent(e: typeof eventsTable.$inferSelect) {
     const dStr = e.reminderTime.split(" ")[0];
     daysUntil = daysUntilDate(dStr);
   }
-  return { ...e, daysUntil };
+  return {
+    ...e,
+    daysUntil,
+    reminderDaysBefore: e.reminderDaysBefore
+      ? e.reminderDaysBefore.split(",").map(Number).filter((n: number) => !isNaN(n))
+      : null,
+    reminderSendHour: e.reminderSendHour ?? null,
+  };
 }
 
 // ── GET /api/events ──────────────────────────────────────────────────────────
@@ -110,17 +117,24 @@ router.get("/:id", async (req: AuthRequest, res) => {
 // ── POST /api/events ─────────────────────────────────────────────────────────
 router.post("/", async (req: AuthRequest, res) => {
   try {
-    const { type, name, eventDate, person, reminderTime, reminderEmail, hidden } = req.body as Record<string, string>;
+    const { type, name, eventDate, person, reminderTime, reminderEmail, hidden, reminderDaysBefore, reminderSendHour } = req.body as Record<string, unknown>;
     if (!type || !name) { res.status(400).json({ error: "type and name required" }); return; }
+    const rdb = Array.isArray(reminderDaysBefore)
+      ? (reminderDaysBefore as number[]).join(",")
+      : (typeof reminderDaysBefore === "string" ? reminderDaysBefore : null);
+    const rsh = reminderSendHour !== undefined && reminderSendHour !== null
+      ? Number(reminderSendHour) : null;
     const [row] = await db.insert(eventsTable).values({
       userId: req.userId!,
-      type,
-      name,
-      eventDate:     eventDate     || null,
-      person:        person        || null,
-      reminderTime:  reminderTime  || null,
-      reminderEmail: reminderEmail || null,
-      hidden:        hidden === "true" || hidden === true || false,
+      type: type as string,
+      name: name as string,
+      eventDate:          (eventDate as string)     || null,
+      person:             (person as string)         || null,
+      reminderTime:       (reminderTime as string)  || null,
+      reminderEmail:      (reminderEmail as string) || null,
+      reminderDaysBefore: rdb || null,
+      reminderSendHour:   (rsh !== null && !isNaN(rsh)) ? rsh : null,
+      hidden:             hidden === "true" || hidden === true || false,
     }).returning();
     res.status(201).json(formatEvent(row));
   } catch (err) {
@@ -134,14 +148,21 @@ router.post("/", async (req: AuthRequest, res) => {
 router.put("/:id", async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, eventDate, person, reminderTime, reminderEmail, hidden } = req.body as Record<string, string>;
+    const { name, eventDate, person, reminderTime, reminderEmail, hidden, reminderDaysBefore, reminderSendHour } = req.body as Record<string, unknown>;
+    const rdb = Array.isArray(reminderDaysBefore)
+      ? (reminderDaysBefore as number[]).join(",")
+      : (typeof reminderDaysBefore === "string" ? reminderDaysBefore : undefined);
+    const rsh = reminderSendHour !== undefined && reminderSendHour !== null
+      ? Number(reminderSendHour) : undefined;
     const rows = await db.update(eventsTable)
       .set({
-        name,
-        eventDate:     eventDate     || null,
-        person:        person        || null,
-        reminderTime:  reminderTime  || null,
-        reminderEmail: reminderEmail || null,
+        name:          name as string,
+        eventDate:     (eventDate as string)    || null,
+        person:        (person as string)        || null,
+        reminderTime:  (reminderTime as string) || null,
+        reminderEmail: (reminderEmail as string) || null,
+        ...(rdb !== undefined ? { reminderDaysBefore: rdb || null } : {}),
+        ...(rsh !== undefined ? { reminderSendHour: isNaN(rsh) ? null : rsh } : {}),
         hidden:        hidden === "true" || (hidden as unknown) === true || false,
       })
       .where(and(eq(eventsTable.id, id), eq(eventsTable.userId, req.userId!)))

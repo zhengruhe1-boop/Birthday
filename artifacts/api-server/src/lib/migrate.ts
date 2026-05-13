@@ -155,6 +155,20 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE "time_capsules" ADD COLUMN IF NOT EXISTS "title" text
     `);
 
+    // Per-contact / per-event reminder customization
+    await db.execute(sql`
+      ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "reminder_days_before" text
+    `);
+    await db.execute(sql`
+      ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "reminder_send_hour" integer
+    `);
+    await db.execute(sql`
+      ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_days_before" text
+    `);
+    await db.execute(sql`
+      ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_send_hour" integer
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

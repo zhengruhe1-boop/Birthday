@@ -2,6 +2,21 @@ const api = require("../../utils/api");
 const { isLoggedIn } = require("../../utils/auth");
 const { todayStr } = require("../../utils/date");
 
+const REMINDER_OPTS = [
+  { value: 0, label: "\u5f53\u5929" },
+  { value: 1, label: "\u63d0\u524d1\u5929" },
+  { value: 3, label: "\u63d0\u524d3\u5929" },
+  { value: 7, label: "\u63d0\u524d7\u5929" },
+];
+const SEND_HOURS = Array.from({ length: 24 }, function(_, i) {
+  return (i < 10 ? '0' : '') + i + ':00';
+});
+function buildReminderOpts(selectedDays) {
+  return REMINDER_OPTS.map(function(o) {
+    return { value: o.value, label: o.label, selected: selectedDays.indexOf(o.value) !== -1 };
+  });
+}
+
 const TYPE_META = {
   anniversary: {
     label: "纪念日",
@@ -51,6 +66,11 @@ Page({
     oaSubscribed: false,
     notifyEnabled: false,
     oaChecked: false,
+
+    // 提醒时机（多选）+ 每天发送时间
+    reminderDayOptions: buildReminderOpts([0, 1]),
+    reminderSendHour: 8,
+    sendHours: SEND_HOURS,
   },
 
   async onLoad(opts) {
@@ -77,6 +97,7 @@ Page({
       wx.setNavigationBarTitle({ title: "添加" + TYPE_META[type].label });
     }
     this.loadOaStatus();
+    this._loadReminderDefaults();
   },
 
   async onShow() {
@@ -122,7 +143,6 @@ Page({
       const e = await api.get("api/events/" + id);
       const type = e.type || "anniversary";
       const meta = TYPE_META[type] || TYPE_META.anniversary;
-      // 拆分 reminderTime "YYYY-MM-DD HH:MM" 为日期和时间两部分
       const rt = e.reminderTime || "";
       const rtParts = rt.split(" ");
       const reminderDate = rtParts[0] || "";
@@ -137,13 +157,55 @@ Page({
         reminderTimeVal,
         reminderTime: rt,
         reminderEmail: e.reminderEmail || "",
+        _loadedEvent: e,
         loading: false,
       });
       wx.setNavigationBarTitle({ title: "编辑" + meta.label });
+      this._refreshReminderUI();
     } catch {
       wx.showToast({ title: "加载失败", icon: "none" });
       this.setData({ loading: false });
     }
+  },
+
+  // ── 提醒时机 ─────────────────────────────────────────────────────────────────
+
+  async _loadReminderDefaults() {
+    try {
+      const res = await api.get('api/reminders/defaults');
+      this._adminDefaults = {
+        days: res.mpDaysBefore || [0, 1],
+        hour: (res.mpSendHour !== undefined && res.mpSendHour !== null) ? res.mpSendHour : 8,
+      };
+      this._refreshReminderUI();
+    } catch { /* 静默失败 */ }
+  },
+
+  _refreshReminderUI() {
+    const d = this._adminDefaults;
+    const defaultDays = d ? d.days : [0, 1];
+    const defaultHour = d ? d.hour : 8;
+    const e = this.data._loadedEvent;
+    const savedDays = e && Array.isArray(e.reminderDaysBefore) && e.reminderDaysBefore.length
+      ? e.reminderDaysBefore : defaultDays;
+    const savedHour = e && e.reminderSendHour !== null && e.reminderSendHour !== undefined
+      ? e.reminderSendHour : defaultHour;
+    this.setData({
+      reminderDayOptions: buildReminderOpts(savedDays),
+      reminderSendHour: savedHour,
+    });
+  },
+
+  onReminderDayToggle(e) {
+    const val = e.currentTarget.dataset.value;
+    const opts = this.data.reminderDayOptions.map(function(o) {
+      return o.value === val ? { value: o.value, label: o.label, selected: !o.selected } : o;
+    });
+    this.setData({ reminderDayOptions: opts });
+  },
+
+  onReminderHourChange(e) {
+    this.setData({ reminderSendHour: parseInt(e.detail.value, 10) });
   },
 
   onNameInput(e) {
@@ -208,6 +270,9 @@ Page({
 
   buildBody() {
     const d = this.data;
+    const selectedDays = d.reminderDayOptions
+      .filter(function(o) { return o.selected; })
+      .map(function(o) { return o.value; });
     return {
       type: d.eventType,
       name: d.name.trim(),
@@ -215,6 +280,8 @@ Page({
       person: d.person.trim() || undefined,
       reminderTime: d.reminderTime || undefined,
       reminderEmail: d.reminderEmail.trim() || undefined,
+      reminderDaysBefore: selectedDays,
+      reminderSendHour: d.reminderSendHour,
     };
   },
 

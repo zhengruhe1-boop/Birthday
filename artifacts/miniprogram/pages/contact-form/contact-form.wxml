@@ -254,6 +254,31 @@
             cursor-spacing="20" />
         </view>
 
+        <!-- 微信消息提醒时机 -->
+        <view class="cf-section cf-notify-card">
+          <text class="cf-section-label">微信消息提醒时机</text>
+          <view class="cf-reminder-chips">
+            <view
+              wx:for="{{reminderDayOptions}}"
+              wx:key="value"
+              class="cf-reminder-chip {{item.selected ? 'cf-reminder-chip-on' : ''}}"
+              data-value="{{item.value}}"
+              bindtap="onReminderDayToggle">
+              {{item.label}}
+            </view>
+          </view>
+          <view class="cf-remind-time-row">
+            <text class="cf-remind-time-label">每天发送时间</text>
+            <picker mode="selector" range="{{sendHours}}" value="{{reminderSendHour}}" bindchange="onReminderHourChange">
+              <view class="cf-remind-picker">
+                <text>{{sendHours[reminderSendHour]}}</text>
+                <text class="cf-picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <text class="cf-remind-hint">优先级高于后台设置，至少保留一项</text>
+        </view>
+
         <!-- 展示到列表 -->
         <view class="cf-section cf-notify-card">
           <view class="cf-notify-row">

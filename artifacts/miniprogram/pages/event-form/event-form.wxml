@@ -114,8 +114,32 @@
           <text class="label">输入邮箱消息提醒</text>
           <input class="input-field" type="email" placeholder="输入邮箱（选填）"
             value="{{reminderEmail}}" bindinput="onEmailInput" />
-          <text class="field-hint">系统提前1天和当天8点发送邮件和公众号消息提醒您。</text>
         </view>
+      </view>
+
+      <!-- 微信消息提醒时机 -->
+      <view class="form-card notify-card">
+        <text class="label">微信消息提醒时机</text>
+        <view class="reminder-chips">
+          <view
+            wx:for="{{reminderDayOptions}}"
+            wx:key="value"
+            class="reminder-chip {{item.selected ? 'reminder-chip-on' : ''}}"
+            data-value="{{item.value}}"
+            bindtap="onReminderDayToggle">
+            {{item.label}}
+          </view>
+        </view>
+        <view class="remind-time-row">
+          <text class="remind-time-label">每天发送时间</text>
+          <picker mode="selector" range="{{sendHours}}" value="{{reminderSendHour}}" bindchange="onReminderHourChange">
+            <view class="remind-picker">
+              <text>{{sendHours[reminderSendHour]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        <text class="remind-hint">优先级高于后台设置，至少保留一项</text>
       </view>
 
     </view>

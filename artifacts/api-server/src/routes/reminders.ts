@@ -2,13 +2,36 @@ import { Router, type IRouter } from "express";
 import { runBirthdayReminders } from "../lib/reminder.js";
 import { verifyEmailConfig, sendBirthdayReminder } from "../lib/email.js";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
-import { db, contactsTable } from "@workspace/db";
+import { db, contactsTable, settingsTable } from "@workspace/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { calcDaysUntilBirthday } from "../lib/birthday.js";
+
+async function getSetting(key: string): Promise<string | null> {
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+
+// ── GET /api/reminders/defaults ──────────────────────────────────────────────
+// Returns admin-configured defaults for the miniprogram reminder UI
+router.get("/defaults", async (req: AuthRequest, res) => {
+  try {
+    const [mpDays, mpHour] = await Promise.all([
+      getSetting("mp_notify_days_before"),
+      getSetting("mp_notify_send_hour"),
+    ]);
+    res.json({
+      mpDaysBefore: mpDays ? mpDays.split(",").map(Number).filter(n => !isNaN(n)) : [0, 1],
+      mpSendHour:   mpHour ? parseInt(mpHour, 10) : 8,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get reminder defaults");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Manual trigger: send reminders for all contacts with reminder email (for testing)
 router.post("/trigger", async (req: AuthRequest, res) => {
