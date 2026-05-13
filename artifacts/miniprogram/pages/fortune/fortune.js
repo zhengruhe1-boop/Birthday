@@ -96,9 +96,33 @@ Page({
         if (res && res.fortune) {
           wx.setStorageSync(self._cacheKey(sign, date), { fortune: res.fortune, cachedAt: Date.now() });
           self.setData({ fortune: res.fortune, indices: buildIndices(res.fortune), error: '' });
+        } else {
+          // 服务端也无缓存 → 自动生成当天运势
+          self._autoGenerate(sign, date);
         }
       })
-      .catch(function() { /* 未命中缓存，静默忽略 */ });
+      .catch(function() {
+        // 网络失败也尝试自动生成
+        self._autoGenerate(sign, date);
+      });
+  },
+
+  _autoGenerate(sign, date) {
+    const self = this;
+    if (self.data.loading) return;
+    self.setData({ loading: true, error: '' });
+    api.post('api/fortune', { sign: sign, date: date })
+      .then(function(res) {
+        const fortune = res.fortune;
+        wx.setStorageSync(self._cacheKey(sign, date), { fortune: fortune, cachedAt: Date.now() });
+        self.setData({ fortune: fortune, indices: buildIndices(fortune), loading: false });
+      })
+      .catch(function(err) {
+        self.setData({
+          loading: false,
+          error: err.message || '\u83b7\u53d6\u8fd0\u52bf\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
+        });
+      });
   },
 
   openSignPicker() {

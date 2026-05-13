@@ -182,7 +182,8 @@ Page({
       this.setData({ fortuneSign: '', fortuneSignEmoji: '', fortuneFortune: null, fortuneIndices: [], fortuneSummary: '' });
       return;
     }
-    const cacheKey = FORTUNE_CACHE_PFX + sign + '_' + fortuneTodayStr();
+    const today = fortuneTodayStr();
+    const cacheKey = FORTUNE_CACHE_PFX + sign + '_' + today;
     let fortune = null;
     try {
       const cached = wx.getStorageSync(cacheKey);
@@ -195,6 +196,46 @@ Page({
       fortuneIndices: buildFortuneIndices(fortune),
       fortuneSummary: fortune ? (fortune.summary || '') : '',
     });
+    // 本地无缓存 → 尝试服务端缓存，再无则自动生成
+    if (!fortune) {
+      this._loadFortuneFromServer(sign, cacheKey, today);
+    }
+  },
+
+  _loadFortuneFromServer(sign, cacheKey, today) {
+    const self = this;
+    api.get('api/fortune/' + encodeURIComponent(sign) + '/' + today)
+      .then(function(res) {
+        if (res && res.fortune) {
+          wx.setStorageSync(cacheKey, { fortune: res.fortune, cachedAt: Date.now() });
+          self.setData({
+            fortuneFortune: res.fortune,
+            fortuneIndices: buildFortuneIndices(res.fortune),
+            fortuneSummary: res.fortune.summary || '',
+          });
+        } else {
+          self._generateFortuneForHome(sign, cacheKey, today);
+        }
+      })
+      .catch(function() {
+        self._generateFortuneForHome(sign, cacheKey, today);
+      });
+  },
+
+  _generateFortuneForHome(sign, cacheKey, today) {
+    const self = this;
+    api.post('api/fortune', { sign: sign, date: today })
+      .then(function(res) {
+        if (res && res.fortune) {
+          wx.setStorageSync(cacheKey, { fortune: res.fortune, cachedAt: Date.now() });
+          self.setData({
+            fortuneFortune: res.fortune,
+            fortuneIndices: buildFortuneIndices(res.fortune),
+            fortuneSummary: res.fortune.summary || '',
+          });
+        }
+      })
+      .catch(function() { /* 静默失败，不影响主页其他功能 */ });
   },
 
   goFortune() {
