@@ -4,6 +4,7 @@ import { usersTable } from "./users";
 export const timeCapsulesTable = pgTable("time_capsules", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title"),
   message: text("message").notNull(),
   photoUrls: text("photo_urls"),
   openAt: text("open_at").notNull(),

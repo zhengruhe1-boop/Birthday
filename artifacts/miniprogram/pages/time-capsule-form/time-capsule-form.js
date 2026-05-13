@@ -17,6 +17,7 @@ Page({
     deleting: false,
     loading: false,
 
+    title: '',
     message: '',
     photoUrls: [],
     openDate: '',
@@ -79,6 +80,7 @@ Page({
       const openDate = parts[0] || '';
       const openTimeVal = parts[1] || '08:00';
       this.setData({
+        title: c.title || '',
         message: c.message || '',
         photoUrls: Array.isArray(c.photoUrls) ? c.photoUrls.map(toAbsUrl) : [],
         openDate,
@@ -92,6 +94,10 @@ Page({
       wx.showToast({ title: '\u52a0\u8f7d\u5931\u8d25', icon: 'none' });
       this.setData({ loading: false });
     }
+  },
+
+  onTitleInput(e) {
+    this.setData({ title: e.detail.value });
   },
 
   onMessageInput(e) {
@@ -208,6 +214,7 @@ Page({
   buildBody() {
     const d = this.data;
     return {
+      title: d.title.trim() || undefined,
       message: d.message.trim(),
       photoUrls: d.photoUrls,
       openAt: d.openAt,

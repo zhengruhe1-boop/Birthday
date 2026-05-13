@@ -11,6 +11,19 @@
       </view>
     </view>
 
+    <!-- 胶囊名称 -->
+    <view class="tc-card">
+      <text class="tc-label">胶囊名称<text class="tc-optional">（选填）</text></text>
+      <input class="tc-input"
+        type="text"
+        placeholder="给这个胶囊起个名字…"
+        placeholder-class="tc-ph"
+        value="{{title}}"
+        bindinput="onTitleInput"
+        maxlength="30"
+        cursor-spacing="20" />
+    </view>
+
     <!-- 留言 -->
     <view class="tc-card">
       <text class="tc-label">写给未来的自己<text class="tc-required">*</text></text>
@@ -66,7 +79,7 @@
       <text class="tc-field-hint">到达该时间后，微信公众号和邮件将提醒您开启胶囊</text>
     </view>
 
-    <!-- 消息通知 -->
+    <!-- 提醒设置（公众号 + 邮件合并一卡） -->
     <view class="tc-card tc-notify-card">
       <view class="tc-notify-row">
         <view class="tc-notify-left">
@@ -75,16 +88,13 @@
             {{oaSubscribed ? '已关注公众号，到期将推送提醒' : '关注生日通公众号后可开启'}}
           </text>
         </view>
-        <switch checked="{{notifyEnabled}}" bindchange="onNotifyToggle" color="#f43f5e" />
+        <switch checked="{{notifyEnabled}}" bindchange="onNotifyToggle" color="#10b981" />
       </view>
       <view wx:if="{{!oaSubscribed}}" class="tc-notify-tip" bindtap="goFollowOa">
         <text class="tc-notify-tip-text">👆 点此了解如何关注公众号</text>
       </view>
-    </view>
-
-    <!-- 邮件提醒 -->
-    <view class="tc-card">
-      <text class="tc-label">邮件提醒<text class="tc-optional">（选填）</text></text>
+      <view class="tc-divider" />
+      <text class="tc-label" style="margin-bottom:12rpx">邮件提醒<text class="tc-optional">（选填）</text></text>
       <input class="tc-input"
         type="email"
         placeholder="输入邮箱，到期发送提醒"

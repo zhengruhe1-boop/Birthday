@@ -150,6 +150,11 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
+    // Add title column to time_capsules (existing deployments)
+    await db.execute(sql`
+      ALTER TABLE "time_capsules" ADD COLUMN IF NOT EXISTS "title" text
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

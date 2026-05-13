@@ -6,7 +6,7 @@
 }
 
 .tc-body {
-  padding: 24rpx 28rpx 200rpx;
+  padding: 24rpx 28rpx 160rpx;
   flex: 1;
 }
 
@@ -186,14 +186,22 @@
 .tc-notify-tip:active { opacity: 0.7; }
 .tc-notify-tip-text { font-size: 24rpx; color: #f97316; }
 
+/* Divider inside card */
+.tc-divider {
+  height: 1rpx;
+  background: #f1f5f9;
+  margin: 24rpx -28rpx;
+}
+
 /* Footer */
 .tc-footer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(8px);
   border-top: 1rpx solid rgba(0,0,0,0.06);
   display: flex;
   gap: 16rpx;

@@ -54,7 +54,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
 // POST /api/capsules
 router.post("/", async (req: AuthRequest, res) => {
   try {
-    const { message, photoUrls, openAt, reminderEmail, notifyEnabled } = req.body as Record<string, unknown>;
+    const { title, message, photoUrls, openAt, reminderEmail, notifyEnabled } = req.body as Record<string, unknown>;
     if (!message || !openAt) {
       res.status(400).json({ error: "message and openAt are required" });
       return;
@@ -62,6 +62,7 @@ router.post("/", async (req: AuthRequest, res) => {
     const photoUrlsStr = Array.isArray(photoUrls) ? JSON.stringify(photoUrls) : null;
     const [row] = await db.insert(timeCapsulesTable).values({
       userId: req.userId!,
+      title: title ? String(title) : null,
       message: String(message),
       photoUrls: photoUrlsStr,
       openAt: String(openAt),
@@ -79,10 +80,11 @@ router.post("/", async (req: AuthRequest, res) => {
 router.put("/:id", async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
-    const { message, photoUrls, openAt, reminderEmail, notifyEnabled } = req.body as Record<string, unknown>;
+    const { title, message, photoUrls, openAt, reminderEmail, notifyEnabled } = req.body as Record<string, unknown>;
     const photoUrlsStr = Array.isArray(photoUrls) ? JSON.stringify(photoUrls) : null;
     const rows = await db.update(timeCapsulesTable)
       .set({
+        title: title ? String(title) : null,
         message: message ? String(message) : undefined,
         photoUrls: photoUrlsStr,
         openAt: openAt ? String(openAt) : undefined,

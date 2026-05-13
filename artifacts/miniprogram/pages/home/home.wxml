@@ -297,7 +297,7 @@
               <text>{{item.isOpened ? '🔓' : '🔒'}}</text>
             </view>
             <view class="capsule-info">
-              <text class="capsule-msg">{{item.message}}</text>
+              <text class="capsule-msg">{{item.title || item.message}}</text>
               <text class="capsule-date">开启时间：{{item.openAt}}</text>
             </view>
             <view class="capsule-meta">
