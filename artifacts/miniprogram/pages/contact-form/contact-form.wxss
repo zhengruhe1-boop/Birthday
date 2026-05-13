@@ -225,7 +225,7 @@
 
 /* ─── 表单 ─────────────────────────────────────────────────────── */
 .cf-form-scroll {
-  height: calc(100vh - 0px);
+  /* 页面本身负责滚动，避免 Android 键盘弹起时 scroll-view 内容跳位 */
 }
 .cf-form {
   padding: 24rpx 28rpx 60rpx;

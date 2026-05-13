@@ -105,7 +105,7 @@
 
   <!-- ─── 新建 / 编辑表单 ───────────────────────────────────────── -->
   <view wx:elif="{{mode === 'new' || mode === 'edit'}}">
-    <scroll-view scroll-y class="cf-form-scroll">
+    <view class="cf-form-scroll">
       <view class="cf-form">
 
         <!-- 头像上传 -->
@@ -134,7 +134,8 @@
             placeholder-class="cf-ph"
             value="{{name}}"
             bindinput="onNameInput"
-            maxlength="20" />
+            maxlength="20"
+            cursor-spacing="20" />
         </view>
 
         <!-- 生日（多列选择器：月 + 日） -->
@@ -168,7 +169,8 @@
             value="{{birthYear}}"
             bindinput="onBirthYearInput"
             type="number"
-            maxlength="4" />
+            maxlength="4"
+            cursor-spacing="20" />
         </view>
 
         <!-- 性别 -->
@@ -208,7 +210,8 @@
             placeholder-class="cf-ph"
             value="{{hometown}}"
             bindinput="onHometownInput"
-            maxlength="30" />
+            maxlength="30"
+            cursor-spacing="20" />
         </view>
 
         <!-- 消息通知 -->
@@ -239,7 +242,8 @@
             value="{{reminderEmail}}"
             bindinput="onEmailInput"
             type="email"
-            maxlength="60" />
+            maxlength="60"
+            cursor-spacing="20" />
         </view>
 
         <!-- 展示到列表 -->
@@ -268,7 +272,7 @@
         </view>
 
       </view>
-    </scroll-view>
+    </view>
   </view>
 
 </view>
