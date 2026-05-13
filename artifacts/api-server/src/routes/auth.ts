@@ -1,6 +1,6 @@
 import express, { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
-import { eq, and, ne, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, ne, isNotNull, isNull, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
@@ -300,7 +300,7 @@ router.post("/wechat/login", async (req, res) => {
       // 老用户：保留现有 sessionToken（避免多端/冷启动互相覆盖），仅当 token 为空时才生成新的
       const keepToken = existingUsers[0].sessionToken || generateToken();
       const updated = await db.update(usersTable)
-        .set({ sessionToken: keepToken, lastAccessAt: new Date(), ...unionIdUpdate })
+        .set({ sessionToken: keepToken, lastAccessAt: sql`NOW()`, ...unionIdUpdate })
         .where(eq(usersTable.openId, openId))
         .returning();
       user = updated[0];
@@ -403,7 +403,7 @@ router.post("/mock-login", async (req, res) => {
         const updated = await db.update(usersTable)
           .set({
             sessionToken: keepToken,
-            lastAccessAt: new Date(),
+            lastAccessAt: sql`NOW()`,
             ...(deviceId ? { openId: `mock:${deviceId}` } : {}),
           })
           .where(eq(usersTable.id, existing[0].id))
@@ -433,7 +433,7 @@ router.post("/mock-login", async (req, res) => {
       if (existing.length > 0) {
         const keepToken = existing[0].sessionToken || generateToken();
         const updated = await db.update(usersTable)
-          .set({ sessionToken: keepToken, lastAccessAt: new Date() })
+          .set({ sessionToken: keepToken, lastAccessAt: sql`NOW()` })
           .where(eq(usersTable.openId, `mock:${deviceId}`))
           .returning();
         user = updated[0];
@@ -521,7 +521,7 @@ router.get("/me", async (req: AuthRequest, res) => {
     const user = users[0];
     // Update last access time (fire-and-forget)
     db.update(usersTable)
-      .set({ lastAccessAt: new Date() })
+      .set({ lastAccessAt: sql`NOW()` })
       .where(eq(usersTable.id, user.id))
       .catch(() => {});
     res.json({ id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt });

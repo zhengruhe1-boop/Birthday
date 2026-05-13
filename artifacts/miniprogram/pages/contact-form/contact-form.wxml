@@ -256,7 +256,7 @@
 
         <!-- 微信消息提醒时机 -->
         <view class="cf-section cf-notify-card">
-          <text class="cf-section-label">微信消息提醒时机</text>
+          <text class="cf-section-label">消息提醒时间</text>
           <view class="cf-reminder-chips">
             <view
               wx:for="{{reminderDayOptions}}"

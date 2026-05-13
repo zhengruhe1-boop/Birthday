@@ -119,7 +119,7 @@
 
       <!-- 微信消息提醒时机 -->
       <view class="form-card notify-card">
-        <text class="label">微信消息提醒时机</text>
+        <text class="label">消息提醒时间</text>
         <view class="reminder-chips">
           <view
             wx:for="{{reminderDayOptions}}"

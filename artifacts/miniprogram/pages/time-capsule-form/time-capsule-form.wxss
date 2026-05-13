@@ -226,13 +226,14 @@
 .tc-save-btn {
   flex: 1;
   height: 88rpx;
+  line-height: 28px;
   border-radius: 20rpx !important;
   background: linear-gradient(135deg, #10b981, #059669) !important;
   color: #fff !important;
   font-size: 30rpx;
   font-weight: 600;
   border: none !important;
-  line-height: 88rpx;
+  /* line-height: 88rpx; */
 }
 .tc-save-btn::after { border: none; }
 .tc-btn-disabled { opacity: 0.6; }
