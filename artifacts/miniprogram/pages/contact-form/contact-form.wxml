@@ -276,7 +276,7 @@
               </view>
             </picker>
           </view>
-          <text class="cf-remind-hint">优先级高于后台设置，至少保留一项</text>
+          <!-- <text class="cf-remind-hint">优先级高于后台设置，至少保留一项</text> -->
         </view>
 
         <!-- 展示到列表 -->
