@@ -67,6 +67,7 @@
           <view class="fortune-indices-row">
             <view wx:for="{{fortuneIndices}}" wx:key="name" class="fortune-index-item">
               <text class="fortune-index-emoji">{{item.emoji}}</text>
+              <text class="fortune-index-name">{{item.name}}</text>
               <view class="fortune-index-bar-wrap">
                 <view class="fortune-index-bar" style="width:{{item.score}}%;background:{{item.color}}" />
               </view>

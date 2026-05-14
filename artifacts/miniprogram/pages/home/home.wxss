@@ -233,9 +233,16 @@
 
 .fortune-index-emoji {
   font-size: 24rpx;
-  width: 32rpx;
+  width: 34rpx;
   flex-shrink: 0;
   text-align: center;
+}
+
+.fortune-index-name {
+  font-size: 22rpx;
+  color: #555;
+  width: 44rpx;
+  flex-shrink: 0;
 }
 
 .fortune-index-bar-wrap {
