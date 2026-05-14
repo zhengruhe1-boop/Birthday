@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, timeCapsulesTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { requireAuth, AuthRequest } from "../middlewares/auth.js";
+import { triggerImmediateNotifyIfNeeded } from "../lib/immediate-notify.js";
 
 const router: IRouter = Router();
 router.use(requireAuth);
@@ -70,6 +71,9 @@ router.post("/", async (req: AuthRequest, res) => {
       notifyEnabled: notifyEnabled !== false,
     }).returning();
     res.status(201).json(formatCapsule(row));
+
+    // 补发当天已过推送时刻但还未收到通知的提醒（fire-and-forget）
+    triggerImmediateNotifyIfNeeded(req.userId!, "capsule", row.id).catch(() => {});
   } catch (err) {
     req.log.error({ err });
     res.status(500).json({ error: "Internal server error" });
@@ -95,6 +99,9 @@ router.put("/:id", async (req: AuthRequest, res) => {
       .returning();
     if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }
     res.json(formatCapsule(rows[0]));
+
+    // 补发当天已过推送时刻但还未收到通知的提醒（fire-and-forget）
+    triggerImmediateNotifyIfNeeded(req.userId!, "capsule", rows[0].id).catch(() => {});
   } catch (err) {
     req.log.error({ err });
     res.status(500).json({ error: "Internal server error" });

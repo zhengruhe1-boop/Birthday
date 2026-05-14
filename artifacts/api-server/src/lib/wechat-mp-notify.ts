@@ -1,4 +1,4 @@
-import { db, contactsTable, usersTable, settingsTable, eventsTable } from "@workspace/db";
+import { db, contactsTable, usersTable, settingsTable, eventsTable, timeCapsulesTable } from "@workspace/db";
 import { isNotNull, eq, and, not, like } from "drizzle-orm";
 import { calcDaysUntilBirthday } from "./birthday.js";
 import { logger } from "./logger.js";
@@ -189,6 +189,26 @@ async function buildMpItems(userId: number, openId: string, daysBefore: number[]
       const dateDisplay = `${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
       items.push({ openId, name: e.name, dateDisplay, label: `event:${e.id}` });
     }
+  }
+
+  // Time capsules（时间胶囊）— 按开启日期触发，使用全局 daysBefore 配置
+  const capsules = await db.select().from(timeCapsulesTable)
+    .where(and(eq(timeCapsulesTable.userId, userId), eq(timeCapsulesTable.notifyEnabled, true)));
+  for (const cap of capsules) {
+    const dateOnly = cap.openAt.slice(0, 10);   // "YYYY-MM-DD"
+    const days     = daysUntilDate(dateOnly);
+    if (!daysBefore.includes(days)) continue;
+    const d           = new Date(dateOnly + "T00:00:00");
+    const pad         = (n: number) => String(n).padStart(2, "0");
+    const displayName = cap.title
+      ? cap.title
+      : cap.message.slice(0, 8) + (cap.message.length > 8 ? "…" : "");
+    items.push({
+      openId,
+      name:        displayName,
+      dateDisplay: `${pad(d.getMonth() + 1)}月${pad(d.getDate())}日`,
+      label:       `capsule:${cap.id}`,
+    });
   }
 
   return items;

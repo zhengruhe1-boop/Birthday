@@ -1,4 +1,4 @@
-import { db, contactsTable, usersTable, settingsTable, eventsTable } from "@workspace/db";
+import { db, contactsTable, usersTable, settingsTable, eventsTable, timeCapsulesTable } from "@workspace/db";
 import { isNotNull, eq, and, isNull } from "drizzle-orm";
 import { calcDaysUntilBirthday } from "./birthday.js";
 import { logger } from "./logger.js";
@@ -277,6 +277,26 @@ async function buildItems(
         label:     `event:${e.id} 其它`,
       });
     }
+  }
+
+  // 3. Time capsules（时间胶囊）— 按开启日期触发，使用全局 daysBefore 配置
+  const capsules = await db.select().from(timeCapsulesTable)
+    .where(and(eq(timeCapsulesTable.userId, userId), eq(timeCapsulesTable.notifyEnabled, true)));
+  for (const cap of capsules) {
+    const dateOnly = cap.openAt.slice(0, 10);          // "YYYY-MM-DD"
+    const days     = daysUntilDate(dateOnly);
+    if (!daysBefore.includes(days)) continue;
+    const hh          = cap.openAt.slice(11, 13) || "00";
+    const mm          = cap.openAt.slice(14, 16) || "00";
+    const displayName = cap.title
+      ? cap.title
+      : cap.message.slice(0, 8) + (cap.message.length > 8 ? "…" : "");
+    items.push({
+      openId:    oaOpenId,
+      nameField: truncateThing(`${displayName} · 时间胶囊`),
+      timeField: toDateTimeStr(dateOnly, parseInt(hh, 10) || 0, parseInt(mm, 10) || 0),
+      label:     `capsule:${cap.id} 时间胶囊`,
+    });
   }
 
   return items;

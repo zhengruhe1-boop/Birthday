@@ -5,7 +5,7 @@
  * 以 fire-and-forget 方式调用，不阻塞 API 响应。
  */
 
-import { db, contactsTable, eventsTable, usersTable } from "@workspace/db";
+import { db, contactsTable, eventsTable, usersTable, timeCapsulesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { calcDaysUntilBirthday } from "./birthday.js";
 import { getAccessToken, getNotifyConfig } from "./wechat-notify.js";
@@ -105,7 +105,7 @@ async function sendMpSubscribeMsg(
 
 export async function triggerImmediateNotifyIfNeeded(
   userId: number,
-  itemType: "contact" | "event",
+  itemType: "contact" | "event" | "capsule",
   itemId: number,
 ): Promise<void> {
   try {
@@ -154,7 +154,7 @@ export async function triggerImmediateNotifyIfNeeded(
           daysUntil: days,
           effDays,
         };
-      } else {
+      } else if (itemType === "event") {
         const rows = await db.select().from(eventsTable)
           .where(eq(eventsTable.id, itemId)).limit(1);
         if (!rows.length) return null;
@@ -201,6 +201,29 @@ export async function triggerImmediateNotifyIfNeeded(
           };
         }
         return null;
+      } else {
+        // capsule
+        const rows = await db.select().from(timeCapsulesTable)
+          .where(eq(timeCapsulesTable.id, itemId)).limit(1);
+        if (!rows.length) return null;
+        const cap = rows[0];
+        if (!cap.notifyEnabled) return null;
+        const dateOnly = cap.openAt.slice(0, 10);   // "YYYY-MM-DD"
+        const days     = daysUntilDate(dateOnly);
+        const d        = new Date(dateOnly + "T00:00:00");
+        const hh       = cap.openAt.slice(11, 13) || "00";
+        const mm       = cap.openAt.slice(14, 16) || "00";
+        const displayName = cap.title
+          ? cap.title
+          : cap.message.slice(0, 8) + (cap.message.length > 8 ? "…" : "");
+        return {
+          oaName:    trunc(`${displayName} · 时间胶囊`),
+          oaTime:    `${dateOnly} ${hh}:${mm}`,
+          mpName:    displayName,
+          mpDate:    `${pad(d.getMonth() + 1)}月${pad(d.getDate())}日`,
+          daysUntil: days,
+          effDays:   oaCfg.daysBefore,   // 时间胶囊使用全局配置
+        };
       }
     }
 
