@@ -59,15 +59,7 @@
               </view>
             </picker>
           </view>
-          <view class="field-group">
-            <text class="label">提醒时间<text class="label-required">*</text></text>
-            <picker mode="time" value="{{reminderTimeVal}}" bindchange="onReminderTimeValChange">
-              <view class="picker-field">
-                <text>{{reminderTimeVal || '08:00'}}</text>
-                <text class="picker-arrow">›</text>
-              </view>
-            </picker>
-          </view>
+          <!-- 提醒时间已隐藏，默认使用 08:00，由每天发送时间控制通知时刻 -->
         </block>
       </view>
 
