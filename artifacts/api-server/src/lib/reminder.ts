@@ -1,8 +1,26 @@
-import { db, contactsTable, settingsTable } from "@workspace/db";
-import { eq, isNotNull } from "drizzle-orm";
-import { sendBirthdayReminder, getEmailConfig } from "./email.js";
+import { db, contactsTable, eventsTable, timeCapsulesTable, settingsTable } from "@workspace/db";
+import { eq, isNotNull, and } from "drizzle-orm";
+import { sendBirthdayReminder, sendEventReminder, sendCapsuleReminder, getEmailConfig } from "./email.js";
 import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
 import { logger } from "./logger.js";
+
+// ── Date helpers (local) ──────────────────────────────────────────────────────
+function daysUntilDateLocal(dateStr: string): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(dateStr + "T00:00:00").getTime() - today.getTime()) / 86400000);
+}
+
+function daysUntilAnniversaryLocal(dateStr: string): { days: number; display: string } {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T00:00:00");
+  const thisYr = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+  if (thisYr < today) thisYr.setFullYear(today.getFullYear() + 1);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return {
+    days:    Math.round((thisYr.getTime() - today.getTime()) / 86400000),
+    display: `${p(thisYr.getMonth() + 1)}月${p(thisYr.getDate())}日`,
+  };
+}
 
 // ── Local settings helper ─────────────────────────────────────────────────────
 async function getSettingLocal(key: string): Promise<string | null> {
@@ -84,6 +102,85 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
   } catch (err) {
     result.errors++;
     logger.error({ err }, "Failed to run birthday reminders");
+  }
+
+  // ── Events（纪念日 / 倒数日 / 其它提醒）─────────────────────────────────────
+  try {
+    const events = await db.select().from(eventsTable).where(isNotNull(eventsTable.reminderEmail));
+    logger.info({ count: events.length }, "Events with reminder emails found");
+
+    for (const e of events) {
+      try {
+        const evtEffDays = e.reminderDaysBefore
+          ? e.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+          : cfg.daysBefore;
+
+        let daysUntil: number | null = null;
+        let dateDisplay = "";
+        let eventType: "anniversary" | "countdown" | "other" = "other";
+
+        if (e.type === "anniversary" && e.eventDate) {
+          eventType = "anniversary";
+          const r = daysUntilAnniversaryLocal(e.eventDate);
+          daysUntil = r.days; dateDisplay = r.display;
+        } else if (e.type === "countdown" && e.eventDate) {
+          eventType = "countdown";
+          daysUntil = daysUntilDateLocal(e.eventDate);
+          const d = new Date(e.eventDate + "T00:00:00");
+          const p = (n: number) => String(n).padStart(2, "0");
+          dateDisplay = `${p(d.getMonth() + 1)}月${p(d.getDate())}日`;
+        } else if (e.type === "other" && e.reminderTime) {
+          eventType = "other";
+          daysUntil = daysUntilDateLocal(e.reminderTime.slice(0, 10));
+          const d = new Date(e.reminderTime.slice(0, 10) + "T00:00:00");
+          const p = (n: number) => String(n).padStart(2, "0");
+          dateDisplay = `${p(d.getMonth() + 1)}月${p(d.getDate())}日 ${e.reminderTime.slice(11, 16)}`;
+        }
+
+        if (daysUntil === null || !evtEffDays.includes(daysUntil)) continue;
+
+        await sendEventReminder({
+          toEmail:     e.reminderEmail!,
+          eventName:   e.name,
+          eventType,
+          dateDisplay,
+          daysUntil,
+          person:      e.person,
+        });
+        result.sent++;
+        logger.info({ eventId: e.id, name: e.name, type: e.type, daysUntil }, "Event reminder sent");
+      } catch (err) {
+        result.errors++;
+        logger.error({ err, eventId: e.id }, "Failed to send event reminder");
+      }
+    }
+  } catch (err) {
+    result.errors++;
+    logger.error({ err }, "Failed to run event reminders");
+  }
+
+  // ── Time capsules ────────────────────────────────────────────────────────────
+  try {
+    const capsules = await db.select().from(timeCapsulesTable)
+      .where(and(isNotNull(timeCapsulesTable.reminderEmail), eq(timeCapsulesTable.notifyEnabled, true)));
+    logger.info({ count: capsules.length }, "Capsules with reminder emails found");
+
+    for (const cap of capsules) {
+      try {
+        const daysUntil = daysUntilDateLocal(cap.openAt.slice(0, 10));
+        if (!cfg.daysBefore.includes(daysUntil)) continue;
+        const title = cap.title || cap.message.slice(0, 10) + (cap.message.length > 10 ? "…" : "");
+        await sendCapsuleReminder({ toEmail: cap.reminderEmail!, title, openAt: cap.openAt, daysUntil });
+        result.sent++;
+        logger.info({ capsuleId: cap.id, title, daysUntil }, "Capsule reminder sent");
+      } catch (err) {
+        result.errors++;
+        logger.error({ err, capsuleId: cap.id }, "Failed to send capsule reminder");
+      }
+    }
+  } catch (err) {
+    result.errors++;
+    logger.error({ err }, "Failed to run capsule reminders");
   }
 
   await setSettingLocal("email_last_run",    new Date().toISOString());

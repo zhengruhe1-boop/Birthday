@@ -187,6 +187,118 @@ export async function sendBirthdayReminder(
   );
 }
 
+// ── Event reminder ────────────────────────────────────────────────────────────
+export interface EventReminderData {
+  toEmail:    string;
+  eventName:  string;
+  eventType:  "anniversary" | "countdown" | "other";
+  dateDisplay: string;
+  daysUntil:  number;
+  person?:    string | null;
+}
+
+export async function sendEventReminder(data: EventReminderData): Promise<void> {
+  const transporter = await buildTransporter();
+  if (!transporter) throw new Error("邮件服务未配置");
+  const senderEmail = (await getSettingLocal("email_sender")) || process.env.QQ_EMAIL!;
+
+  const typeMap = {
+    anniversary: { label: "纪念日", icon: "🥂" },
+    countdown:   { label: "倒数日", icon: "⏳" },
+    other:       { label: "提醒",   icon: "🔔" },
+  };
+  const { label, icon } = typeMap[data.eventType];
+  const personText = data.person ? `（${data.person}）` : "";
+  const daysText =
+    data.daysUntil === 0 ? "今天就是" :
+    data.daysUntil === 1 ? "明天就是" :
+    `还有 ${data.daysUntil} 天就是`;
+
+  const subject =
+    data.daysUntil === 0 ? `${icon} 今天：${data.eventName}${personText} ${label}` :
+    data.daysUntil === 1 ? `${icon} 明天：${data.eventName}${personText} ${label}` :
+    `${icon} ${data.daysUntil} 天后：${data.eventName}${personText} ${label}`;
+
+  const html = `<!DOCTYPE html><html lang="zh-CN">
+<head><meta charset="UTF-8"><title>${label}提醒</title></head>
+<body style="margin:0;padding:0;background:#f9f9f9;font-family:'PingFang SC','Microsoft YaHei',sans-serif;">
+  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#ff6b8a,#ff4757);padding:40px 32px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
+      <h1 style="color:#fff;margin:0;font-size:26px;font-weight:700;">${label}提醒</h1>
+      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">来自生日通的温馨提醒</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="font-size:16px;color:#333;margin:0 0 20px;line-height:1.7;">
+        ${daysText} <strong style="color:#ff4757;">${data.eventName}${personText}</strong> 的${label}！
+      </p>
+      <div style="background:#fff5f7;border:1px solid #ffd6de;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:20px;font-weight:700;color:#ff4757;">${data.eventName}${personText}</div>
+        <div style="font-size:14px;color:#888;margin-top:4px;">日期：${data.dateDisplay}</div>
+      </div>
+      <p style="font-size:14px;color:#999;line-height:1.8;margin:0;">此提醒由 <strong>生日通</strong> 自动发送。</p>
+    </div>
+    <div style="background:#f9f9f9;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+      <p style="margin:0;font-size:12px;color:#bbb;">© 生日通 · 记住每一个重要的日子</p>
+    </div>
+  </div>
+</body></html>`;
+
+  await transporter.sendMail({ from: `"生日通" <${senderEmail}>`, to: data.toEmail, subject, html });
+  logger.info({ to: data.toEmail, event: data.eventName, type: data.eventType, daysUntil: data.daysUntil }, "Event reminder email sent");
+}
+
+// ── Capsule reminder ──────────────────────────────────────────────────────────
+export interface CapsuleReminderData {
+  toEmail:  string;
+  title:    string;
+  openAt:   string;
+  daysUntil: number;
+}
+
+export async function sendCapsuleReminder(data: CapsuleReminderData): Promise<void> {
+  const transporter = await buildTransporter();
+  if (!transporter) throw new Error("邮件服务未配置");
+  const senderEmail = (await getSettingLocal("email_sender")) || process.env.QQ_EMAIL!;
+
+  const daysText =
+    data.daysUntil === 0 ? "今天" :
+    data.daysUntil === 1 ? "明天" :
+    `${data.daysUntil} 天后`;
+
+  const subject =
+    data.daysUntil === 0 ? `🔒 时间胶囊今天开启：${data.title}` :
+    `🔒 时间胶囊${daysText}开启：${data.title}`;
+
+  const html = `<!DOCTYPE html><html lang="zh-CN">
+<head><meta charset="UTF-8"><title>时间胶囊提醒</title></head>
+<body style="margin:0;padding:0;background:#f9f9f9;font-family:'PingFang SC','Microsoft YaHei',sans-serif;">
+  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#a18cd1,#fbc2eb);padding:40px 32px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+      <h1 style="color:#fff;margin:0;font-size:26px;font-weight:700;">时间胶囊提醒</h1>
+      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">来自生日通的温馨提醒</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="font-size:16px;color:#333;margin:0 0 20px;line-height:1.7;">
+        您的时间胶囊将于 <strong style="color:#a18cd1;">${daysText}</strong> 开启！
+      </p>
+      <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:20px;font-weight:700;color:#a18cd1;">🔒 ${data.title}</div>
+        <div style="font-size:14px;color:#888;margin-top:4px;">开启时间：${data.openAt}</div>
+      </div>
+      <p style="font-size:14px;color:#999;line-height:1.8;margin:0;">此提醒由 <strong>生日通</strong> 自动发送。</p>
+    </div>
+    <div style="background:#f9f9f9;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+      <p style="margin:0;font-size:12px;color:#bbb;">© 生日通 · 记住每一个重要的日子</p>
+    </div>
+  </div>
+</body></html>`;
+
+  await transporter.sendMail({ from: `"生日通" <${senderEmail}>`, to: data.toEmail, subject, html });
+  logger.info({ to: data.toEmail, title: data.title, daysUntil: data.daysUntil }, "Capsule reminder email sent");
+}
+
 // ── SMTP verification ─────────────────────────────────────────────────────────
 export async function verifyEmailConfig(): Promise<{
   ok: boolean;

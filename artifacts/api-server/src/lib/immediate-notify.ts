@@ -7,9 +7,10 @@
 
 import { db, contactsTable, eventsTable, usersTable, timeCapsulesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { calcDaysUntilBirthday } from "./birthday.js";
+import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
 import { getAccessToken, getNotifyConfig } from "./wechat-notify.js";
 import { getMpAccessToken, getMpNotifyConfig } from "./wechat-mp-notify.js";
+import { getEmailConfig, sendBirthdayReminder, sendEventReminder, sendCapsuleReminder } from "./email.js";
 import { logger } from "./logger.js";
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -272,5 +273,121 @@ export async function triggerImmediateNotifyIfNeeded(
     }
   } catch (err) {
     logger.error({ err, userId, itemType, itemId }, "Immediate notify error (non-fatal)");
+  }
+}
+
+// ── 邮件补发：保存后立即发邮件（如推送时刻已过） ─────────────────────────────
+
+export async function triggerImmediateEmailIfNeeded(
+  itemType: "contact" | "event" | "capsule",
+  itemId: number,
+): Promise<void> {
+  try {
+    const cfg = await getEmailConfig();
+    if (!cfg.enabled) return;
+
+    const currentHour = new Date().getHours();
+    if (currentHour < cfg.sendHour) return; // 推送时刻未到，由定时任务处理
+
+    function p(n: number) { return String(n).padStart(2, "0"); }
+
+    function dateFromStr(s: string): { daysUntil: number; display: string } {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const d = new Date(s + "T00:00:00");
+      const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+      return { daysUntil: days, display: `${p(d.getMonth() + 1)}月${p(d.getDate())}日` };
+    }
+
+    function anniversaryFromStr(s: string): { daysUntil: number; display: string } {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const d = new Date(s + "T00:00:00");
+      const thisYr = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+      if (thisYr < today) thisYr.setFullYear(today.getFullYear() + 1);
+      const days = Math.round((thisYr.getTime() - today.getTime()) / 86400000);
+      return { daysUntil: days, display: `${p(thisYr.getMonth() + 1)}月${p(thisYr.getDate())}日` };
+    }
+
+    if (itemType === "contact") {
+      const rows = await db.select().from(contactsTable).where(eq(contactsTable.id, itemId)).limit(1);
+      if (!rows.length) return;
+      const c = rows[0];
+      if (!c.reminderEmail) return;
+
+      const daysUntil = calcDaysUntilBirthday(c.birthdayMonth, c.birthdayDay, c.birthYear ?? undefined, c.birthdayLunar);
+      const effDays = c.reminderDaysBefore
+        ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+        : cfg.daysBefore;
+      if (!effDays.includes(daysUntil)) return;
+
+      const age = c.birthYear ? new Date().getFullYear() - c.birthYear : null;
+      await sendBirthdayReminder({
+        toEmail:         c.reminderEmail,
+        contactName:     c.name,
+        birthdayDisplay: formatBirthdayDisplay(c.birthdayMonth, c.birthdayDay, c.birthdayLunar),
+        daysUntil,
+        age,
+        relation:        c.relation,
+      });
+      logger.info({ contactId: itemId }, "Immediate email sent for contact");
+
+    } else if (itemType === "event") {
+      const rows = await db.select().from(eventsTable).where(eq(eventsTable.id, itemId)).limit(1);
+      if (!rows.length) return;
+      const e = rows[0];
+      if (!e.reminderEmail) return;
+
+      const effDays = e.reminderDaysBefore
+        ? e.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
+        : cfg.daysBefore;
+
+      let daysUntil = 0;
+      let dateDisplay = "";
+      let eventType: "anniversary" | "countdown" | "other" = "other";
+
+      if (e.type === "anniversary" && e.eventDate) {
+        eventType = "anniversary";
+        const r = anniversaryFromStr(e.eventDate);
+        daysUntil = r.daysUntil; dateDisplay = r.display;
+      } else if (e.type === "countdown" && e.eventDate) {
+        eventType = "countdown";
+        const r = dateFromStr(e.eventDate);
+        daysUntil = r.daysUntil; dateDisplay = r.display;
+      } else if (e.type === "other" && e.reminderTime) {
+        eventType = "other";
+        const r = dateFromStr(e.reminderTime.slice(0, 10));
+        daysUntil = r.daysUntil;
+        dateDisplay = `${r.display} ${e.reminderTime.slice(11, 16)}`;
+      } else {
+        return;
+      }
+
+      if (!effDays.includes(daysUntil)) return;
+
+      await sendEventReminder({
+        toEmail:     e.reminderEmail,
+        eventName:   e.name,
+        eventType,
+        dateDisplay,
+        daysUntil,
+        person:      e.person,
+      });
+      logger.info({ eventId: itemId }, "Immediate email sent for event");
+
+    } else {
+      // capsule
+      const rows = await db.select().from(timeCapsulesTable).where(eq(timeCapsulesTable.id, itemId)).limit(1);
+      if (!rows.length) return;
+      const cap = rows[0];
+      if (!cap.reminderEmail || !cap.notifyEnabled) return;
+
+      const { daysUntil } = dateFromStr(cap.openAt.slice(0, 10));
+      if (!cfg.daysBefore.includes(daysUntil)) return;
+
+      const title = cap.title || cap.message.slice(0, 10) + (cap.message.length > 10 ? "…" : "");
+      await sendCapsuleReminder({ toEmail: cap.reminderEmail, title, openAt: cap.openAt, daysUntil });
+      logger.info({ capsuleId: itemId }, "Immediate email sent for capsule");
+    }
+  } catch (err) {
+    logger.error({ err, itemType, itemId }, "Immediate email notify error (non-fatal)");
   }
 }
