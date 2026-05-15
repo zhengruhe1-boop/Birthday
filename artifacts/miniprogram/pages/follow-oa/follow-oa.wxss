@@ -61,6 +61,18 @@
   color: #d97706;
 }
 
+.alert-row--ok {
+  background: #f0fdf4;
+  border: 1rpx solid #bbf7d0;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 0;
+}
+
+.alert-text--ok {
+  color: #16a34a;
+}
+
 .desc {
   font-size: 26rpx;
   color: #475569;

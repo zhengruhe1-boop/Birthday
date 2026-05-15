@@ -10,47 +10,62 @@
 
     <!-- 说明卡片 -->
     <view class="card">
-      <view class="alert-row">
-        <text class="alert-icon">⚠️</text>
-        <text class="alert-text">您尚未关注生日通公众号</text>
-      </view>
-      <text class="desc">
+      <!-- 已关注 -->
+      <block wx:if="{{!checking && oaSubscribed}}">
+        <view class="alert-row alert-row--ok">
+          <text class="alert-icon">✅</text>
+          <text class="alert-text alert-text--ok">检测到您已关注生日通公众号啦</text>
+        </view>
+        <text class="desc" style="margin-top:16rpx">
+您的生日、纪念日等提醒将通过公众号推送至微信，让您不会错过每一个重要日子。
+        </text>
+      </block>
+      <!-- 未关注 -->
+      <block wx:else>
+        <view class="alert-row">
+          <text class="alert-icon">⚠️</text>
+          <text class="alert-text">您尚未关注生日通公众号</text>
+        </view>
+        <text class="desc">
 由于小程序提醒机制限制，我们无法直接通过微信给您推送生日提醒。
-      </text>
-      <text class="desc" style="margin-top:16rpx">
+        </text>
+        <text class="desc" style="margin-top:16rpx">
 请按以下步骤操作：用微信搜索「生日通」，关注公众号后即可开通微信提醒。
-      </text>
-      <text class="desc" style="margin-top:16rpx">
+        </text>
+        <text class="desc" style="margin-top:16rpx">
 您在小程序里记录的生日，会通过微信提前通知您，让您不会错过亲友生日。
-      </text>
+        </text>
+      </block>
     </view>
 
-    <!-- 步骤说明 -->
-    <view class="card steps-card">
-      <text class="steps-title">操作步骤</text>
-      <view class="step-item">
-        <view class="step-num">1</view>
-        <text class="step-text">打开微信，点击右上角🔍搜索图标</text>
+    <!-- 步骤说明（未关注时展示） -->
+    <block wx:if="{{!oaSubscribed}}">
+      <view class="card steps-card">
+        <text class="steps-title">操作步骤</text>
+        <view class="step-item">
+          <view class="step-num">1</view>
+          <text class="step-text">打开微信，点击右上角🔍搜索图标</text>
+        </view>
+        <view class="step-item">
+          <view class="step-num">2</view>
+          <text class="step-text">搜索「生日通」，找到下方公众号（服务号）</text>
+        </view>
+        <view class="step-item">
+          <view class="step-num">3</view>
+          <text class="step-text">点击进入并关注公众号，即可开通提醒</text>
+        </view>
       </view>
-      <view class="step-item">
-        <view class="step-num">2</view>
-        <text class="step-text">搜索「生日通」，找到下方公众号（服务号）</text>
-      </view>
-      <view class="step-item">
-        <view class="step-num">3</view>
-        <text class="step-text">点击进入并关注公众号，即可开通提醒</text>
-      </view>
-    </view>
 
-    <!-- 搜索引导图 -->
-    <view class="card img-card">
-      <text class="img-label">在微信中搜索「生日通」：</text>
-      <image
-        class="guide-img"
-        src="/images/follow-oa-guide.jpg"
-        mode="widthFix"
-      />
-    </view>
+      <!-- 搜索引导图 -->
+      <view class="card img-card">
+        <text class="img-label">在微信中搜索「生日通」：</text>
+        <image
+          class="guide-img"
+          src="/images/follow-oa-guide.jpg"
+          mode="widthFix"
+        />
+      </view>
+    </block>
 
     <!-- 返回按钮 -->
     <view class="btn-wrap">
