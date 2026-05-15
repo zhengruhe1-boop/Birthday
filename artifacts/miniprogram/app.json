@@ -14,7 +14,8 @@
     "pages/age-calc/age-calc",
     "pages/hidden-events/hidden-events",
     "pages/quota-paywall/quota-paywall",
-    "pages/time-capsule-form/time-capsule-form"
+    "pages/time-capsule-form/time-capsule-form",
+    "pages/time-capsule-detail/time-capsule-detail"
   ],
   "tabBar": {
     "color": "#94a3b8",

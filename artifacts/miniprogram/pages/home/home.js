@@ -567,7 +567,7 @@ Page({
   },
   goCapsule(e) {
     wx.navigateTo({
-      url: "/pages/time-capsule-form/time-capsule-form?id=" + e.currentTarget.dataset.id,
+      url: "/pages/time-capsule-detail/time-capsule-detail?id=" + e.currentTarget.dataset.id,
     });
   },
 

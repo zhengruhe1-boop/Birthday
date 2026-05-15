@@ -1,0 +1,77 @@
+<view class="page" wx:if="{{!loading && capsule}}">
+
+  <!-- Hero 状态卡 -->
+  <view class="hero {{isOpened ? 'hero-open' : 'hero-locked'}}">
+    <view class="hero-icon-wrap {{isOpened ? 'icon-open' : 'icon-locked'}}">
+      <text class="hero-icon">{{isOpened ? '🔓' : '🔒'}}</text>
+    </view>
+    <view class="hero-info">
+      <text class="hero-title">{{capsule.title || '时间胶囊'}}</text>
+      <view class="hero-badge {{isOpened ? 'badge-open' : 'badge-locked'}}">
+        <text>{{daysLabel}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 开启时间 -->
+  <view class="info-row">
+    <text class="info-icon">📅</text>
+    <text class="info-label">开启时间</text>
+    <text class="info-val">{{capsule.openAt}}</text>
+  </view>
+
+  <!-- 通知状态行 -->
+  <view class="info-row" wx:if="{{capsule.notifyEnabled || capsule.reminderEmail}}">
+    <text class="info-icon">🔔</text>
+    <text class="info-label">提醒</text>
+    <view class="info-tags">
+      <text wx:if="{{capsule.notifyEnabled}}" class="tag tag-green">公众号</text>
+      <text wx:if="{{capsule.reminderEmail}}" class="tag tag-blue">邮件</text>
+    </view>
+  </view>
+
+  <!-- 留言正文 -->
+  <view class="card msg-card">
+    <view class="msg-header">
+      <text class="msg-header-icon">✉️</text>
+      <text class="msg-header-text">写给未来的自己</text>
+    </view>
+    <text class="msg-body {{isOpened ? '' : 'msg-blur'}}">{{capsule.message}}</text>
+    <view wx:if="{{!isOpened}}" class="msg-lock-tip">
+      <text class="msg-lock-tip-text">🔒 {{daysLabel}}，届时可查看内容</text>
+    </view>
+  </view>
+
+  <!-- 照片 -->
+  <view class="card" wx:if="{{capsule.photoUrls.length > 0}}">
+    <view class="photo-label">
+      <text class="msg-header-icon">📷</text>
+      <text class="msg-header-text">留存照片</text>
+    </view>
+    <view class="photos">
+      <view wx:for="{{capsule.photoUrls}}" wx:key="*this"
+        class="photo-wrap {{isOpened ? '' : 'photo-blur'}}"
+        data-idx="{{index}}" bindtap="previewPhoto">
+        <image class="photo" src="{{item}}" mode="aspectFill" />
+        <view wx:if="{{!isOpened}}" class="photo-lock">🔒</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="footer">
+    <button class="btn-del" bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting}}">
+      🗑️
+    </button>
+    <button class="btn-edit" bindtap="goEdit" disabled="{{deleting}}">
+      ✏️ 编辑胶囊
+    </button>
+  </view>
+
+  <view style="height:40rpx" />
+</view>
+
+<!-- 加载中 -->
+<view wx:if="{{loading}}" class="loading">
+  <text>加载中...</text>
+</view>
