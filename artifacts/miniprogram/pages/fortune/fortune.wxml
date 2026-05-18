@@ -65,12 +65,6 @@
 
     </view>
 
-    <!-- 农历提示 -->
-    <view wx:if="{{calType==='lunar' && currentSign}}" class="lunar-tip-banner">
-      <text class="lunar-tip-icon">ℹ️</text>
-      <text class="lunar-tip-text">星座依据农历对应的公历日期推算，供参考</text>
-    </view>
-
     <!-- 未设置生日提示 -->
     <view wx:if="{{!myBirthday}}" class="tip-banner">
       <text class="tip-banner-icon">💡</text>
