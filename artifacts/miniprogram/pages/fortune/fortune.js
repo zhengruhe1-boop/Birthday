@@ -201,7 +201,7 @@ Page({
       const cached = wx.getStorageSync(cacheKey);
       if (cached && cached.fortune) {
         this.setData({ fortune: cached.fortune, indices: buildIndices(cached.fortune), error: '' });
-        wx.showToast({ title: '已加载缓存运势', icon: 'none', duration: 1500 });
+        wx.showToast({ title: '已生成运势', icon: 'none', duration: 1500 });
         return;
       }
     } catch {}
@@ -213,7 +213,7 @@ Page({
       if (serverRes && serverRes.fortune) {
         wx.setStorageSync(cacheKey, { fortune: serverRes.fortune, cachedAt: Date.now() });
         this.setData({ fortune: serverRes.fortune, indices: buildIndices(serverRes.fortune), loading: false });
-        wx.showToast({ title: '运势已预生成', icon: 'none', duration: 1500 });
+        wx.showToast({ title: '已生成运势', icon: 'none', duration: 1500 });
         return;
       }
     } catch {}
