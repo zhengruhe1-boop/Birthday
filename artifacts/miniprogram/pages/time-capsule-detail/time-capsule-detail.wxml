@@ -60,10 +60,11 @@
 
   <!-- 底部操作 -->
   <view class="footer">
-    <button class="btn-del" bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting}}">
-      🗑️
+    <button class="btn-del {{isOpened ? 'btn-del-full' : ''}}"
+      bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting}}">
+      🗑️ 删除胶囊
     </button>
-    <button class="btn-edit" bindtap="goEdit" disabled="{{deleting}}">
+    <button wx:if="{{!isOpened}}" class="btn-edit" bindtap="goEdit" disabled="{{deleting}}">
       ✏️ 编辑胶囊
     </button>
   </view>

@@ -177,7 +177,8 @@
   border-radius: 20rpx !important;
   background: #fff1f2 !important;
   color: #ef4444 !important;
-  font-size: 36rpx;
+  font-size: 30rpx;
+  font-weight: 600;
   border: 1rpx solid #fecdd3 !important;
   display: flex;
   align-items: center;
@@ -187,6 +188,11 @@
   flex-shrink: 0;
 }
 .btn-del::after { border: none; }
+/* 已开启：仅删除按钮，全宽显示 */
+.btn-del-full {
+  flex: 1 !important;
+  width: auto !important;
+}
 .btn-edit {
   flex: 1;
   height: 88rpx;
