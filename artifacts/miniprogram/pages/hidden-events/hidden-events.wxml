@@ -44,7 +44,7 @@
             data-id="{{item.id}}"
           >
             <text wx:if="{{unhiding[item.id]}}" class="unhide-btn-text">处理中</text>
-            <text wx:else class="unhide-btn-text">展示到首页</text>
+            <text wx:else class="unhide-btn-text">移出隐藏</text>
           </view>
 
           <!-- 编辑箭头 -->
