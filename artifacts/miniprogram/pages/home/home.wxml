@@ -32,7 +32,7 @@
             <text class="fortune-widget-icon">✨</text>
             <view class="fortune-widget-text">
               <text class="fortune-widget-title">今日运势</text>
-              <text class="fortune-widget-sub">设置星座，每天查看运势</text>
+              <text class="fortune-widget-sub">设置您的生日，查看每天运势</text>
             </view>
           </view>
           <text class="fortune-widget-arrow">›</text>
