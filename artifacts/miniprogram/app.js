@@ -15,10 +15,26 @@ App({
     this._checkUpdate();
   },
 
+  onShow() {
+    // 热启动（从后台切回）时也执行更新检查，避免冷启动期间未完成下载的情况被遗漏
+    this._checkUpdate();
+  },
+
   _checkUpdate() {
     if (!wx.canIUse('getUpdateManager')) return;
+    // 防止热启动反复弹窗：已在弹窗中则跳过
+    if (this._updateModalShowing) return;
+    const self = this;
     const mgr = wx.getUpdateManager();
+
+    // 检测微信是否发现了新版本（日志用，不影响流程）
+    mgr.onCheckForUpdate(function (res) {
+      console.log('[Update] 检测到新版本：', res.hasUpdate);
+    });
+
     mgr.onUpdateReady(function () {
+      if (self._updateModalShowing) return;
+      self._updateModalShowing = true;
       wx.showModal({
         title: '发现新版本 🎉',
         content: '新版本已准备好，需要重启后才能继续使用。',
@@ -27,9 +43,14 @@ App({
         success() {
           mgr.applyUpdate();
         },
+        fail() {
+          self._updateModalShowing = false;
+        },
       });
     });
+
     mgr.onUpdateFailed(function () {
+      console.log('[Update] 新版本下载失败');
       wx.showToast({ title: '新版本下载失败，请检查网络', icon: 'none', duration: 2500 });
     });
   },
