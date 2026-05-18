@@ -12,6 +12,7 @@ function toAbsUrl(url) {
 Page({
   data: {
     isEdit: false,
+    isOpened: false,   // 胶囊已到达开启日期
     capsuleId: null,
     saving: false,
     deleting: false,
@@ -79,6 +80,7 @@ Page({
       const parts = rt.split(' ');
       const openDate = parts[0] || '';
       const openTimeVal = parts[1] || '08:00';
+      const isOpened = openDate ? openDate <= todayStr() : false;
       this.setData({
         title: c.title || '',
         message: c.message || '',
@@ -88,6 +90,7 @@ Page({
         openAt: rt,
         reminderEmail: c.reminderEmail || '',
         notifyEnabled: !!c.notifyEnabled,
+        isOpened,
         loading: false,
       });
     } catch {
@@ -191,21 +194,22 @@ Page({
   },
 
   validate() {
-    const { message, openDate, reminderEmail } = this.data;
+    const { message, openDate, reminderEmail, isOpened } = this.data;
     if (!message.trim()) {
-      wx.showToast({ title: '\u8bf7\u5199\u4e0b\u5bf9\u672a\u6765\u81ea\u5df1\u8bf4\u7684\u8bdd', icon: 'none' });
+      wx.showToast({ title: '请写下对未来自己说的话', icon: 'none' });
       return false;
     }
     if (!openDate) {
-      wx.showToast({ title: '\u8bf7\u8bbe\u7f6e\u5f00\u542f\u65f6\u95f4', icon: 'none' });
+      wx.showToast({ title: '请设置开启时间', icon: 'none' });
       return false;
     }
-    if (openDate < todayStr()) {
-      wx.showToast({ title: '\u5f00\u542f\u65f6\u95f4\u5fc5\u987b\u662f\u672a\u6765', icon: 'none' });
+    // 已开启的胶囊允许保留原来的（过去）日期
+    if (!isOpened && openDate < todayStr()) {
+      wx.showToast({ title: '开启时间必须是未来', icon: 'none' });
       return false;
     }
     if (reminderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reminderEmail.trim())) {
-      wx.showToast({ title: '\u90ae\u7bb1\u683c\u5f0f\u4e0d\u6b63\u786e', icon: 'none' });
+      wx.showToast({ title: '邮箱格式不正确', icon: 'none' });
       return false;
     }
     return true;

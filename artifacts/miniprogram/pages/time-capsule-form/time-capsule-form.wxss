@@ -26,6 +26,33 @@
 .tc-hero-title { font-size: 30rpx; font-weight: 700; color: #065f46; }
 .tc-hero-sub { font-size: 24rpx; color: #059669; }
 
+/* 已开启状态 hero */
+.tc-hero-opened {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border-color: rgba(245,158,11,0.2);
+}
+.tc-hero-opened .tc-hero-title { color: #92400e; }
+.tc-hero-opened .tc-hero-sub   { color: #b45309; }
+
+/* 已开启日期只读行 */
+.tc-opened-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #f8fafc;
+  border-radius: 14rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #e2e8f0;
+}
+.tc-opened-date-icon { font-size: 28rpx; flex-shrink: 0; }
+.tc-opened-date-val  { flex: 1; font-size: 28rpx; color: #475569; }
+.tc-opened-badge {
+  background: #fef3c7;
+  border-radius: 8rpx;
+  padding: 4rpx 14rpx;
+}
+.tc-opened-badge text { font-size: 20rpx; color: #92400e; font-weight: 600; }
+
 /* Card */
 .tc-card {
   background: #fff;

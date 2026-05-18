@@ -3,11 +3,11 @@
   <view class="tc-body">
 
     <!-- 心情卡片 -->
-    <view class="tc-hero">
-      <text class="tc-hero-icon">⏳</text>
+    <view class="tc-hero {{isOpened ? 'tc-hero-opened' : ''}}">
+      <text class="tc-hero-icon">{{isOpened ? '🔓' : '⏳'}}</text>
       <view class="tc-hero-text">
-        <text class="tc-hero-title">{{isEdit ? '编辑时间胶囊' : '创建时间胶囊'}}</text>
-        <text class="tc-hero-sub">写下现在，留给未来的自己</text>
+        <text class="tc-hero-title">{{isOpened ? '编辑已开启的胶囊' : (isEdit ? '编辑时间胶囊' : '创建时间胶囊')}}</text>
+        <text class="tc-hero-sub">{{isOpened ? '胶囊已开启，可修改内容和提醒设置' : '写下现在，留给未来的自己'}}</text>
       </view>
     </view>
 
@@ -61,8 +61,15 @@
 
     <!-- 开启时间 -->
     <view class="tc-card">
-      <text class="tc-label">设置开启时间<text class="tc-required">*</text></text>
-      <view class="tc-row">
+      <text class="tc-label">开启时间<text wx:if="{{!isOpened}}" class="tc-required">*</text></text>
+      <!-- 已开启：只读展示 -->
+      <view wx:if="{{isOpened}}" class="tc-opened-date-row">
+        <text class="tc-opened-date-icon">📅</text>
+        <text class="tc-opened-date-val">{{openDate}} {{openTimeVal}}</text>
+        <view class="tc-opened-badge"><text>已开启</text></view>
+      </view>
+      <!-- 未开启：可选时间 -->
+      <view wx:else class="tc-row">
         <picker mode="date" value="{{openDate}}" start="{{minDate}}" bindchange="onOpenDateChange">
           <view class="tc-picker {{openDate ? '' : 'tc-picker-ph'}}">
             <text>{{openDate || '选择日期'}}</text>
@@ -76,7 +83,7 @@
           </view>
         </picker>
       </view>
-      <text class="tc-field-hint">到达该时间后，微信公众号和邮件将提醒您开启胶囊</text>
+      <text wx:if="{{!isOpened}}" class="tc-field-hint">到达该时间后，微信公众号和邮件将提醒您开启胶囊</text>
     </view>
 
     <!-- 提醒设置（公众号 + 邮件合并一卡） -->
