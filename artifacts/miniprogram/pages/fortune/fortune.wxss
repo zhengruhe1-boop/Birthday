@@ -249,13 +249,13 @@
 .field-row--birthday {
   flex-direction: column;
   align-items: stretch;
-  padding: 24rpx 28rpx 20rpx;
+  padding: 32rpx 28rpx 28rpx;
 }
 .birthday-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18rpx;
+  margin-bottom: 24rpx;
 }
 .cal-toggle {
   display: flex;
