@@ -21,7 +21,7 @@
         </text>
       </block>
       <!-- 未关注 -->
-      <block wx:else>
+      <block wx:elif="{{!checking && !oaSubscribed}}">
         <view class="alert-row">
           <text class="alert-icon">⚠️</text>
           <text class="alert-text">您尚未关注生日通公众号</text>
@@ -39,7 +39,7 @@
     </view>
 
     <!-- 步骤说明（未关注时展示） -->
-    <block wx:if="{{!oaSubscribed}}">
+    <block wx:if="{{!checking && !oaSubscribed}}">
       <view class="card steps-card">
         <text class="steps-title">操作步骤</text>
         <view class="step-item">

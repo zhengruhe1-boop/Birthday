@@ -62,7 +62,7 @@
   <view class="footer">
     <button class="btn-del {{isOpened ? 'btn-del-full' : ''}}"
       bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting}}">
-      🗑️ 删除胶囊
+    删除
     </button>
     <button wx:if="{{!isOpened}}" class="btn-edit" bindtap="goEdit" disabled="{{deleting}}">
       ✏️ 编辑胶囊
