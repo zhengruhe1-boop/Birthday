@@ -21,11 +21,11 @@ App({
     mgr.onUpdateReady(function () {
       wx.showModal({
         title: '发现新版本 🎉',
-        content: '新版本已准备好，重启后即可体验最新功能。',
+        content: '新版本已准备好，需要重启后才能继续使用。',
         confirmText: '立即重启',
-        cancelText: '下次再说',
-        success(res) {
-          if (res.confirm) mgr.applyUpdate();
+        showCancel: false,
+        success() {
+          mgr.applyUpdate();
         },
       });
     });
