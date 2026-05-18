@@ -5,12 +5,31 @@
     <view class="setting-card">
 
       <!-- 生日选择 -->
-      <view class="field-row">
-        <text class="field-label">我的生日</text>
-        <picker mode="date" value="{{myBirthday}}" end="{{queryDate}}" bindchange="onBirthdayChange">
+      <view class="field-row field-row--birthday">
+        <view class="birthday-header">
+          <text class="field-label">我的生日</text>
+          <!-- 公历 / 农历 切换 -->
+          <view class="cal-toggle">
+            <view class="cal-btn {{calType==='solar' ? 'cal-btn--active' : ''}}" bindtap="onCalTypeSolar">公历</view>
+            <view class="cal-btn {{calType==='lunar' ? 'cal-btn--active' : ''}}" bindtap="onCalTypeLunar">农历</view>
+          </view>
+        </view>
+
+        <!-- 公历选择器 -->
+        <picker wx:if="{{calType==='solar'}}" mode="date" value="{{solarBirthday}}" end="{{queryDate}}" bindchange="onSolarBirthdayChange">
           <view class="field-value-row">
-            <text class="field-value {{myBirthday ? '' : 'placeholder'}}">
-              {{myBirthday || '点击设置生日'}}
+            <text class="field-value {{solarBirthday ? '' : 'placeholder'}}">
+              {{solarBirthday || '点击选择公历生日'}}
+            </text>
+            <text class="field-icon-cal">🎂</text>
+          </view>
+        </picker>
+
+        <!-- 农历选择器 -->
+        <picker wx:else mode="multiSelector" value="{{lunarPickerValue}}" range="{{lunarPickerRange}}" bindchange="onLunarBirthdayChange">
+          <view class="field-value-row">
+            <text class="field-value {{lunarBirthdayDisplay ? '' : 'placeholder'}}">
+              {{lunarBirthdayDisplay || '点击选择农历生日'}}
             </text>
             <text class="field-icon-cal">🎂</text>
           </view>
@@ -44,6 +63,12 @@
         </picker>
       </view>
 
+    </view>
+
+    <!-- 农历提示 -->
+    <view wx:if="{{calType==='lunar' && currentSign}}" class="lunar-tip-banner">
+      <text class="lunar-tip-icon">ℹ️</text>
+      <text class="lunar-tip-text">星座依据农历对应的公历日期推算，供参考</text>
     </view>
 
     <!-- 未设置生日提示 -->

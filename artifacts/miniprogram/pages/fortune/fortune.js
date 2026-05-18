@@ -1,8 +1,10 @@
 const api = require('../../utils/api');
 
-const STORAGE_KEY   = 'fortune_sign';       // shared with home page widget
-const BIRTHDAY_KEY  = 'fortune_my_birthday'; // "YYYY-MM-DD" or "MM-DD"
-const CACHE_PREFIX  = 'fortune_cache_';
+const STORAGE_KEY        = 'fortune_sign';
+const BIRTHDAY_KEY       = 'fortune_my_birthday';
+const BIRTHDAY_TYPE_KEY  = 'fortune_birthday_type';
+const BIRTHDAY_LUNAR_KEY = 'fortune_birthday_lunar';
+const CACHE_PREFIX       = 'fortune_cache_';
 
 const SIGNS = [
   '白羊座','金牛座','双子座','巨蟹座','狮子座','处女座',
@@ -19,12 +21,11 @@ const SIGN_DATA = {
   '天秤座': { emoji:'♎', element:'风象', house:'第七宫（婚姻宫）', yinyang:'阳性', trait:'温和优雅，追求平衡', planet:'金星', color:'粉色', talisman:'白玉', number:'6', metal:'铜', dateRange:'9/23-10/23' },
   '天蝎座': { emoji:'♏', element:'水象', house:'第八宫（死亡宫）', yinyang:'阴性', trait:'神秘深沉，意志坚定', planet:'冥王星', color:'深红色', talisman:'黑曜石', number:'9', metal:'铁', dateRange:'10/24-11/22' },
   '射手座': { emoji:'♐', element:'火象', house:'第九宫（哲学宫）', yinyang:'阳性', trait:'乐观自由，热爱冒险', planet:'木星', color:'紫色', talisman:'紫水晶', number:'3', metal:'锡', dateRange:'11/23-12/21' },
-  '摩羯座': { emoji:'♑', element:'土象', house:'第十宫（事业宫）', yinyang:'阴性', trait:'踏实勤奋，目标坚定', planet:'土星', color:'黑色', talisman:'黑玛瑙', number:'8', metal:'鲑', dateRange:'12/22-1/19' },
+  '摩羯座': { emoji:'♑', element:'土象', house:'第十宫（事业宫）', yinyang:'阴性', trait:'踏实勤奋，目标坚定', planet:'土星', color:'黑色', talisman:'黑玛瑙', number:'8', metal:'鉛', dateRange:'12/22-1/19' },
   '水瓶座': { emoji:'♒', element:'风象', house:'第十一宫（友谊宫）', yinyang:'阳性', trait:'独立创新，思想超前', planet:'天王星', color:'蓝色', talisman:'蓝宝石', number:'4', metal:'铀', dateRange:'1/20-2/18' },
   '双鱼座': { emoji:'♓', element:'水象', house:'第十二宫（隐居宫）', yinyang:'阴性', trait:'感性浪漫，富有同情心', planet:'海王星', color:'海蓝色', talisman:'海蓝宝石', number:'7', metal:'锡', dateRange:'2/19-3/20' },
 };
 
-// 根据月/日推算星座
 function getSignFromMonthDay(month, day) {
   const m = parseInt(month, 10);
   const d = parseInt(day,   10);
@@ -59,6 +60,8 @@ function todayStr() {
   return `${y}-${m}-${day}`;
 }
 
+function padTwo(n) { return String(n).padStart(2, '0'); }
+
 function buildIndices(fortune) {
   return [
     { key: 'love',   name: '爱情', emoji: '💕', score: fortune.love?.score   || 0, desc: fortune.love?.desc   || '', color: '#f43f5e' },
@@ -68,23 +71,97 @@ function buildIndices(fortune) {
   ];
 }
 
+// ── 农历支持 ──────────────────────────────────────────────────────────────────
+
+const LUNAR_MONTHS_DISPLAY = [
+  '正月','二月','三月','四月','五月','六月',
+  '七月','八月','九月','十月','十一月','腊月',
+];
+
+const LUNAR_DAYS_DISPLAY = [
+  '初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+  '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+  '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十',
+];
+
+// 春节公历日期 [月, 日]，用于农历→公历换算
+const SPRING_FESTIVAL = {
+  1930:[1,30],1931:[2,17],1932:[2,6], 1933:[1,26],1934:[2,14],
+  1935:[2,4], 1936:[1,24],1937:[2,11],1938:[1,31],1939:[2,19],
+  1940:[2,8], 1941:[1,27],1942:[2,15],1943:[2,5], 1944:[1,25],
+  1945:[2,13],1946:[2,2], 1947:[1,22],1948:[2,10],1949:[1,29],
+  1950:[2,17],1951:[2,6], 1952:[1,27],1953:[2,14],1954:[2,3],
+  1955:[1,24],1956:[2,12],1957:[1,31],1958:[2,18],1959:[2,8],
+  1960:[1,28],1961:[2,15],1962:[2,5], 1963:[1,25],1964:[2,13],
+  1965:[2,2], 1966:[1,21],1967:[2,9], 1968:[1,30],1969:[2,17],
+  1970:[2,6], 1971:[1,27],1972:[2,15],1973:[2,3], 1974:[1,23],
+  1975:[2,11],1976:[1,31],1977:[2,18],1978:[2,7], 1979:[1,28],
+  1980:[2,16],1981:[2,5], 1982:[1,25],1983:[2,13],1984:[2,2],
+  1985:[2,20],1986:[2,9], 1987:[1,29],1988:[2,17],1989:[2,6],
+  1990:[1,27],1991:[2,15],1992:[2,4], 1993:[1,23],1994:[2,10],
+  1995:[1,31],1996:[2,19],1997:[2,7], 1998:[1,28],1999:[2,16],
+  2000:[2,5], 2001:[1,24],2002:[2,12],2003:[2,1], 2004:[1,22],
+  2005:[2,9], 2006:[1,29],2007:[2,18],2008:[2,7], 2009:[1,26],
+  2010:[2,14],2011:[2,3], 2012:[1,23],2013:[2,10],2014:[1,31],
+  2015:[2,19],2016:[2,8], 2017:[1,28],2018:[2,16],2019:[2,5],
+  2020:[1,25],2021:[2,12],2022:[2,1], 2023:[1,22],2024:[2,10],
+  2025:[1,29],2026:[2,17],2027:[2,6], 2028:[1,26],2029:[2,13],
+  2030:[2,3],
+};
+
+// 农历→公历近似换算（每农历月约 29.53 天）
+function lunarToSolar(lunarYear, lunarMonth, lunarDay) {
+  const sf = SPRING_FESTIVAL[lunarYear];
+  if (!sf) return null;
+  const springDate = new Date(lunarYear, sf[0] - 1, sf[1]);
+  const offsetDays = Math.round((lunarMonth - 1) * 29.53) + (lunarDay - 1);
+  const solarDate  = new Date(springDate.getTime() + offsetDays * 86400000);
+  return {
+    year:  solarDate.getFullYear(),
+    month: solarDate.getMonth() + 1,
+    day:   solarDate.getDate(),
+  };
+}
+
+function buildLunarYears() {
+  const endYear = new Date().getFullYear();
+  const list = [], values = [];
+  for (let y = endYear; y >= 1930; y--) {
+    list.push(y + '年');
+    values.push(y);
+  }
+  return { list, values };
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 Page({
   data: {
     signData: SIGN_DATA,
     currentSign: '',
-    myBirthday: '',        // "YYYY-MM-DD" stored in picker
+    myBirthday: '',
     queryDate: todayStr(),
     fortune: null,
     indices: [],
     loading: false,
     error: '',
+
+    calType: 'solar',
+    solarBirthday: '',
+
+    lunarPickerRange: [[], LUNAR_MONTHS_DISPLAY, LUNAR_DAYS_DISPLAY],
+    lunarPickerValue: [0, 0, 0],
+    lunarBirthdayDisplay: '',
+    lunarYearValues: [],
   },
 
   onLoad(opts) {
+    const yearData     = buildLunarYears();
+    const savedType    = wx.getStorageSync(BIRTHDAY_TYPE_KEY) || 'solar';
     const savedBirthday = wx.getStorageSync(BIRTHDAY_KEY) || '';
-    const savedSign     = wx.getStorageSync(STORAGE_KEY)  || '';
+    const savedLunar   = wx.getStorageSync(BIRTHDAY_LUNAR_KEY) || '';
+    const savedSign    = wx.getStorageSync(STORAGE_KEY) || '';
 
-    // 优先用生日推算，其次用之前保存的星座（兼容旧数据）
     let sign = '';
     if (savedBirthday) {
       sign = signFromDateStr(savedBirthday);
@@ -94,7 +171,38 @@ Page({
       sign = savedSign;
     }
 
-    this.setData({ myBirthday: savedBirthday, currentSign: sign, queryDate: todayStr() });
+    // 默认年份：当前年份往前36年（常见用户年龄）
+    const defaultYear    = new Date().getFullYear() - 36;
+    const defaultYearIdx = Math.max(0, yearData.values.indexOf(defaultYear));
+
+    let lunarPickerValue    = [defaultYearIdx, 0, 0];
+    let lunarBirthdayDisplay = '';
+
+    if (savedType === 'lunar' && savedLunar) {
+      const parts = savedLunar.split('-');
+      if (parts.length === 3) {
+        const ly   = parseInt(parts[0]);
+        const lm   = parseInt(parts[1]);
+        const ld   = parseInt(parts[2]);
+        const yIdx = yearData.values.indexOf(ly);
+        if (yIdx >= 0) {
+          lunarPickerValue     = [yIdx, lm - 1, ld - 1];
+          lunarBirthdayDisplay = `农历 ${ly}年 ${LUNAR_MONTHS_DISPLAY[lm - 1]} ${LUNAR_DAYS_DISPLAY[ld - 1]}`;
+        }
+      }
+    }
+
+    this.setData({
+      calType: savedType,
+      solarBirthday: savedType === 'solar' ? savedBirthday : '',
+      myBirthday: savedBirthday,
+      currentSign: sign,
+      queryDate: todayStr(),
+      lunarPickerRange: [yearData.list, LUNAR_MONTHS_DISPLAY, LUNAR_DAYS_DISPLAY],
+      lunarPickerValue,
+      lunarBirthdayDisplay,
+      lunarYearValues: yearData.values,
+    });
 
     if (sign) {
       wx.setStorageSync(STORAGE_KEY, sign);
@@ -112,13 +220,74 @@ Page({
     }
   },
 
-  // ── 生日选择 ──────────────────────────────────────────────────────────────────
-  onBirthdayChange(e) {
-    const birthday = e.detail.value; // "YYYY-MM-DD"
-    const sign = signFromDateStr(birthday);
-    wx.setStorageSync(BIRTHDAY_KEY, birthday);
-    wx.setStorageSync(STORAGE_KEY, sign);
+  // ── 公历/农历 切换 ──────────────────────────────────────────────────────────
+  onCalTypeSolar() {
+    if (this.data.calType === 'solar') return;
+    wx.setStorageSync(BIRTHDAY_TYPE_KEY, 'solar');
+    // 切回公历时，若之前有公历生日则复用
+    const prev = this.data.solarBirthday || '';
+    const sign = prev ? signFromDateStr(prev) : '';
     this.setData({
+      calType: 'solar',
+      solarBirthday: prev,
+      myBirthday: prev,
+      currentSign: sign,
+      fortune: null,
+      indices: [],
+      error: '',
+    });
+    if (prev) wx.setStorageSync(BIRTHDAY_KEY, prev);
+    if (sign) {
+      wx.setStorageSync(STORAGE_KEY, sign);
+      this._loadWithFallback(sign, this.data.queryDate);
+    }
+  },
+
+  onCalTypeLunar() {
+    if (this.data.calType === 'lunar') return;
+    wx.setStorageSync(BIRTHDAY_TYPE_KEY, 'lunar');
+    // 切换农历时，若有缓存的农历生日则恢复
+    const savedLunar = wx.getStorageSync(BIRTHDAY_LUNAR_KEY) || '';
+    let display = '', myBirthday = '', sign = '';
+    if (savedLunar) {
+      const parts = savedLunar.split('-');
+      if (parts.length === 3) {
+        const ly = parseInt(parts[0]);
+        const lm = parseInt(parts[1]);
+        const ld = parseInt(parts[2]);
+        display  = `农历 ${ly}年 ${LUNAR_MONTHS_DISPLAY[lm - 1]} ${LUNAR_DAYS_DISPLAY[ld - 1]}`;
+        const solar = lunarToSolar(ly, lm, ld);
+        if (solar) {
+          myBirthday = `${solar.year}-${padTwo(solar.month)}-${padTwo(solar.day)}`;
+          sign       = getSignFromMonthDay(solar.month, solar.day);
+        }
+      }
+    }
+    this.setData({
+      calType: 'lunar',
+      solarBirthday: '',
+      lunarBirthdayDisplay: display,
+      myBirthday,
+      currentSign: sign,
+      fortune: null,
+      indices: [],
+      error: '',
+    });
+    if (myBirthday) wx.setStorageSync(BIRTHDAY_KEY, myBirthday);
+    if (sign) {
+      wx.setStorageSync(STORAGE_KEY, sign);
+      this._loadWithFallback(sign, this.data.queryDate);
+    }
+  },
+
+  // ── 公历生日选择 ────────────────────────────────────────────────────────────
+  onSolarBirthdayChange(e) {
+    const birthday = e.detail.value;
+    const sign     = signFromDateStr(birthday);
+    wx.setStorageSync(BIRTHDAY_KEY, birthday);
+    wx.setStorageSync(STORAGE_KEY,  sign);
+    this.setData({
+      solarBirthday: birthday,
       myBirthday: birthday,
       currentSign: sign,
       fortune: null,
@@ -128,7 +297,42 @@ Page({
     if (sign) this._loadWithFallback(sign, this.data.queryDate);
   },
 
-  // ── 日期查询 ──────────────────────────────────────────────────────────────────
+  // ── 农历生日选择 ────────────────────────────────────────────────────────────
+  onLunarBirthdayChange(e) {
+    const idxArr     = e.detail.value;           // [yearIdx, monthIdx, dayIdx]
+    const yearValues = this.data.lunarYearValues;
+    const ly = yearValues[idxArr[0]];
+    const lm = idxArr[1] + 1;                    // 1-12
+    const ld = idxArr[2] + 1;                    // 1-30
+
+    const solar = lunarToSolar(ly, lm, ld);
+    if (!solar) {
+      wx.showToast({ title: '日期转换失败', icon: 'none' });
+      return;
+    }
+
+    const solarStr  = `${solar.year}-${padTwo(solar.month)}-${padTwo(solar.day)}`;
+    const sign      = getSignFromMonthDay(solar.month, solar.day);
+    const display   = `农历 ${ly}年 ${LUNAR_MONTHS_DISPLAY[lm - 1]} ${LUNAR_DAYS_DISPLAY[ld - 1]}`;
+    const lunarRaw  = `${ly}-${lm}-${ld}`;
+
+    wx.setStorageSync(BIRTHDAY_KEY,       solarStr);
+    wx.setStorageSync(BIRTHDAY_LUNAR_KEY, lunarRaw);
+    wx.setStorageSync(STORAGE_KEY,        sign);
+
+    this.setData({
+      lunarPickerValue:     [idxArr[0], idxArr[1], idxArr[2]],
+      lunarBirthdayDisplay: display,
+      myBirthday:           solarStr,
+      currentSign:          sign,
+      fortune:              null,
+      indices:              [],
+      error:                '',
+    });
+    if (sign) this._loadWithFallback(sign, this.data.queryDate);
+  },
+
+  // ── 查询日期选择 ────────────────────────────────────────────────────────────
   onDateChange(e) {
     const date = e.detail.value;
     this.setData({ queryDate: date, fortune: null, indices: [], error: '' });
@@ -137,7 +341,7 @@ Page({
     }
   },
 
-  // ── 缓存 / 加载 ───────────────────────────────────────────────────────────────
+  // ── 缓存 / 加载 ─────────────────────────────────────────────────────────────
   _cacheKey(sign, date) {
     return CACHE_PREFIX + sign + '_' + date;
   },
@@ -173,21 +377,18 @@ Page({
     const self = this;
     if (self.data.loading) return;
     self.setData({ loading: true, error: '' });
-    api.post('api/fortune', { sign: sign, date: date })
+    api.post('api/fortune', { sign, date })
       .then(function(res) {
         const fortune = res.fortune;
-        wx.setStorageSync(self._cacheKey(sign, date), { fortune: fortune, cachedAt: Date.now() });
-        self.setData({ fortune: fortune, indices: buildIndices(fortune), loading: false });
+        wx.setStorageSync(self._cacheKey(sign, date), { fortune, cachedAt: Date.now() });
+        self.setData({ fortune, indices: buildIndices(fortune), loading: false });
       })
       .catch(function(err) {
-        self.setData({
-          loading: false,
-          error: err.message || '获取运势失败，请稍后重试',
-        });
+        self.setData({ loading: false, error: err.message || '获取运势失败，请稍后重试' });
       });
   },
 
-  // ── 生成按钮 ──────────────────────────────────────────────────────────────────
+  // ── 生成按钮 ────────────────────────────────────────────────────────────────
   async queryFortune() {
     const { currentSign, queryDate, loading } = this.data;
     if (loading) return;
@@ -219,15 +420,13 @@ Page({
     } catch {}
 
     try {
-      const res = await api.post('api/fortune', { sign: currentSign, date: queryDate });
+      const res     = await api.post('api/fortune', { sign: currentSign, date: queryDate });
       const fortune = res.fortune;
       wx.setStorageSync(cacheKey, { fortune, cachedAt: Date.now() });
       this.setData({ fortune, indices: buildIndices(fortune), loading: false });
+      wx.showToast({ title: '已生成运势', icon: 'none', duration: 1500 });
     } catch (err) {
-      this.setData({
-        loading: false,
-        error: err.message || '获取运势失败，请稍后重试',
-      });
+      this.setData({ loading: false, error: err.message || '获取运势失败，请稍后重试' });
     }
   },
 });
