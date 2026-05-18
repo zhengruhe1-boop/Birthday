@@ -4,14 +4,30 @@
     <!-- 设置区域 -->
     <view class="setting-card">
 
-      <!-- 星座选择 -->
-      <view class="field-row" bindtap="openSignPicker">
+      <!-- 生日选择 -->
+      <view class="field-row">
+        <text class="field-label">我的生日</text>
+        <picker mode="date" value="{{myBirthday}}" end="{{queryDate}}" bindchange="onBirthdayChange">
+          <view class="field-value-row">
+            <text class="field-value {{myBirthday ? '' : 'placeholder'}}">
+              {{myBirthday || '点击设置生日'}}
+            </text>
+            <text class="field-icon-cal">🎂</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 自动推算的星座（只读展示） -->
+      <view class="field-divider" />
+      <view class="field-row field-row-sign">
         <text class="field-label">我的星座</text>
         <view class="field-value-row">
-          <text class="field-value {{currentSign ? '' : 'placeholder'}}">
-            {{currentSign ? (currentSign + ' (' + signData[currentSign].dateRange + ')') : '请选择星座'}}
-          </text>
-          <text class="field-arrow">∨</text>
+          <view wx:if="{{currentSign}}" class="sign-display">
+            <text class="sign-display-emoji">{{signData[currentSign].emoji}}</text>
+            <text class="sign-display-name">{{currentSign}}</text>
+            <text class="sign-display-range">{{signData[currentSign].dateRange}}</text>
+          </view>
+          <text wx:else class="field-value placeholder">生日后自动显示</text>
         </view>
       </view>
 
@@ -30,8 +46,15 @@
 
     </view>
 
+    <!-- 未设置生日提示 -->
+    <view wx:if="{{!myBirthday}}" class="tip-banner">
+      <text class="tip-banner-icon">💡</text>
+      <text class="tip-banner-text">设置您的生日，即可自动匹配星座并查看专属运势</text>
+    </view>
+
     <!-- 生成按钮 -->
-    <view class="generate-btn {{loading ? 'loading' : ''}}" bindtap="queryFortune">
+    <view class="generate-btn {{loading ? 'loading' : ''}} {{!currentSign ? 'disabled' : ''}}"
+          bindtap="queryFortune">
       <text>{{loading ? '正在生成…' : '生成今日运势'}}</text>
     </view>
 
@@ -156,35 +179,4 @@
 
     <view style="height:60rpx" />
   </scroll-view>
-
-  <!-- 星座选择弹窗 -->
-  <view wx:if="{{showSignPicker}}" class="modal-mask" bindtap="closeSignPicker">
-    <view class="sign-sheet" catchtap="noop">
-      <view class="modal-handle" />
-      <view class="modal-title-row">
-        <text class="modal-title">选择星座</text>
-        <view class="modal-close-btn" bindtap="closeSignPicker"><text>✕</text></view>
-      </view>
-      <scroll-view scroll-y style="max-height:600rpx">
-        <view class="sign-list">
-          <view
-            wx:for="{{signs}}"
-            wx:key="*this"
-            class="sign-option {{currentSign === item ? 'active' : ''}}"
-            bindtap="selectSign"
-            data-sign="{{item}}">
-            <view class="sign-opt-left">
-              <text class="sign-opt-emoji">{{signData[item].emoji}}</text>
-              <view class="sign-opt-info">
-                <text class="sign-opt-name">{{item}}</text>
-                <text class="sign-opt-range">{{signData[item].dateRange}}</text>
-              </view>
-            </view>
-            <text wx:if="{{currentSign === item}}" class="sign-check">✓</text>
-          </view>
-        </view>
-      </scroll-view>
-    </view>
-  </view>
-
 </view>

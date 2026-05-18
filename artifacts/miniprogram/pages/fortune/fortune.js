@@ -1,27 +1,55 @@
 const api = require('../../utils/api');
 
-const STORAGE_KEY = 'fortune_sign';
-const CACHE_PREFIX = 'fortune_cache_';
+const STORAGE_KEY   = 'fortune_sign';       // shared with home page widget
+const BIRTHDAY_KEY  = 'fortune_my_birthday'; // "YYYY-MM-DD" or "MM-DD"
+const CACHE_PREFIX  = 'fortune_cache_';
 
 const SIGNS = [
-  '\u767d\u7f8a\u5ea7','\u91d1\u725b\u5ea7','\u53cc\u5b50\u5ea7','\u5de8\u87f9\u5ea7','\u72ee\u5b50\u5ea7','\u5904\u5973\u5ea7',
-  '\u5929\u79e4\u5ea7','\u5929\u874e\u5ea7','\u5c04\u624b\u5ea7','\u6469\u7faf\u5ea7','\u6c34\u74f6\u5ea7','\u53cc\u9c7c\u5ea7',
+  '白羊座','金牛座','双子座','巨蟹座','狮子座','处女座',
+  '天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座',
 ];
 
 const SIGN_DATA = {
-  '\u767d\u7f8a\u5ea7': { emoji:'\u2648', element:'\u706b\u8c61', house:'\u7b2c\u4e00\u5bab\uff08\u81ea\u6211\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u52c7\u655a\u51b2\u52a8\uff0c\u5145\u6ee1\u6d3b\u529b', planet:'\u706b\u661f', color:'\u7ea2\u8272', talisman:'\u7ea2\u73ca\u745a', number:'9', metal:'\u94c1', dateRange:'3/21-4/19' },
-  '\u91d1\u725b\u5ea7': { emoji:'\u2649', element:'\u571f\u8c61', house:'\u7b2c\u4e8c\u5bab\uff08\u8d22\u5e1b\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u7a33\u91cd\u8e0f\u5b9e\uff0c\u4eab\u53d7\u751f\u6d3b', planet:'\u91d1\u661f', color:'\u7eff\u8272', talisman:'\u7eff\u677e\u77f3', number:'6', metal:'\u94dc', dateRange:'4/20-5/20' },
-  '\u53cc\u5b50\u5ea7': { emoji:'\u264a', element:'\u98ce\u8c61', house:'\u7b2c\u4e09\u5bab\uff08\u4f20\u64ad\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u673a\u667a\u7075\u6d3b\uff0c\u597d\u5947\u5fc3\u5f3a', planet:'\u6c34\u661f', color:'\u9ec4\u8272', talisman:'\u739b\u7459', number:'5', metal:'\u6c5e', dateRange:'5/21-6/21' },
-  '\u5de8\u87f9\u5ea7': { emoji:'\u264b', element:'\u6c34\u8c61', house:'\u7b2c\u56db\u5bab\uff08\u5bb6\u5ead\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u6e29\u67d4\u654f\u611f\uff0c\u91cd\u89c6\u5bb6\u5ead', planet:'\u6708\u4eae', color:'\u94f6\u767d\u8272', talisman:'\u73cd\u73e0', number:'2', metal:'\u94f6', dateRange:'6/22-7/22' },
-  '\u72ee\u5b50\u5ea7': { emoji:'\u264c', element:'\u706b\u8c61', house:'\u7b2c\u4e94\u5bab\uff08\u521b\u610f\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u81ea\u4fe1\u5927\u65b9\uff0c\u9b45\u529b\u5341\u8db3', planet:'\u592a\u9633', color:'\u91d1\u8272', talisman:'\u7ea2\u5b9d\u77f3', number:'1', metal:'\u91d1', dateRange:'7/23-8/22' },
-  '\u5904\u5973\u5ea7': { emoji:'\u264d', element:'\u571f\u8c61', house:'\u7b2c\u516d\u5bab\uff08\u670d\u52a1\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u7ec6\u81f4\u8ba4\u771f\uff0c\u8ffd\u6c42\u5b8c\u7f8e', planet:'\u6c34\u661f', color:'\u7070\u8272', talisman:'\u84dd\u5b9d\u77f3', number:'6', metal:'\u6c5e', dateRange:'8/23-9/22' },
-  '\u5929\u79e4\u5ea7': { emoji:'\u264e', element:'\u98ce\u8c61', house:'\u7b2c\u4e03\u5bab\uff08\u5a5a\u59fb\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u6e29\u548c\u4f18\u96c5\uff0c\u8ffd\u6c42\u5e73\u8861', planet:'\u91d1\u661f', color:'\u7c89\u8272', talisman:'\u767d\u7389', number:'6', metal:'\u94dc', dateRange:'9/23-10/23' },
-  '\u5929\u874e\u5ea7': { emoji:'\u264f', element:'\u6c34\u8c61', house:'\u7b2c\u516b\u5bab\uff08\u6b7b\u4ea1\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u795e\u79d8\u6df1\u6c89\uff0c\u610f\u5fd7\u575a\u5b9a', planet:'\u51a5\u738b\u661f', color:'\u6df1\u7ea2\u8272', talisman:'\u9ed1\u66dc\u77f3', number:'9', metal:'\u94c1', dateRange:'10/24-11/22' },
-  '\u5c04\u624b\u5ea7': { emoji:'\u2650', element:'\u706b\u8c61', house:'\u7b2c\u4e5d\u5bab\uff08\u54f2\u5b66\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u4e50\u89c2\u81ea\u7531\uff0c\u70ed\u7231\u5192\u9669', planet:'\u6728\u661f', color:'\u7d2b\u8272', talisman:'\u7d2b\u6c34\u6676', number:'3', metal:'\u9521', dateRange:'11/23-12/21' },
-  '\u6469\u7faf\u5ea7': { emoji:'\u2651', element:'\u571f\u8c61', house:'\u7b2c\u5341\u5bab\uff08\u4e8b\u4e1a\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u8e0f\u5b9e\u52e4\u594b\uff0c\u76ee\u6807\u575a\u5b9a', planet:'\u571f\u661f', color:'\u9ed1\u8272', talisman:'\u9ed1\u739b\u7459', number:'8', metal:'\u9c9b', dateRange:'12/22-1/19' },
-  '\u6c34\u74f6\u5ea7': { emoji:'\u2652', element:'\u98ce\u8c61', house:'\u7b2c\u5341\u4e00\u5bab\uff08\u53cb\u8c0a\u5bab\uff09', yinyang:'\u9633\u6027', trait:'\u72ec\u7acb\u521b\u65b0\uff0c\u601d\u60f3\u8d85\u524d', planet:'\u5929\u738b\u661f', color:'\u84dd\u8272', talisman:'\u84dd\u5b9d\u77f3', number:'4', metal:'\u94c0', dateRange:'1/20-2/18' },
-  '\u53cc\u9c7c\u5ea7': { emoji:'\u2653', element:'\u6c34\u8c61', house:'\u7b2c\u5341\u4e8c\u5bab\uff08\u9690\u5c45\u5bab\uff09', yinyang:'\u9634\u6027', trait:'\u611f\u6027\u6d6a\u6f2b\uff0c\u5bcc\u6709\u540c\u60c5\u5fc3', planet:'\u6d77\u738b\u661f', color:'\u6d77\u84dd\u8272', talisman:'\u6d77\u84dd\u5b9d\u77f3', number:'7', metal:'\u9521', dateRange:'2/19-3/20' },
+  '白羊座': { emoji:'♈', element:'火象', house:'第一宫（自我宫）', yinyang:'阳性', trait:'勇敢冲动，充满活力', planet:'火星', color:'红色', talisman:'红珊瑚', number:'9', metal:'铁', dateRange:'3/21-4/19' },
+  '金牛座': { emoji:'♉', element:'土象', house:'第二宫（财帛宫）', yinyang:'阴性', trait:'稳重踏实，享受生活', planet:'金星', color:'绿色', talisman:'绿松石', number:'6', metal:'铜', dateRange:'4/20-5/20' },
+  '双子座': { emoji:'♊', element:'风象', house:'第三宫（传播宫）', yinyang:'阳性', trait:'机智灵活，好奇心强', planet:'水星', color:'黄色', talisman:'玛瑙', number:'5', metal:'汞', dateRange:'5/21-6/21' },
+  '巨蟹座': { emoji:'♋', element:'水象', house:'第四宫（家庭宫）', yinyang:'阴性', trait:'温柔敏感，重视家庭', planet:'月亮', color:'银白色', talisman:'珍珠', number:'2', metal:'银', dateRange:'6/22-7/22' },
+  '狮子座': { emoji:'♌', element:'火象', house:'第五宫（创意宫）', yinyang:'阳性', trait:'自信大方，魅力十足', planet:'太阳', color:'金色', talisman:'红宝石', number:'1', metal:'金', dateRange:'7/23-8/22' },
+  '处女座': { emoji:'♍', element:'土象', house:'第六宫（服务宫）', yinyang:'阴性', trait:'细致认真，追求完美', planet:'水星', color:'灰色', talisman:'蓝宝石', number:'6', metal:'汞', dateRange:'8/23-9/22' },
+  '天秤座': { emoji:'♎', element:'风象', house:'第七宫（婚姻宫）', yinyang:'阳性', trait:'温和优雅，追求平衡', planet:'金星', color:'粉色', talisman:'白玉', number:'6', metal:'铜', dateRange:'9/23-10/23' },
+  '天蝎座': { emoji:'♏', element:'水象', house:'第八宫（死亡宫）', yinyang:'阴性', trait:'神秘深沉，意志坚定', planet:'冥王星', color:'深红色', talisman:'黑曜石', number:'9', metal:'铁', dateRange:'10/24-11/22' },
+  '射手座': { emoji:'♐', element:'火象', house:'第九宫（哲学宫）', yinyang:'阳性', trait:'乐观自由，热爱冒险', planet:'木星', color:'紫色', talisman:'紫水晶', number:'3', metal:'锡', dateRange:'11/23-12/21' },
+  '摩羯座': { emoji:'♑', element:'土象', house:'第十宫（事业宫）', yinyang:'阴性', trait:'踏实勤奋，目标坚定', planet:'土星', color:'黑色', talisman:'黑玛瑙', number:'8', metal:'鲑', dateRange:'12/22-1/19' },
+  '水瓶座': { emoji:'♒', element:'风象', house:'第十一宫（友谊宫）', yinyang:'阳性', trait:'独立创新，思想超前', planet:'天王星', color:'蓝色', talisman:'蓝宝石', number:'4', metal:'铀', dateRange:'1/20-2/18' },
+  '双鱼座': { emoji:'♓', element:'水象', house:'第十二宫（隐居宫）', yinyang:'阴性', trait:'感性浪漫，富有同情心', planet:'海王星', color:'海蓝色', talisman:'海蓝宝石', number:'7', metal:'锡', dateRange:'2/19-3/20' },
 };
+
+// 根据月/日推算星座
+function getSignFromMonthDay(month, day) {
+  const m = parseInt(month, 10);
+  const d = parseInt(day,   10);
+  if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) return '白羊座';
+  if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) return '金牛座';
+  if ((m === 5 && d >= 21) || (m === 6 && d <= 21)) return '双子座';
+  if ((m === 6 && d >= 22) || (m === 7 && d <= 22)) return '巨蟹座';
+  if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) return '狮子座';
+  if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) return '处女座';
+  if ((m === 9 && d >= 23) || (m === 10 && d <= 23)) return '天秤座';
+  if ((m === 10 && d >= 24) || (m === 11 && d <= 22)) return '天蝎座';
+  if ((m === 11 && d >= 23) || (m === 12 && d <= 21)) return '射手座';
+  if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) return '摩羯座';
+  if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) return '水瓶座';
+  return '双鱼座';
+}
+
+function signFromDateStr(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return '';
+  const month = parts[parts.length - 2];
+  const day   = parts[parts.length - 1];
+  return getSignFromMonthDay(month, day);
+}
 
 function todayStr() {
   const d = new Date();
@@ -33,49 +61,87 @@ function todayStr() {
 
 function buildIndices(fortune) {
   return [
-    { key: 'love',   name: '\u7231\u60c5', emoji: '\ud83d\udc95', score: fortune.love?.score   || 0, desc: fortune.love?.desc   || '', color: '#f43f5e' },
-    { key: 'career', name: '\u4e8b\u4e1a', emoji: '\ud83d\udcbc', score: fortune.career?.score || 0, desc: fortune.career?.desc || '', color: '#3b82f6' },
-    { key: 'wealth', name: '\u8d22\u8fd0', emoji: '\ud83d\udcb0', score: fortune.wealth?.score || 0, desc: fortune.wealth?.desc || '', color: '#f59e0b' },
-    { key: 'health', name: '\u5065\u5eb7', emoji: '\ud83c\udf3f', score: fortune.health?.score || 0, desc: fortune.health?.desc || '', color: '#10b981' },
+    { key: 'love',   name: '爱情', emoji: '💕', score: fortune.love?.score   || 0, desc: fortune.love?.desc   || '', color: '#f43f5e' },
+    { key: 'career', name: '事业', emoji: '💼', score: fortune.career?.score || 0, desc: fortune.career?.desc || '', color: '#3b82f6' },
+    { key: 'wealth', name: '财运', emoji: '💰', score: fortune.wealth?.score || 0, desc: fortune.wealth?.desc || '', color: '#f59e0b' },
+    { key: 'health', name: '健康', emoji: '🌿', score: fortune.health?.score || 0, desc: fortune.health?.desc || '', color: '#10b981' },
   ];
 }
 
 Page({
   data: {
-    signs: SIGNS,
     signData: SIGN_DATA,
     currentSign: '',
+    myBirthday: '',        // "YYYY-MM-DD" stored in picker
     queryDate: todayStr(),
     fortune: null,
     indices: [],
     loading: false,
     error: '',
-    showSignPicker: false,
   },
 
   onLoad(opts) {
-    const savedSign = wx.getStorageSync(STORAGE_KEY) || '';
-    const sign = opts.sign || savedSign;
-    this.setData({ currentSign: sign, queryDate: todayStr() });
+    const savedBirthday = wx.getStorageSync(BIRTHDAY_KEY) || '';
+    const savedSign     = wx.getStorageSync(STORAGE_KEY)  || '';
+
+    // 优先用生日推算，其次用之前保存的星座（兼容旧数据）
+    let sign = '';
+    if (savedBirthday) {
+      sign = signFromDateStr(savedBirthday);
+    } else if (opts.sign) {
+      sign = opts.sign;
+    } else if (savedSign) {
+      sign = savedSign;
+    }
+
+    this.setData({ myBirthday: savedBirthday, currentSign: sign, queryDate: todayStr() });
 
     if (sign) {
+      wx.setStorageSync(STORAGE_KEY, sign);
       this._loadWithFallback(sign, this.data.queryDate);
     }
   },
 
   onShow() {
-    const saved = wx.getStorageSync(STORAGE_KEY) || '';
-    if (saved && saved !== this.data.currentSign) {
-      this.setData({ currentSign: saved, fortune: null, indices: [], error: '' });
-      this._loadWithFallback(saved, this.data.queryDate);
+    const savedBirthday = wx.getStorageSync(BIRTHDAY_KEY) || '';
+    if (savedBirthday !== this.data.myBirthday) {
+      const sign = signFromDateStr(savedBirthday);
+      wx.setStorageSync(STORAGE_KEY, sign);
+      this.setData({ myBirthday: savedBirthday, currentSign: sign, fortune: null, indices: [], error: '' });
+      if (sign) this._loadWithFallback(sign, this.data.queryDate);
     }
   },
 
+  // ── 生日选择 ──────────────────────────────────────────────────────────────────
+  onBirthdayChange(e) {
+    const birthday = e.detail.value; // "YYYY-MM-DD"
+    const sign = signFromDateStr(birthday);
+    wx.setStorageSync(BIRTHDAY_KEY, birthday);
+    wx.setStorageSync(STORAGE_KEY, sign);
+    this.setData({
+      myBirthday: birthday,
+      currentSign: sign,
+      fortune: null,
+      indices: [],
+      error: '',
+    });
+    if (sign) this._loadWithFallback(sign, this.data.queryDate);
+  },
+
+  // ── 日期查询 ──────────────────────────────────────────────────────────────────
+  onDateChange(e) {
+    const date = e.detail.value;
+    this.setData({ queryDate: date, fortune: null, indices: [], error: '' });
+    if (this.data.currentSign) {
+      this._loadWithFallback(this.data.currentSign, date);
+    }
+  },
+
+  // ── 缓存 / 加载 ───────────────────────────────────────────────────────────────
   _cacheKey(sign, date) {
     return CACHE_PREFIX + sign + '_' + date;
   },
 
-  // 1. Try local cache → 2. Try server cache
   _loadWithFallback(sign, date) {
     try {
       const cached = wx.getStorageSync(this._cacheKey(sign, date));
@@ -84,8 +150,6 @@ Page({
         return;
       }
     } catch {}
-
-    // Not in local cache — try server cache silently
     this._fetchServerCache(sign, date);
   },
 
@@ -97,12 +161,10 @@ Page({
           wx.setStorageSync(self._cacheKey(sign, date), { fortune: res.fortune, cachedAt: Date.now() });
           self.setData({ fortune: res.fortune, indices: buildIndices(res.fortune), error: '' });
         } else {
-          // 服务端也无缓存 → 自动生成当天运势
           self._autoGenerate(sign, date);
         }
       })
       .catch(function() {
-        // 网络失败也尝试自动生成
         self._autoGenerate(sign, date);
       });
   },
@@ -120,86 +182,51 @@ Page({
       .catch(function(err) {
         self.setData({
           loading: false,
-          error: err.message || '\u83b7\u53d6\u8fd0\u52bf\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
+          error: err.message || '获取运势失败，请稍后重试',
         });
       });
   },
 
-  openSignPicker() {
-    this.setData({ showSignPicker: true });
-  },
-
-  closeSignPicker() {
-    this.setData({ showSignPicker: false });
-  },
-
-  noop() {},
-
-  selectSign(e) {
-    const sign = e.currentTarget.dataset.sign;
-    wx.setStorageSync(STORAGE_KEY, sign);
-    this.setData({
-      currentSign: sign,
-      showSignPicker: false,
-      fortune: null,
-      indices: [],
-      error: '',
-    });
-    this._loadWithFallback(sign, this.data.queryDate);
-  },
-
-  onDateChange(e) {
-    const date = e.detail.value;
-    this.setData({ queryDate: date, fortune: null, indices: [], error: '' });
-    if (this.data.currentSign) {
-      this._loadWithFallback(this.data.currentSign, date);
-    }
-  },
-
+  // ── 生成按钮 ──────────────────────────────────────────────────────────────────
   async queryFortune() {
     const { currentSign, queryDate, loading } = this.data;
     if (loading) return;
     if (!currentSign) {
-      wx.showToast({ title: '\u8bf7\u5148\u9009\u62e9\u661f\u5ea7', icon: 'none' });
+      wx.showToast({ title: '请先设置您的生日', icon: 'none' });
       return;
     }
 
-    // 1. Local cache
     const cacheKey = this._cacheKey(currentSign, queryDate);
     try {
       const cached = wx.getStorageSync(cacheKey);
       if (cached && cached.fortune) {
         this.setData({ fortune: cached.fortune, indices: buildIndices(cached.fortune), error: '' });
-        wx.showToast({ title: '\u5df2\u52a0\u8f7d\u7f13\u5b58\u8fd0\u52bf', icon: 'none', duration: 1500 });
+        wx.showToast({ title: '已加载缓存运势', icon: 'none', duration: 1500 });
         return;
       }
     } catch {}
 
     this.setData({ loading: true, error: '', fortune: null, indices: [] });
 
-    // 2. Server cache (GET)
     try {
       const serverRes = await api.get('api/fortune/' + encodeURIComponent(currentSign) + '/' + queryDate);
       if (serverRes && serverRes.fortune) {
         wx.setStorageSync(cacheKey, { fortune: serverRes.fortune, cachedAt: Date.now() });
-        wx.setStorageSync(STORAGE_KEY, currentSign);
         this.setData({ fortune: serverRes.fortune, indices: buildIndices(serverRes.fortune), loading: false });
-        wx.showToast({ title: '\u8fd0\u52bf\u5df2\u9884\u751f\u6210', icon: 'none', duration: 1500 });
+        wx.showToast({ title: '运势已预生成', icon: 'none', duration: 1500 });
         return;
       }
     } catch {}
 
-    // 3. Generate via POST (DeepSeek)
     try {
       const res = await api.post('api/fortune', { sign: currentSign, date: queryDate });
       const fortune = res.fortune;
       wx.setStorageSync(cacheKey, { fortune, cachedAt: Date.now() });
-      wx.setStorageSync(STORAGE_KEY, currentSign);
       this.setData({ fortune, indices: buildIndices(fortune), loading: false });
     } catch (err) {
       this.setData({
         loading: false,
-        error: err.message || '\u83b7\u53d6\u8fd0\u52bf\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
+        error: err.message || '获取运势失败，请稍后重试',
       });
     }
   },

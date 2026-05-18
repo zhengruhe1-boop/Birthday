@@ -63,6 +63,7 @@
   letter-spacing: 2rpx;
 }
 .generate-btn.loading { opacity: 0.65; }
+.generate-btn.disabled { opacity: 0.4; }
 .generate-btn:active { opacity: 0.8; }
 
 /* ── 结果头部 ─────────────────────────────────────── */
@@ -244,75 +245,35 @@
 .error-icon { font-size: 28rpx; }
 .error-text { font-size: 26rpx; color: #be123c; flex: 1; line-height: 1.6; }
 
-/* ── 星座选择弹窗 ─────────────────────────────────── */
-.modal-mask {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 100;
-  display: flex;
-  align-items: flex-end;
-}
-.sign-sheet {
-  width: 100%;
-  background: #fff;
-  border-radius: 28rpx 28rpx 0 0;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.modal-handle {
-  width: 64rpx; height: 8rpx;
-  background: #e2e8f0;
-  border-radius: 4rpx;
-  margin: 20rpx auto 0;
-}
-.modal-title-row {
+/* ── 星座自动展示行 ───────────────────────────────── */
+.field-row-sign { cursor: default; }
+.sign-display {
   display: flex;
   align-items: center;
-  padding: 24rpx 32rpx 16rpx;
-  border-bottom: 1rpx solid #f1f5f9;
+  gap: 12rpx;
 }
-.modal-title {
-  flex: 1;
+.sign-display-emoji { font-size: 36rpx; }
+.sign-display-name {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1e293b;
-}
-.modal-close-btn {
-  width: 56rpx; height: 56rpx;
-  background: #f1f5f9;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
-  color: #64748b;
-}
-.sign-list { padding: 8rpx 0 16rpx; }
-.sign-option {
-  display: flex;
-  align-items: center;
-  padding: 24rpx 32rpx;
-  border-bottom: 1rpx solid #f8fafc;
-}
-.sign-option.active { background: #fff7f8; }
-.sign-option:active { background: #f8fafc; }
-.sign-opt-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.sign-opt-emoji { font-size: 44rpx; }
-.sign-opt-info { flex: 1; }
-.sign-opt-name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1e293b;
-  display: block;
-  margin-bottom: 4rpx;
-}
-.sign-opt-range { font-size: 22rpx; color: #94a3b8; }
-.sign-check {
-  font-size: 28rpx;
   color: #f43f5e;
-  font-weight: 700;
 }
+.sign-display-range {
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-left: 4rpx;
+}
+
+/* ── 提示横幅 ─────────────────────────────────────── */
+.tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 16rpx 24rpx 0;
+  background: #fffbeb;
+  border: 1rpx solid rgba(245,158,11,0.25);
+  border-radius: 14rpx;
+  padding: 18rpx 20rpx;
+}
+.tip-banner-icon { font-size: 28rpx; flex-shrink: 0; }
+.tip-banner-text { font-size: 24rpx; color: #92400e; line-height: 1.6; }
