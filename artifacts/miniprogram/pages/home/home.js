@@ -570,7 +570,7 @@ Page({
   },
   goEvent(e) {
     wx.navigateTo({
-      url: "/pages/event-form/event-form?id=" + e.currentTarget.dataset.id,
+      url: "/pages/event-detail/event-detail?id=" + e.currentTarget.dataset.id,
     });
   },
   goCapsule(e) {
