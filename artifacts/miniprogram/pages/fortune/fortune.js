@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 const STORAGE_KEY        = 'fortune_sign';
 const BIRTHDAY_KEY       = 'fortune_my_birthday';
 const BIRTHDAY_TYPE_KEY  = 'fortune_birthday_type';
+const BIRTHDAY_SOLAR_KEY = 'fortune_birthday_solar';   // 独立保存公历生日，切换时可恢复
 const BIRTHDAY_LUNAR_KEY = 'fortune_birthday_lunar';
 const CACHE_PREFIX       = 'fortune_cache_';
 
@@ -192,9 +193,12 @@ Page({
       }
     }
 
+    // 公历生日从独立 key 恢复，无论当前是哪种历法
+    const savedSolar = wx.getStorageSync(BIRTHDAY_SOLAR_KEY) || (savedType === 'solar' ? savedBirthday : '');
+
     this.setData({
       calType: savedType,
-      solarBirthday: savedType === 'solar' ? savedBirthday : '',
+      solarBirthday: savedSolar,
       myBirthday: savedBirthday,
       currentSign: sign,
       queryDate: todayStr(),
@@ -224,31 +228,36 @@ Page({
   onCalTypeSolar() {
     if (this.data.calType === 'solar') return;
     wx.setStorageSync(BIRTHDAY_TYPE_KEY, 'solar');
-    // 切回公历时，若之前有公历生日则复用
-    const prev = this.data.solarBirthday || '';
-    const sign = prev ? signFromDateStr(prev) : '';
-    this.setData({
+    // 从独立 key 恢复公历生日（不依赖内存 state，state 在切换农历时已被清空）
+    const savedSolar = wx.getStorageSync(BIRTHDAY_SOLAR_KEY) || '';
+    const newSign    = savedSolar ? signFromDateStr(savedSolar) : '';
+    const signChanged = newSign !== this.data.currentSign;
+    const update = {
       calType: 'solar',
-      solarBirthday: prev,
-      myBirthday: prev,
-      currentSign: sign,
-      fortune: null,
-      indices: [],
-      error: '',
-    });
-    if (prev) wx.setStorageSync(BIRTHDAY_KEY, prev);
-    if (sign) {
-      wx.setStorageSync(STORAGE_KEY, sign);
-      this._loadWithFallback(sign, this.data.queryDate);
+      solarBirthday: savedSolar,
+      myBirthday: savedSolar,
+      currentSign: newSign,
+    };
+    // 星座发生变化才清空运势，否则保留当前运势内容
+    if (signChanged) {
+      update.fortune = null;
+      update.indices = [];
+      update.error   = '';
+    }
+    this.setData(update);
+    if (savedSolar) wx.setStorageSync(BIRTHDAY_KEY, savedSolar);
+    if (newSign) {
+      wx.setStorageSync(STORAGE_KEY, newSign);
+      if (signChanged) this._loadWithFallback(newSign, this.data.queryDate);
     }
   },
 
   onCalTypeLunar() {
     if (this.data.calType === 'lunar') return;
     wx.setStorageSync(BIRTHDAY_TYPE_KEY, 'lunar');
-    // 切换农历时，若有缓存的农历生日则恢复
+    // 从独立 key 恢复农历生日
     const savedLunar = wx.getStorageSync(BIRTHDAY_LUNAR_KEY) || '';
-    let display = '', myBirthday = '', sign = '';
+    let display = '', myBirthday = '', newSign = '';
     if (savedLunar) {
       const parts = savedLunar.split('-');
       if (parts.length === 3) {
@@ -259,24 +268,28 @@ Page({
         const solar = lunarToSolar(ly, lm, ld);
         if (solar) {
           myBirthday = `${solar.year}-${padTwo(solar.month)}-${padTwo(solar.day)}`;
-          sign       = getSignFromMonthDay(solar.month, solar.day);
+          newSign    = getSignFromMonthDay(solar.month, solar.day);
         }
       }
     }
-    this.setData({
+    const signChanged = newSign !== this.data.currentSign;
+    const update = {
       calType: 'lunar',
       solarBirthday: '',
       lunarBirthdayDisplay: display,
       myBirthday,
-      currentSign: sign,
-      fortune: null,
-      indices: [],
-      error: '',
-    });
+      currentSign: newSign,
+    };
+    if (signChanged) {
+      update.fortune = null;
+      update.indices = [];
+      update.error   = '';
+    }
+    this.setData(update);
     if (myBirthday) wx.setStorageSync(BIRTHDAY_KEY, myBirthday);
-    if (sign) {
-      wx.setStorageSync(STORAGE_KEY, sign);
-      this._loadWithFallback(sign, this.data.queryDate);
+    if (newSign) {
+      wx.setStorageSync(STORAGE_KEY, newSign);
+      if (signChanged) this._loadWithFallback(newSign, this.data.queryDate);
     }
   },
 
@@ -284,8 +297,9 @@ Page({
   onSolarBirthdayChange(e) {
     const birthday = e.detail.value;
     const sign     = signFromDateStr(birthday);
-    wx.setStorageSync(BIRTHDAY_KEY, birthday);
-    wx.setStorageSync(STORAGE_KEY,  sign);
+    wx.setStorageSync(BIRTHDAY_KEY,       birthday);
+    wx.setStorageSync(BIRTHDAY_SOLAR_KEY, birthday); // 独立持久化，切换时可恢复
+    wx.setStorageSync(STORAGE_KEY,        sign);
     this.setData({
       solarBirthday: birthday,
       myBirthday: birthday,
