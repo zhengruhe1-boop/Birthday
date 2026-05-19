@@ -85,11 +85,11 @@
           <view class="section-bar" style="background:#f43f5e" />
           <text class="section-title" style="color:#f43f5e">搜索结果</text>
           <view class="section-count" style="background:#fff1f2;color:#f43f5e">
-            {{searchContacts.length + searchEvents.length}} 条
+            {{searchContacts.length + searchEvents.length + searchCapsules.length}} 条
           </view>
         </view>
 
-        <block wx:if="{{!searching && searchContacts.length === 0 && searchEvents.length === 0}}">
+        <block wx:if="{{!searching && searchContacts.length === 0 && searchEvents.length === 0 && searchCapsules.length === 0}}">
           <view class="empty-tip">没有找到相关记录</view>
         </block>
 
@@ -125,6 +125,24 @@
             </view>
             <view class="event-badge {{item.type === 'anniversary' ? 'badge-rose' : item.type === 'countdown' ? 'badge-orange' : 'badge-violet'}}">
               <text>{{item.type === 'anniversary' ? '纪念日' : item.type === 'countdown' ? '倒数日' : '其它'}}</text>
+            </view>
+          </view>
+        </block>
+
+        <block wx:if="{{searchCapsules.length > 0}}">
+          <view class="search-sub-title" style="margin-top:20rpx">时间胶囊</view>
+          <view wx:for="{{searchCapsules}}" wx:key="id" class="capsule-card"
+            data-id="{{item.id}}" bindtap="goCapsule">
+            <view class="capsule-icon-wrap {{item.isOpened ? 'capsule-open' : 'capsule-locked'}}">
+              <text>{{item.isOpened ? '📬' : '🔒'}}</text>
+            </view>
+            <view class="capsule-info">
+              <text class="capsule-msg">{{item.title || item.message}}</text>
+              <text class="capsule-date">开启时间：{{item.openAt}}</text>
+            </view>
+            <view class="capsule-meta">
+              <text wx:if="{{item.isOpened}}" class="capsule-badge capsule-badge-open">已开启</text>
+              <text wx:else class="capsule-badge capsule-badge-locked">{{item.daysUntil}}天后</text>
             </view>
           </view>
         </block>

@@ -111,6 +111,7 @@ Page({
 
     searchContacts: [],
     searchEvents: [],
+    searchCapsules: [],
     searching: false,
 
     showFab: false,
@@ -333,7 +334,7 @@ Page({
     const q = e.detail.value.trim();
     this.setData({ search: q });
     if (!q) {
-      this.setData({ searchContacts: [], searchEvents: [], searching: false });
+      this.setData({ searchContacts: [], searchEvents: [], searchCapsules: [], searching: false });
       return;
     }
     this.doSearch(q);
@@ -344,6 +345,7 @@ Page({
       search: "",
       searchContacts: [],
       searchEvents: [],
+      searchCapsules: [],
       searching: false,
     });
   },
@@ -365,11 +367,17 @@ Page({
           (e.name || "").toLowerCase().includes(lower) ||
           (e.person || "").toLowerCase().includes(lower),
       );
+      const matchedCapsules = (this.data.capsules || []).filter(
+        (c) =>
+          (c.title || "").toLowerCase().includes(lower) ||
+          (c.message || "").toLowerCase().includes(lower),
+      );
       this.setData({
         searchContacts: normalizeContacts(
           Array.isArray(contacts) ? contacts : [],
         ),
         searchEvents: matchedEvents,
+        searchCapsules: matchedCapsules,
         searching: false,
       });
     } catch {
