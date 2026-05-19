@@ -59,13 +59,8 @@
       </view>
     </view>
 
-    <!-- 退出登录 -->
-    <view wx:if="{{loggedIn}}" class="logout-wrap">
-      <view class="logout-btn" bindtap="handleLogout">
-        <text>退出登录</text>
-      </view>
-    </view>
-    <view wx:else class="logout-wrap">
+    <!-- 未登录时显示登录按钮 -->
+    <view wx:if="{{!loggedIn}}" class="logout-wrap">
       <view class="login-btn" bindtap="goLogin">
         <text>立即登录</text>
       </view>
@@ -115,6 +110,9 @@
         {{avatarUploading ? '保存中…' : '保存'}}
       </button>
       <button class="wx-auth-skip-btn" bindtap="skipWxProfile">取消</button>
+
+      <view class="wx-auth-logout-divider" />
+      <button class="wx-auth-logout-btn" bindtap="handleLogout">退出登录</button>
     </view>
   </view>
 

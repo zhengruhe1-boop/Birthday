@@ -58,7 +58,7 @@
         <picker mode="date" value="{{queryDate}}" bindchange="onDateChange">
           <view class="field-value-row">
             <text class="field-value">{{queryDate}}</text>
-            <text class="field-icon-cal">📅</text>
+            <text class="field-icon-cal"></text>
           </view>
         </picker>
       </view>
