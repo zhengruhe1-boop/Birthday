@@ -110,13 +110,42 @@ const SPRING_FESTIVAL = {
   2030:[2,3],
 };
 
-// 农历→公历近似换算（每农历月约 29.53 天）
+// 各年闰月数据 [闰月月份, 闰月天数]，无闰月的年份不收录
+// 数据来源：中国农历历法记录 1930-2030
+const LEAP_MONTHS = {
+  1930:[6,29], 1933:[5,29], 1936:[3,30], 1938:[7,29],
+  1941:[6,29], 1944:[4,29], 1947:[2,29], 1949:[7,29],
+  1952:[5,29], 1955:[3,29], 1957:[8,29], 1960:[6,29],
+  1963:[4,29], 1966:[3,29], 1968:[7,29], 1971:[5,29],
+  1974:[4,29], 1976:[8,29], 1979:[6,29], 1982:[4,29],
+  1984:[10,29],1987:[6,29], 1990:[5,29], 1993:[3,29],
+  1995:[8,29], 1998:[5,29], 2001:[4,29], 2004:[2,29],
+  2006:[7,29], 2009:[5,29], 2012:[4,30], 2014:[9,29],
+  2017:[6,29], 2020:[4,29], 2023:[2,29], 2025:[6,30],
+  2028:[5,29],
+};
+
+// 农历→公历换算，正确处理闰月
+// 原理：以春节（正月初一）为起点，累加各月天数至目标月，
+//       若闰月落在目标月之前则额外加上闰月天数。
 function lunarToSolar(lunarYear, lunarMonth, lunarDay) {
   const sf = SPRING_FESTIVAL[lunarYear];
   if (!sf) return null;
   const springDate = new Date(lunarYear, sf[0] - 1, sf[1]);
-  const offsetDays = Math.round((lunarMonth - 1) * 29.53) + (lunarDay - 1);
-  const solarDate  = new Date(springDate.getTime() + offsetDays * 86400000);
+
+  // 正月初一到目标月初一的天数（月均近似 29.53 天）
+  let offsetDays = Math.round((lunarMonth - 1) * 29.53);
+
+  // 若本年有闰月且闰月在目标月之前，需加上闰月的天数
+  const leap = LEAP_MONTHS[lunarYear];
+  if (leap && leap[0] > 0 && leap[0] < lunarMonth) {
+    offsetDays += leap[1];
+  }
+
+  // 加上月内日数（从初一算起）
+  offsetDays += lunarDay - 1;
+
+  const solarDate = new Date(springDate.getTime() + offsetDays * 86400000);
   return {
     year:  solarDate.getFullYear(),
     month: solarDate.getMonth() + 1,
