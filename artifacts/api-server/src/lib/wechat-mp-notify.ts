@@ -170,7 +170,8 @@ async function buildMpItems(userId: number, openId: string, daysBefore: number[]
       ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
       : daysBefore;
     if (!effectiveDays.includes(days)) continue;
-    const dateDisplay = thisYearDate(c.birthdayMonth, c.birthdayDay);
+    const calType = c.birthdayLunar ? "农历" : "公历";
+    const dateDisplay = thisYearDate(c.birthdayMonth, c.birthdayDay) + " " + calType;
     items.push({ openId, name: c.name, dateDisplay, label: `contact:${c.id}` });
   }
 
