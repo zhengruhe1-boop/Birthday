@@ -1,7 +1,8 @@
 const api = require("../../utils/api");
 const { isLoggedIn, clearToken } = require("../../utils/auth");
 
-const PREF_EMAIL_NOTIFY = "birthday_pref_email_notify";
+const PREF_EMAIL_NOTIFY        = "birthday_pref_email_notify";
+const PREF_SHOW_HIDDEN_ENTRY   = "birthday_pref_show_hidden_entry";
 const INVALID_NICKNAMES = ["获取微信昵称", "微信昵称", "用户昵称", "微信用户"];
 
 function cleanNickname(nickname) {
@@ -29,6 +30,7 @@ Page({
     displayNickname: "未登录",
     displayAvatarUrl: "",
     emailNotify: true,
+    showHiddenEntry: true,
     showWxProfileModal: false,
     wxProfileTemp: { avatarUrl: "", nickname: "" },
     avatarUploading: false,
@@ -36,8 +38,9 @@ Page({
   },
 
   onLoad() {
-    const emailNotify = wx.getStorageSync(PREF_EMAIL_NOTIFY) !== "false";
-    this.setData({ emailNotify });
+    const emailNotify      = wx.getStorageSync(PREF_EMAIL_NOTIFY) !== "false";
+    const showHiddenEntry  = wx.getStorageSync(PREF_SHOW_HIDDEN_ENTRY) !== "false";
+    this.setData({ emailNotify, showHiddenEntry });
   },
 
   onShow() {
@@ -80,6 +83,12 @@ Page({
     const v = e.detail.value;
     this.setData({ emailNotify: v });
     wx.setStorageSync(PREF_EMAIL_NOTIFY, v ? "true" : "false");
+  },
+
+  toggleShowHiddenEntry(e) {
+    const v = e.detail.value;
+    this.setData({ showHiddenEntry: v });
+    wx.setStorageSync(PREF_SHOW_HIDDEN_ENTRY, v ? "true" : "false");
   },
 
   goSubscribe() {

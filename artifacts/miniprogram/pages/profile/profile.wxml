@@ -42,7 +42,7 @@
     <!-- 其他 -->
     <view class="group-label">其他</view>
     <view class="menu-group">
-      <view class="menu-item" bindtap="goHiddenEvents">
+      <view wx:if="{{showHiddenEntry}}" class="menu-item" bindtap="goHiddenEvents">
         <view class="menu-icon slate-bg"><text>🙈</text></view>
         <text class="menu-name">隐藏的生日</text>
         <text class="menu-arrow">›</text>
@@ -110,6 +110,25 @@
         {{avatarUploading ? '保存中…' : '保存'}}
       </button>
       <button class="wx-auth-skip-btn" bindtap="skipWxProfile">取消</button>
+
+      <view class="wx-auth-logout-divider" />
+
+      <!-- 展示/隐藏「隐藏的生日」入口 -->
+      <view class="modal-pref-row">
+        <view class="modal-pref-left">
+          <text class="modal-pref-icon">🙈</text>
+          <view class="modal-pref-text">
+            <text class="modal-pref-label">隐藏的生日入口</text>
+            <text class="modal-pref-sub">在「其他」中显示或隐藏该入口</text>
+          </view>
+        </view>
+        <switch
+          checked="{{showHiddenEntry}}"
+          bindchange="toggleShowHiddenEntry"
+          color="#f43f5e"
+          style="transform:scale(0.85)"
+        />
+      </view>
 
       <view class="wx-auth-logout-divider" />
       <button class="wx-auth-logout-btn" bindtap="handleLogout">退出登录</button>
