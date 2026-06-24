@@ -1076,6 +1076,9 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                     录入条数
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    关注公众号
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
                     最后访问
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -1118,6 +1121,17 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                           <div className="text-xs text-gray-400 mt-0.5 pl-5">
                             {user.contactCount} 生日 · {user.eventCount} 事件{(user.capsuleCount ?? 0) > 0 ? ` · ${user.capsuleCount} 胶囊` : ''}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        {user.oaOpenId ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                            <span>✓</span> 已关注
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                            未关注
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-4 text-gray-400 text-xs">
