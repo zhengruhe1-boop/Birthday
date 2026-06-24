@@ -1,5 +1,5 @@
 import { db, contactsTable, eventsTable, timeCapsulesTable, settingsTable } from "@workspace/db";
-import { eq, isNotNull, and } from "drizzle-orm";
+import { eq, isNotNull, and, ne } from "drizzle-orm";
 import { sendBirthdayReminder, sendEventReminder, sendCapsuleReminder, getEmailConfig } from "./email.js";
 import { calcDaysUntilBirthday, formatBirthdayDisplay } from "./birthday.js";
 import { logger } from "./logger.js";
@@ -64,7 +64,7 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
         reminderDaysBefore: contactsTable.reminderDaysBefore,
       })
       .from(contactsTable)
-      .where(isNotNull(contactsTable.reminderEmail));
+      .where(and(isNotNull(contactsTable.reminderEmail), ne(contactsTable.hidden, true)));
 
     logger.info({ count: contacts.length }, "Contacts with reminder emails found");
 
@@ -106,7 +106,8 @@ export async function runBirthdayReminders(): Promise<{ sent: number; errors: nu
 
   // ── Events（纪念日 / 倒数日 / 其它提醒）─────────────────────────────────────
   try {
-    const events = await db.select().from(eventsTable).where(isNotNull(eventsTable.reminderEmail));
+    const events = await db.select().from(eventsTable)
+      .where(and(isNotNull(eventsTable.reminderEmail), ne(eventsTable.hidden, true)));
     logger.info({ count: events.length }, "Events with reminder emails found");
 
     for (const e of events) {

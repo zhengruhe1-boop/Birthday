@@ -1,5 +1,5 @@
 import { db, contactsTable, usersTable, settingsTable, eventsTable, timeCapsulesTable } from "@workspace/db";
-import { isNotNull, eq, and, not, like } from "drizzle-orm";
+import { isNotNull, eq, and, not, like, ne } from "drizzle-orm";
 import { calcDaysUntilBirthday } from "./birthday.js";
 import { logger } from "./logger.js";
 
@@ -157,7 +157,8 @@ interface NotifyItem {
 async function buildMpItems(userId: number, openId: string, daysBefore: number[]): Promise<NotifyItem[]> {
   const items: NotifyItem[] = [];
 
-  const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId));
+  const contacts = await db.select().from(contactsTable)
+    .where(and(eq(contactsTable.userId, userId), ne(contactsTable.hidden, true)));
   for (const c of contacts) {
     const days = calcDaysUntilBirthday(
       c.birthdayMonth,
@@ -173,7 +174,8 @@ async function buildMpItems(userId: number, openId: string, daysBefore: number[]
     items.push({ openId, name: c.name, dateDisplay, label: `contact:${c.id}` });
   }
 
-  const events = await db.select().from(eventsTable).where(eq(eventsTable.userId, userId));
+  const events = await db.select().from(eventsTable)
+    .where(and(eq(eventsTable.userId, userId), ne(eventsTable.hidden, true)));
   for (const e of events) {
     const evtEffDays = e.reminderDaysBefore
       ? e.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))

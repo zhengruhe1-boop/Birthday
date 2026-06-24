@@ -16,14 +16,14 @@ App({
   },
 
   onShow() {
-    // 热启动（从后台切回）时也执行更新检查，避免冷启动期间未完成下载的情况被遗漏
-    this._checkUpdate();
+    // 不在此处检测更新：onShow 每次切回前台都会执行，重复注册监听器会导致连续弹窗
   },
 
   _checkUpdate() {
     if (!wx.canIUse('getUpdateManager')) return;
-    // 防止热启动反复弹窗：已在弹窗中则跳过
-    if (this._updateModalShowing) return;
+    // 只允许注册一次，防止任何场景下重复注册监听器
+    if (this._updateChecked) return;
+    this._updateChecked = true;
     const self = this;
     const mgr = wx.getUpdateManager();
 
