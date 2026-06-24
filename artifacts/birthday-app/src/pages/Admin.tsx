@@ -1,5 +1,9 @@
 import { useState, useEffect, Fragment } from "react";
 import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
+  ResponsiveContainer, CartesianGrid,
+} from "recharts";
+import {
   Users,
   CalendarDays,
   ChevronDown,
@@ -70,6 +74,32 @@ interface StatsData {
   pageSize: number;
   totalPages: number;
   users: UserRecord[];
+}
+
+interface AnalyticsOverview {
+  totalUsers: number;
+  newToday: number;
+  newThisWeek: number;
+  oaFollowers: number;
+  mpSubscribers: number;
+  totalContacts: number;
+  totalEvents: number;
+  totalCapsules: number;
+}
+
+interface DailyPoint {
+  date: string;
+  count?: number;
+  contacts?: number;
+  events?: number;
+  capsules?: number;
+}
+
+interface AnalyticsData {
+  overview: AnalyticsOverview;
+  dailyUsers: DailyPoint[];
+  dailyContent: DailyPoint[];
+  dailyLaunches: DailyPoint[];
 }
 
 interface WechatConfig {
@@ -957,6 +987,157 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
           <Msg msg={modeMsg} />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Dashboard Panel ──────────────────────────────────────────────────────────
+function DashboardPanel({ adminKey }: { adminKey: string }) {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/analytics`,
+        { headers: { "x-admin-key": adminKey } },
+      );
+      if (res.ok) setData(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  function fmtDate(d: string) {
+    const [, m, day] = d.split("-");
+    return `${parseInt(m)}/${parseInt(day)}`;
+  }
+
+  // Show only every 5th label on the x-axis to avoid crowding
+  function tickFormatter(value: string, index: number) {
+    return index % 5 === 0 ? fmtDate(value) : "";
+  }
+
+  const ov = data?.overview;
+
+  const statCards = ov ? [
+    { label: "注册用户", value: ov.totalUsers, sub: `今日 +${ov.newToday}`, color: "bg-rose-50", iconBg: "bg-rose-100", textColor: "text-rose-600", icon: "👥" },
+    { label: "本周新增", value: ov.newThisWeek, sub: "近 7 天", color: "bg-sky-50", iconBg: "bg-sky-100", textColor: "text-sky-600", icon: "📈" },
+    { label: "关注公众号", value: ov.oaFollowers, sub: `${ov.totalUsers > 0 ? Math.round(ov.oaFollowers / ov.totalUsers * 100) : 0}% 占比`, color: "bg-green-50", iconBg: "bg-green-100", textColor: "text-green-600", icon: "📣" },
+    { label: "订阅通知", value: ov.mpSubscribers, sub: "小程序订阅", color: "bg-purple-50", iconBg: "bg-purple-100", textColor: "text-purple-600", icon: "🔔" },
+    { label: "生日联系人", value: ov.totalContacts, sub: "全部用户合计", color: "bg-amber-50", iconBg: "bg-amber-100", textColor: "text-amber-600", icon: "🎂" },
+    { label: "纪念日/倒计时", value: ov.totalEvents, sub: "事件合计", color: "bg-orange-50", iconBg: "bg-orange-100", textColor: "text-orange-600", icon: "📅" },
+    { label: "时间胶囊", value: ov.totalCapsules, sub: "全部胶囊", color: "bg-teal-50", iconBg: "bg-teal-100", textColor: "text-teal-600", icon: "💌" },
+    { label: "总录入条数", value: ov.totalContacts + ov.totalEvents + ov.totalCapsules, sub: "生日+事件+胶囊", color: "bg-indigo-50", iconBg: "bg-indigo-100", textColor: "text-indigo-600", icon: "📊" },
+  ] : [];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800">数据仪表盘</h2>
+          <p className="text-xs text-gray-400 mt-0.5">实时统计 · 图表数据为近 30 天</p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          刷新
+        </button>
+      </div>
+
+      {loading && !data && (
+        <div className="flex items-center justify-center py-20 text-gray-400">
+          <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+          <span className="text-sm">加载中...</span>
+        </div>
+      )}
+
+      {data && (
+        <>
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {statCards.map((s) => (
+              <div key={s.label} className={`${s.color} rounded-xl p-4 flex items-center gap-3`}>
+                <div className={`w-10 h-10 ${s.iconBg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
+                  {s.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-2xl font-bold ${s.textColor}`}>{s.value.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">{s.label}</p>
+                  <p className="text-xs text-gray-400 truncate">{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts row 1: daily users + daily launches */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Daily new users */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增用户（近 30 天）</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={data.dailyUsers} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v: number) => [v, "新增用户"]}
+                    labelFormatter={(l: string) => fmtDate(l)}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  />
+                  <Bar dataKey="count" fill="#f43f5e" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Daily app launches */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日启动次数（近 30 天）</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={data.dailyLaunches} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v: number) => [v, "启动次数"]}
+                    labelFormatter={(l: string) => fmtDate(l)}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  />
+                  <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-gray-400 mt-2">* 需小程序端埋点上报后才有数据</p>
+            </div>
+          </div>
+
+          {/* Chart row 2: daily content added (stacked) */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增内容（近 30 天）</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.dailyContent} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  labelFormatter={(l: string) => fmtDate(l)}
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Bar dataKey="contacts" name="生日联系人" stackId="a" fill="#f43f5e" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="events" name="纪念日/倒计时" stackId="a" fill="#f97316" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="capsules" name="时间胶囊" stackId="a" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -4477,7 +4658,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
-type Tab = "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools" | "quota";
+type Tab = "dashboard" | "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools" | "quota";
 
 function Dashboard({
   adminKey,
@@ -4486,10 +4667,10 @@ function Dashboard({
   adminKey: string;
   onLogout: () => void;
 }) {
-  const validTabs: Tab[] = ["users", "wechat", "ai", "notify", "email", "content", "share", "mptools", "quota"];
+  const validTabs: Tab[] = ["dashboard", "users", "wechat", "ai", "notify", "email", "content", "share", "mptools", "quota"];
   const [tab, setTabState] = useState<Tab>(() => {
     const saved = localStorage.getItem(ADMIN_TAB_KEY);
-    return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "users";
+    return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "dashboard";
   });
 
   const setTab = (next: Tab) => {
@@ -4498,6 +4679,7 @@ function Dashboard({
   };
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "dashboard", label: "仪表盘", icon: <Zap className="w-4 h-4" /> },
     { id: "users", label: "用户管理", icon: <Users className="w-4 h-4" /> },
     { id: "wechat", label: "微信配置", icon: <Settings className="w-4 h-4" /> },
     { id: "ai", label: "AI 模型", icon: <Sparkles className="w-4 h-4" /> },
@@ -4565,6 +4747,7 @@ function Dashboard({
         </header>
 
         <div className="flex-1 p-8 overflow-auto">
+          {tab === "dashboard" && <DashboardPanel adminKey={adminKey} />}
           {tab === "users" && <UsersPanel adminKey={adminKey} />}
           {tab === "wechat" && <WechatConfigPanel adminKey={adminKey} />}
           {tab === "ai" && <AiConfigPanel adminKey={adminKey} />}

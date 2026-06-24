@@ -295,6 +295,7 @@ Page({
         wx.showToast({ title: "保存成功", icon: "success" });
       } else {
         await api.post("api/events", body);
+        track('event_create');
         wx.showToast({ title: "添加成功", icon: "success" });
       }
       setTimeout(() => wx.navigateBack(), 800);

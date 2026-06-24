@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, contactsTable, settingsTable, eventsTable, timeCapsulesTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, and, not, like } from "drizzle-orm";
+import { db, usersTable, contactsTable, settingsTable, eventsTable, timeCapsulesTable, analyticsEventsTable } from "@workspace/db";
+import { eq, desc, isNull, isNotNull, and, not, like, gte } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -853,6 +853,81 @@ router.put("/share-config", async (req: Request, res: Response) => {
     if (link    !== undefined) await setSetting("share_link",    link.trim());
     res.json({ success: true });
   } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── GET /api/admin/analytics ──────────────────────────────────────────────────
+router.get("/analytics", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const now = new Date();
+    // UTC midnight today
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const thirtyDaysAgo = new Date(todayStart);
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 29);
+
+    // Build 30-day label array (UTC dates)
+    const days: string[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(todayStart);
+      d.setUTCDate(d.getUTCDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+
+    function toUTCDay(d: Date | string | null): string {
+      if (!d) return "";
+      const dt = d instanceof Date ? d : new Date(d);
+      return dt.toISOString().slice(0, 10);
+    }
+
+    // Pull data in parallel
+    const [allUsers, recentContacts, recentEvents, recentCapsules, recentLaunches, totalContacts, totalEvents, totalCapsules] = await Promise.all([
+      db.select({ id: usersTable.id, createdAt: usersTable.createdAt, oaOpenId: usersTable.oaOpenId, mpSubscribed: usersTable.mpSubscribed }).from(usersTable),
+      db.select({ createdAt: contactsTable.createdAt }).from(contactsTable).where(gte(contactsTable.createdAt, thirtyDaysAgo)),
+      db.select({ createdAt: eventsTable.createdAt }).from(eventsTable).where(gte(eventsTable.createdAt, thirtyDaysAgo)),
+      db.select({ createdAt: timeCapsulesTable.createdAt }).from(timeCapsulesTable).where(gte(timeCapsulesTable.createdAt, thirtyDaysAgo)),
+      db.select({ createdAt: analyticsEventsTable.createdAt })
+        .from(analyticsEventsTable)
+        .where(and(eq(analyticsEventsTable.eventType, "app_launch"), gte(analyticsEventsTable.createdAt, thirtyDaysAgo))),
+      db.select({ id: contactsTable.id }).from(contactsTable),
+      db.select({ id: eventsTable.id }).from(eventsTable),
+      db.select({ id: timeCapsulesTable.id }).from(timeCapsulesTable),
+    ]);
+
+    const todayStr = days[29];
+    const weekAgoStr = days[22]; // 7 days ago
+
+    const overview = {
+      totalUsers:      allUsers.length,
+      newToday:        allUsers.filter(u => toUTCDay(u.createdAt) === todayStr).length,
+      newThisWeek:     allUsers.filter(u => toUTCDay(u.createdAt) >= weekAgoStr).length,
+      oaFollowers:     allUsers.filter(u => !!u.oaOpenId).length,
+      mpSubscribers:   allUsers.filter(u => u.mpSubscribed).length,
+      totalContacts:   totalContacts.length,
+      totalEvents:     totalEvents.length,
+      totalCapsules:   totalCapsules.length,
+    };
+
+    const dailyUsers = days.map(date => ({
+      date,
+      count: allUsers.filter(u => toUTCDay(u.createdAt) === date).length,
+    }));
+
+    const dailyContent = days.map(date => ({
+      date,
+      contacts: recentContacts.filter(c => toUTCDay(c.createdAt) === date).length,
+      events:   recentEvents.filter(e => toUTCDay(e.createdAt) === date).length,
+      capsules: recentCapsules.filter(c => toUTCDay(c.createdAt) === date).length,
+    }));
+
+    const dailyLaunches = days.map(date => ({
+      date,
+      count: recentLaunches.filter(l => toUTCDay(l.createdAt) === date).length,
+    }));
+
+    res.json({ overview, dailyUsers, dailyContent, dailyLaunches });
+  } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });

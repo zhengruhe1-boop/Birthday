@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const { isLoggedIn } = require("../../utils/auth");
+const { track } = require("../../utils/track");
 
 const REMINDER_OPTS = [
   { value: 0, label: "\u5f53\u5929" },
@@ -497,6 +498,7 @@ Page({
         }
       } else {
         const created = await api.post("api/contacts", body);
+        track('contact_create');
         wx.showToast({ title: "添加成功", icon: "success" });
         this._applyContact(created, "view");
         this._autoGenerateEvents(created.id, created.birthdayMonth, created.birthdayDay, created.birthYear);

@@ -12,6 +12,7 @@ import fortuneRouter from "./fortune.js";
 import mpToolsRouter from "./mp-tools.js";
 import quotaRouter from "./quota.js";
 import capsulesRouter from "./time-capsules.js";
+import trackRouter from "./track.js";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/fortune", fortuneRouter);
 router.use("/mp-tools", mpToolsRouter);
 router.use("/quota", quotaRouter);
 router.use("/capsules", capsulesRouter);
+router.use("/track", trackRouter);
 
 export default router;

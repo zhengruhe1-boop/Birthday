@@ -169,6 +169,17 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "reminder_send_hour" integer
     `);
 
+    // 8. analytics_events table — lightweight event tracking
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "analytics_events" (
+        "id"          serial    PRIMARY KEY,
+        "user_id"     integer,
+        "event_type"  text      NOT NULL,
+        "page"        text,
+        "created_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
     logger.info("Startup migrations completed");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may be broken");

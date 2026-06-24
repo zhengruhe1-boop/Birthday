@@ -231,12 +231,14 @@ Page({
     if (!this.validate()) return;
     this.setData({ saving: true });
     try {
+      const { track } = require('../../utils/track');
       const body = this.buildBody();
       if (this.data.isEdit) {
         await api.put('api/capsules/' + this.data.capsuleId, body);
         wx.showToast({ title: '\u4fdd\u5b58\u6210\u529f', icon: 'success' });
       } else {
         await api.post('api/capsules', body);
+        track('capsule_create');
         wx.showToast({ title: '\u6dfb\u52a0\u6210\u529f', icon: 'success' });
       }
       setTimeout(() => wx.navigateBack(), 800);

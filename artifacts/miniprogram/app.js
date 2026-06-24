@@ -1,4 +1,5 @@
 const { API_BASE } = require('./config');
+const { track } = require('./utils/track');
 
 App({
   globalData: {
@@ -13,6 +14,8 @@ App({
     if (stored) this.globalData.token = stored;
     this.globalData.sessionReady = this._silentLogin();
     this._checkUpdate();
+    // fire-and-forget: 不阻塞启动
+    track('app_launch');
   },
 
   onShow() {
