@@ -3914,6 +3914,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [showAgeCalcIconEditor, setShowAgeCalcIconEditor] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
   const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [stats, setStats] = useState<Record<string, number>>({});
 
   const isIconUrl = (s: string) => s.startsWith("http") || s.startsWith("/api/");
 
@@ -3929,6 +3930,13 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadStats = async () => {
+    try {
+      const r = await fetch(`${API}/stats`, { headers });
+      if (r.ok) setStats(await r.json());
+    } catch { /* ignore */ }
   };
 
   const loadBuiltin = async () => {
@@ -4027,6 +4035,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   useEffect(() => {
     void load();
     void loadBuiltin();
+    void loadStats();
   }, []);
 
   const toggleDateCalc = async () => {
@@ -4182,6 +4191,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
                   {typeBadge(t.type)}
+                  {(stats[`tool:${t.id}`] ?? 0) > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+                      点击 {stats[`tool:${t.id}`]}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
                 <p className="text-[10px] text-gray-300 mt-0.5 truncate font-mono">
@@ -4239,7 +4253,14 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
               </span>
             </button>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
+                {(stats["builtin:date_calc"] ?? 0) > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+                    点击 {stats["builtin:date_calc"]}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
             </div>
             <button
@@ -4355,7 +4376,14 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
               </span>
             </button>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
+                {(stats["builtin:age_calc"] ?? 0) > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+                    点击 {stats["builtin:age_calc"]}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-400 mt-0.5">生肖星座五行人生阶段一览</p>
             </div>
             <button

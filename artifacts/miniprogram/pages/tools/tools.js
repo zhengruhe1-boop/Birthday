@@ -1,5 +1,6 @@
 const { isLoggedIn } = require("../../utils/auth");
 const api = require("../../utils/api");
+const { track } = require("../../utils/track");
 
 Page({
   data: {
@@ -109,16 +110,19 @@ Page({
   },
 
   goDateCalc() {
+    track('tool_click', { page: 'builtin:date_calc' });
     wx.navigateTo({ url: "/pages/date-calc/date-calc" });
   },
 
   goAgeCalc() {
+    track('tool_click', { page: 'builtin:age_calc' });
     wx.navigateTo({ url: "/pages/age-calc/age-calc" });
   },
 
   tapDynamicTool(e) {
     const tool = e.currentTarget.dataset.tool;
     if (!tool) return;
+    track('tool_click', { page: 'tool:' + tool.id });
     if (tool.type === "internal") {
       const path = tool.path;
       if (!path) return;

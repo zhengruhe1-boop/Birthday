@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { db, analyticsEventsTable } from "@workspace/db";
+import { sql, eq } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
@@ -251,6 +251,28 @@ router.post("/builtin/:name/upload-icon", iconUpload.single("image"), async (req
     res.json({ url: `/api/uploads/${filename}` });
   } catch {
     res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+// ── Admin: GET /api/mp-tools/stats ───────────────────────────────────────────
+// Returns click counts per tool from analytics_events
+router.get("/stats", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const rows = await db.execute(sql`
+      SELECT page, COUNT(*)::int AS count
+      FROM analytics_events
+      WHERE event_type = 'tool_click'
+        AND page IS NOT NULL
+      GROUP BY page
+    `);
+    const stats: Record<string, number> = {};
+    for (const r of rows.rows as { page: string; count: number }[]) {
+      stats[r.page] = Number(r.count);
+    }
+    res.json(stats);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
