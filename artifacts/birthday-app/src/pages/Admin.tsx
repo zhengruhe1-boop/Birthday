@@ -4191,11 +4191,9 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
                   {typeBadge(t.type)}
-                  {(stats[`tool:${t.id}`] ?? 0) > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                      点击 {stats[`tool:${t.id}`]}
-                    </span>
-                  )}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats[`tool:${t.id}`] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
+                    点击 {stats[`tool:${t.id}`] ?? 0} 次
+                  </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
                 <p className="text-[10px] text-gray-300 mt-0.5 truncate font-mono">
@@ -4255,11 +4253,9 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
-                {(stats["builtin:date_calc"] ?? 0) > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                    点击 {stats["builtin:date_calc"]}
-                  </span>
-                )}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats["builtin:date_calc"] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
+                  点击 {stats["builtin:date_calc"] ?? 0} 次
+                </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
             </div>
@@ -4378,11 +4374,9 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
-                {(stats["builtin:age_calc"] ?? 0) > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                    点击 {stats["builtin:age_calc"]}
-                  </span>
-                )}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats["builtin:age_calc"] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
+                  点击 {stats["builtin:age_calc"] ?? 0} 次
+                </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">生肖星座五行人生阶段一览</p>
             </div>
