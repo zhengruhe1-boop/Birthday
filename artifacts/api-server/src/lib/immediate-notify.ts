@@ -147,11 +147,12 @@ export async function triggerImmediateNotifyIfNeeded(
           ? c.reminderDaysBefore.split(",").map(Number).filter(n => !isNaN(n))
           : oaCfg.daysBefore;
         const dateStr = `${now.getFullYear()}-${pad(c.birthdayMonth)}-${pad(c.birthdayDay)}`;
+        const calType = c.birthdayLunar ? "农历" : "公历";
         return {
           oaName:    trunc(`${c.name} · 生日`),
-          oaTime:    dateStr,
+          oaTime:    `${dateStr} ${calType}`,
           mpName:    c.name,
-          mpDate:    `${pad(c.birthdayMonth)}月${pad(c.birthdayDay)}日`,
+          mpDate:    `${pad(c.birthdayMonth)}月${pad(c.birthdayDay)}日 ${calType}`,
           daysUntil: days,
           effDays,
         };

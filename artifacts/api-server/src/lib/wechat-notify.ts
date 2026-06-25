@@ -230,10 +230,11 @@ async function buildItems(
       : daysBefore;
     if (!effectiveDays.includes(days)) continue;
     const dateStr = thisYearDate(c.birthdayMonth, c.birthdayDay);
+    const calType = c.birthdayLunar ? "农历" : "公历";
     items.push({
       openId:    oaOpenId,
       nameField: truncateThing(`${c.name} · 生日`),
-      timeField: toDateStr(dateStr),
+      timeField: `${toDateStr(dateStr)} ${calType}`,
       label:     `contact:${c.id} 生日`,
     });
   }
