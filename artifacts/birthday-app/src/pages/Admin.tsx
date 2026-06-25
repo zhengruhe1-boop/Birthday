@@ -4148,6 +4148,41 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
         </button>
       </div>
 
+      {/* ── 点击统计汇总卡片 ── */}
+      <div className="mb-6 bg-white rounded-2xl border border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-semibold text-gray-700">📊 点击统计（小程序工具页入口）</span>
+          <button
+            onClick={() => void loadStats()}
+            className="text-xs text-rose-500 hover:text-rose-600 font-medium"
+          >
+            刷新
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {tools.map((t) => (
+            <div key={t.id} className="flex items-center gap-1.5 bg-rose-50 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-600 max-w-[80px] truncate">{t.name}</span>
+              <span className="text-xs font-bold text-rose-600">{stats[`tool:${t.id}`] ?? 0}</span>
+              <span className="text-[10px] text-gray-400">次</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-600">日期计算器</span>
+            <span className="text-xs font-bold text-blue-600">{stats["builtin:date_calc"] ?? 0}</span>
+            <span className="text-[10px] text-gray-400">次</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-purple-50 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-600">年龄计算器</span>
+            <span className="text-xs font-bold text-purple-600">{stats["builtin:age_calc"] ?? 0}</span>
+            <span className="text-[10px] text-gray-400">次</span>
+          </div>
+        </div>
+        {Object.keys(stats).length === 0 && (
+          <p className="text-xs text-gray-400 mt-2">暂无点击数据，用户在小程序工具页点击后将在此显示统计</p>
+        )}
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-20 text-gray-400 text-sm">加载中…</div>
       ) : tools.length === 0 ? (
@@ -4191,8 +4226,8 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
                   {typeBadge(t.type)}
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats[`tool:${t.id}`] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
-                    点击 {stats[`tool:${t.id}`] ?? 0} 次
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-rose-50 text-rose-500">
+                    {stats[`tool:${t.id}`] ?? 0} 次点击
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
@@ -4253,8 +4288,8 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats["builtin:date_calc"] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
-                  点击 {stats["builtin:date_calc"] ?? 0} 次
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-500">
+                  {stats["builtin:date_calc"] ?? 0} 次点击
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
@@ -4374,8 +4409,8 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${(stats["builtin:age_calc"] ?? 0) > 0 ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-400"}`}>
-                  点击 {stats["builtin:age_calc"] ?? 0} 次
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-50 text-purple-500">
+                  {stats["builtin:age_calc"] ?? 0} 次点击
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">生肖星座五行人生阶段一览</p>
