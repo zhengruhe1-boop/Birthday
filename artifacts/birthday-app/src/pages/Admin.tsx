@@ -3912,6 +3912,13 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [uploadingAgeCalcIcon, setUploadingAgeCalcIcon] = useState(false);
   const [savingAgeCalcIcon, setSavingAgeCalcIcon] = useState(false);
   const [showAgeCalcIconEditor, setShowAgeCalcIconEditor] = useState(false);
+  const [imgCompressEnabled, setImgCompressEnabled] = useState(true);
+  const [imgCompressIcon, setImgCompressIcon] = useState<string>("🗜️");
+  const [imgCompressIconMode, setImgCompressIconMode] = useState<"emoji" | "image">("emoji");
+  const [showImgCompressIconEditor, setShowImgCompressIconEditor] = useState(false);
+  const [uploadingImgCompressIcon, setUploadingImgCompressIcon] = useState(false);
+  const [savingImgCompressIcon, setSavingImgCompressIcon] = useState(false);
+  const [togglingImgCompress, setTogglingImgCompress] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [stats, setStats] = useState<Record<string, number>>({});
@@ -3952,6 +3959,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
       if (data?.age_calc_icon) {
         setAgeCalcIcon(data.age_calc_icon);
         setAgeCalcIconMode(isIconUrl(data.age_calc_icon) ? "image" : "emoji");
+      }
+      setImgCompressEnabled(data?.img_compress !== false);
+      if (data?.img_compress_icon) {
+        setImgCompressIcon(data.img_compress_icon);
+        setImgCompressIconMode(isIconUrl(data.img_compress_icon) ? "image" : "emoji");
       }
     } catch { /* default true */ }
   };
@@ -4029,6 +4041,48 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
       setShowAgeCalcIconEditor(false);
     } finally {
       setSavingAgeCalcIcon(false);
+    }
+  };
+
+  const toggleImgCompress = async () => {
+    const next = !imgCompressEnabled;
+    setImgCompressEnabled(next);
+    setTogglingImgCompress(true);
+    try {
+      await fetch(`${API}/builtin/img_compress`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
+    } finally {
+      setTogglingImgCompress(false);
+    }
+  };
+
+  const handleImgCompressIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImgCompressIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`${API}/builtin/img_compress/upload-icon`, {
+        method: "POST",
+        headers: { "x-admin-key": adminKey },
+        body: fd,
+      });
+      const data = await r.json();
+      if (data.url) { setImgCompressIcon(data.url); setImgCompressIconMode("image"); }
+    } catch { /* ignore */ } finally {
+      setUploadingImgCompressIcon(false);
+      e.target.value = "";
+    }
+  };
+
+  const saveImgCompressIcon = async (icon: string) => {
+    setSavingImgCompressIcon(true);
+    try {
+      await fetch(`${API}/builtin/img_compress`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
+      setImgCompressIcon(icon);
+      setShowImgCompressIconEditor(false);
+    } finally {
+      setSavingImgCompressIcon(false);
     }
   };
 
@@ -4175,6 +4229,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
           <div className="flex items-center gap-1.5 bg-purple-50 rounded-lg px-3 py-1.5">
             <span className="text-xs text-gray-600">年龄计算器</span>
             <span className="text-xs font-bold text-purple-600">{stats["builtin:age_calc"] ?? 0}</span>
+            <span className="text-[10px] text-gray-400">次</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-green-50 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-600">图片压缩</span>
+            <span className="text-xs font-bold text-green-600">{stats["builtin:img_compress"] ?? 0}</span>
             <span className="text-[10px] text-gray-400">次</span>
           </div>
         </div>
@@ -4477,6 +4536,105 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                         {savingAgeCalcIcon ? "保存中…" : "保存图标"}
                       </button>
                       <button onClick={() => { setAgeCalcIcon("🎂"); setAgeCalcIconMode("emoji"); }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors">
+                        移除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 图片压缩卡片 */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-3">
+          <div className="flex items-center gap-4 px-5 py-4">
+            <button
+              onClick={() => setShowImgCompressIconEditor((v) => !v)}
+              className="relative w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-green-300 transition-all group"
+              title="点击更换图标"
+            >
+              {isIconUrl(imgCompressIcon) ? (
+                <img src={imgCompressIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
+              ) : (
+                <span>{imgCompressIcon}</span>
+              )}
+              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+              </span>
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-900 text-sm">图片压缩</p>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-50 text-green-600">
+                  {stats["builtin:img_compress"] ?? 0} 次点击
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">本地压缩，不上传服务器</p>
+            </div>
+            <button
+              onClick={toggleImgCompress}
+              disabled={togglingImgCompress}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${imgCompressEnabled ? "bg-rose-500" : "bg-gray-200"}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${imgCompressEnabled ? "translate-x-4" : "translate-x-0"}`} />
+            </button>
+          </div>
+
+          {showImgCompressIconEditor && (
+            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setImgCompressIconMode("emoji")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${imgCompressIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Smile className="w-3 h-3" /> Emoji
+                </button>
+                <button
+                  onClick={() => setImgCompressIconMode("image")}
+                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${imgCompressIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Upload className="w-3 h-3" /> 上传图片
+                </button>
+              </div>
+
+              {imgCompressIconMode === "emoji" ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {["🗜️","🖼️","📷","📸","🔧","⚡","🎨","✂️","🔄","💾","📦","🗂️"].map((ic) => (
+                      <button key={ic} onClick={() => setImgCompressIcon(ic)}
+                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${imgCompressIcon === ic ? "border-green-400 bg-green-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                      >{ic}</button>
+                    ))}
+                  </div>
+                  <input type="text" value={isIconUrl(imgCompressIcon) ? "" : imgCompressIcon}
+                    onChange={(e) => setImgCompressIcon(e.target.value)}
+                    placeholder="或直接输入 emoji"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                    maxLength={4} />
+                  <button onClick={() => saveImgCompressIcon(isIconUrl(imgCompressIcon) ? "🗜️" : imgCompressIcon)}
+                    disabled={savingImgCompressIcon}
+                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
+                    {savingImgCompressIcon ? "保存中…" : "保存图标"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImgCompressIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-green-200 hover:border-green-400 hover:bg-green-50"}`}>
+                    {uploadingImgCompressIcon ? <span className="text-sm text-gray-400">上传中…</span>
+                      : isIconUrl(imgCompressIcon) ? <img src={imgCompressIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
+                      : (<><Upload className="w-7 h-7 text-green-300 mb-1" /><span className="text-sm text-gray-400">点击选择图片</span><span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span></>)}
+                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImgCompressIconUpload} disabled={uploadingImgCompressIcon} />
+                  </label>
+                  {isIconUrl(imgCompressIcon) && (
+                    <div className="flex gap-2">
+                      <button onClick={() => saveImgCompressIcon(imgCompressIcon)} disabled={savingImgCompressIcon}
+                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
+                        {savingImgCompressIcon ? "保存中…" : "保存图标"}
+                      </button>
+                      <button onClick={() => { setImgCompressIcon("🗜️"); setImgCompressIconMode("emoji"); }}
                         className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors">
                         移除
                       </button>

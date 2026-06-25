@@ -16,7 +16,8 @@
     "pages/quota-paywall/quota-paywall",
     "pages/time-capsule-form/time-capsule-form",
     "pages/time-capsule-detail/time-capsule-detail",
-    "pages/event-detail/event-detail"
+    "pages/event-detail/event-detail",
+    "pages/img-compress/img-compress"
   ],
   "tabBar": {
     "color": "#94a3b8",

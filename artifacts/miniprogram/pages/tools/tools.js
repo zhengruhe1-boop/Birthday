@@ -13,6 +13,9 @@ Page({
     ageCalcEnabled: false,
     ageCalcIcon: '🎂',
     ageCalcIconIsUrl: false,
+    imgCompressEnabled: false,
+    imgCompressIcon: '🗜️',
+    imgCompressIconIsUrl: false,
   },
 
   onShow() {
@@ -60,6 +63,8 @@ Page({
         var dcIsUrl = !!(dcIcon && dcIcon.indexOf('http') === 0);
         var acIcon = this._toAbsIcon((data && data.age_calc_icon) || '🎂');
         var acIsUrl = !!(acIcon && acIcon.indexOf('http') === 0);
+        var icIcon = this._toAbsIcon((data && data.img_compress_icon) || '🗜️');
+        var icIsUrl = !!(icIcon && icIcon.indexOf('http') === 0);
         this.setData({
           dateCalcEnabled: data && data.date_calc !== false,
           dateCalcIcon: dcIcon,
@@ -67,12 +72,16 @@ Page({
           ageCalcEnabled: data && data.age_calc !== false,
           ageCalcIcon: acIcon,
           ageCalcIconIsUrl: acIsUrl,
+          imgCompressEnabled: data && data.img_compress !== false,
+          imgCompressIcon: icIcon,
+          imgCompressIconIsUrl: icIsUrl,
         });
       })
       .catch(() => {
         this.setData({
           dateCalcEnabled: true, dateCalcIcon: '🗓️', dateCalcIconIsUrl: false,
           ageCalcEnabled: true, ageCalcIcon: '🎂', ageCalcIconIsUrl: false,
+          imgCompressEnabled: true, imgCompressIcon: '🗜️', imgCompressIconIsUrl: false,
         });
       });
   },
@@ -117,6 +126,11 @@ Page({
   goAgeCalc() {
     track('tool_click', { page: 'builtin:age_calc' });
     wx.navigateTo({ url: "/pages/age-calc/age-calc" });
+  },
+
+  goImgCompress() {
+    track('tool_click', { page: 'builtin:img_compress' });
+    wx.navigateTo({ url: "/pages/img-compress/img-compress" });
   },
 
   tapDynamicTool(e) {

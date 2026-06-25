@@ -50,7 +50,7 @@
     </view> -->
 
     <!-- 内置工具区 -->
-    <block wx:if="{{dateCalcEnabled || ageCalcEnabled}}">
+    <block wx:if="{{dateCalcEnabled || ageCalcEnabled || imgCompressEnabled}}">
       <!-- <view class="section-label" style="margin-top:40rpx">实用工具</view> -->
       <view class="tool-list">
 
@@ -77,6 +77,20 @@
             <view class="tool-info">
               <text class="tool-name">年龄计算器</text>
               <text class="tool-desc">生肖星座五行人生阶段一览</text>
+            </view>
+            <text class="tool-arrow">›</text>
+          </view>
+        </block>
+
+        <block wx:if="{{imgCompressEnabled}}">
+          <view class="tool-item" bindtap="goImgCompress">
+            <view class="tool-icon green-bg">
+              <image wx:if="{{imgCompressIconIsUrl}}" src="{{imgCompressIcon}}" class="tool-icon-img" mode="aspectFill" />
+              <text wx:else>{{imgCompressIcon}}</text>
+            </view>
+            <view class="tool-info">
+              <text class="tool-name">图片压缩</text>
+              <text class="tool-desc">本地压缩，不上传服务器</text>
             </view>
             <text class="tool-arrow">›</text>
           </view>

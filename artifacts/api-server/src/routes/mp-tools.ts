@@ -191,7 +191,8 @@ router.get("/builtin", async (_req: Request, res: Response) => {
     const result = await db.execute(sql`
       SELECT key, value FROM settings
       WHERE key IN ('tool_date_calc_enabled', 'tool_date_calc_icon',
-                    'tool_age_calc_enabled', 'tool_age_calc_icon')
+                    'tool_age_calc_enabled', 'tool_age_calc_icon',
+                    'tool_img_compress_enabled', 'tool_img_compress_icon')
     `);
     const rows = result.rows as { key: string; value: string }[];
     const byKey: Record<string, string> = {};
@@ -201,6 +202,8 @@ router.get("/builtin", async (_req: Request, res: Response) => {
       date_calc_icon: byKey["tool_date_calc_icon"] || null,
       age_calc: byKey["tool_age_calc_enabled"] !== "false",
       age_calc_icon: byKey["tool_age_calc_icon"] || null,
+      img_compress: byKey["tool_img_compress_enabled"] !== "false",
+      img_compress_icon: byKey["tool_img_compress_icon"] || null,
     });
   } catch {
     res.json({ date_calc: true, date_calc_icon: null });

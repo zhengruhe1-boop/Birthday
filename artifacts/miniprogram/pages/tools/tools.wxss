@@ -74,6 +74,7 @@
 .orange-bg { background: #fff7ed; }
 .violet-bg { background: #f5f3ff; }
 .blue-bg   { background: #eff6ff; }
+.green-bg  { background: #f0fdf4; }
 .amber-bg  { background: #fffbeb; }
 
 .tool-info { flex: 1; min-width: 0; }
