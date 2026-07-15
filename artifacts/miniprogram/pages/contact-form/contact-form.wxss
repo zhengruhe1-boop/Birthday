@@ -473,11 +473,6 @@
   margin: 20rpx 28rpx 40rpx;
 }
 
-/* 表单模式下（在 cf-actions 里）全宽 */
-.cf-actions .cf-delete-btn {
-  width: 100%;
-}
-
 /* ─── 提醒时机 ──────────────────────────────────────────────────── */
 .cf-reminder-chips {
   display: flex;

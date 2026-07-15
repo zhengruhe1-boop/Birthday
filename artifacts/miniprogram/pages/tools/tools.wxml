@@ -2,131 +2,54 @@
 
   <view class="tools-header">
     <text class="tools-title">实用小工具</text>
-    <text class="tools-sub">简单实用解决身边的小麻烦</text>
+    <view class="tools-sub-row">
+      <text class="tools-sub">简单实用解决身边的小麻烦，</text>
+      <text class="tools-sub">已累计帮助{{totalUseCount}}人次</text>
+    </view>
   </view>
 
   <scroll-view class="tools-scroll" scroll-y>
 
-    <!-- <view class="section-label">快速添加</view>
+    <view wx:if="{{loadingTools}}" class="tools-loading">
+      <text>加载中…</text>
+    </view>
 
-    <view class="tool-list">
+    <view wx:elif="{{toolGroups.length === 0}}" class="tools-empty">
+      <text class="tools-empty-icon">🔧</text>
+      <text class="tools-empty-text">暂无可用工具</text>
+    </view>
 
-      <view class="tool-item" bindtap="goAddContact">
-        <view class="tool-icon rose-bg"><text>🎂</text></view>
-        <view class="tool-info">
-          <text class="tool-name">添加生日</text>
-          <text class="tool-desc">记录亲友生日，到期自动提醒</text>
+    <block wx:else>
+      <block wx:for="{{toolGroups}}" wx:for-item="group" wx:key="id">
+        <view class="category-section">
+          <view class="category-header">
+            <text class="category-name"><text wx:if="{{group.icon}}">{{group.icon}} </text>{{group.name}}</text>
+          </view>
+          <view class="tool-grid">
+            <view
+              class="tool-item"
+              wx:for="{{group.tools}}"
+              wx:for-item="tool"
+              wx:key="id"
+              bindtap="tapDynamicTool"
+              data-id="{{tool.id}}"
+              data-type="{{tool.type}}"
+              data-path="{{tool.path}}"
+              data-app-id="{{tool.app_id}}"
+              data-page-path="{{tool.page_path}}"
+            >
+              <view class="tool-icon-box">
+                <view class="tool-icon-wrap">
+                  <image wx:if="{{tool.iconIsUrl}}" src="{{tool.icon}}" class="tool-icon-img" mode="aspectFit" />
+                  <text wx:else class="tool-icon-emoji">{{tool.icon}}</text>
+                </view>
+                <view wx:if="{{tool.type === 'external'}}" class="tool-external-tag">外部</view>
+              </view>
+              <text class="tool-name">{{tool.name}}</text>
+            </view>
+          </view>
         </view>
-        <text class="tool-arrow">›</text>
-      </view>
-
-      <view class="tool-item" bindtap="goAddAnniversary">
-        <view class="tool-icon pink-bg"><text>❤️</text></view>
-        <view class="tool-info">
-          <text class="tool-name">添加纪念日</text>
-          <text class="tool-desc">结婚纪念日、恋爱周年等</text>
-        </view>
-        <text class="tool-arrow">›</text>
-      </view>
-
-      <view class="tool-item" bindtap="goAddCountdown">
-        <view class="tool-icon orange-bg"><text>⏱️</text></view>
-        <view class="tool-info">
-          <text class="tool-name">添加倒数日</text>
-          <text class="tool-desc">考试、旅行、大事件倒计时</text>
-        </view>
-        <text class="tool-arrow">›</text>
-      </view>
-
-      <view class="tool-item" bindtap="goAddOther">
-        <view class="tool-icon violet-bg"><text>✨</text></view>
-        <view class="tool-info">
-          <text class="tool-name">其它提醒</text>
-          <text class="tool-desc">自定义提醒事项</text>
-        </view>
-        <text class="tool-arrow">›</text>
-      </view>
-
-    </view> -->
-
-    <!-- 内置工具区 -->
-    <block wx:if="{{dateCalcEnabled || ageCalcEnabled || imgCompressEnabled}}">
-      <!-- <view class="section-label" style="margin-top:40rpx">实用工具</view> -->
-      <view class="tool-list">
-
-        <block wx:if="{{dateCalcEnabled}}">
-          <view class="tool-item" bindtap="goDateCalc">
-            <view class="tool-icon blue-bg">
-              <image wx:if="{{dateCalcIconIsUrl}}" src="{{dateCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
-              <text wx:else>{{dateCalcIcon}}</text>
-            </view>
-            <view class="tool-info">
-              <text class="tool-name">日期计算器</text>
-              <text class="tool-desc">计算日期间隔与前后日期</text>
-            </view>
-            <text class="tool-arrow">›</text>
-          </view>
-        </block>
-
-        <block wx:if="{{ageCalcEnabled}}">
-          <view class="tool-item" bindtap="goAgeCalc">
-            <view class="tool-icon rose-bg">
-              <image wx:if="{{ageCalcIconIsUrl}}" src="{{ageCalcIcon}}" class="tool-icon-img" mode="aspectFill" />
-              <text wx:else>{{ageCalcIcon}}</text>
-            </view>
-            <view class="tool-info">
-              <text class="tool-name">年龄计算器</text>
-              <text class="tool-desc">生肖星座五行人生阶段一览</text>
-            </view>
-            <text class="tool-arrow">›</text>
-          </view>
-        </block>
-
-        <block wx:if="{{imgCompressEnabled}}">
-          <view class="tool-item" bindtap="goImgCompress">
-            <view class="tool-icon green-bg">
-              <image wx:if="{{imgCompressIconIsUrl}}" src="{{imgCompressIcon}}" class="tool-icon-img" mode="aspectFill" />
-              <text wx:else>{{imgCompressIcon}}</text>
-            </view>
-            <view class="tool-info">
-              <text class="tool-name">图片压缩</text>
-              <text class="tool-desc">本地压缩，不上传服务器</text>
-            </view>
-            <text class="tool-arrow">›</text>
-          </view>
-        </block>
-
-      </view>
-    </block>
-
-    <!-- 动态工具区 -->
-    <block wx:if="{{dynamicTools.length > 0}}">
-
-      <view class="section-label" style="margin-top:40rpx">更多工具</view>
-
-      <view class="tool-list">
-        <view
-          class="tool-item"
-          wx:for="{{dynamicTools}}"
-          wx:key="id"
-          bindtap="tapDynamicTool"
-          data-tool="{{item}}"
-        >
-          <view class="tool-icon dynamic-icon-bg">
-            <image wx:if="{{item.iconIsUrl}}" src="{{item.icon}}" class="tool-icon-img" mode="aspectFill" />
-            <text wx:else>{{item.icon}}</text>
-          </view>
-          <view class="tool-info">
-            <text class="tool-name">{{item.name}}</text>
-            <text class="tool-desc">{{item.description}}</text>
-          </view>
-          <view class="tool-jump-badge" wx:if="{{item.type === 'external'}}">
-            <text class="tool-jump-badge-text">外部</text>
-          </view>
-          <text class="tool-arrow" wx:else>›</text>
-        </view>
-      </view>
-
+      </block>
     </block>
 
     <view style="height:40rpx" />

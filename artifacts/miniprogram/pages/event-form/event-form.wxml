@@ -140,15 +140,9 @@
 
   <!-- Footer -->
   <view class="form-footer">
-    <view wx:if="{{isEdit}}" class="delete-btn-wrap">
-      <button class="btn btn-danger {{deleting ? 'btn-disabled' : ''}}"
-        bindtap="handleDelete" disabled="{{deleting || saving}}">
-        <text>🗑️</text>
-      </button>
-    </view>
-    <button class="save-btn flex-btn {{(saving || deleting) ? 'btn-disabled' : ''}}"
+    <button class="save-btn {{saving ? 'btn-disabled' : ''}}"
       style="background:{{meta.color}}"
-      bindtap="handleSave" disabled="{{saving || deleting}}">
+      bindtap="handleSave" disabled="{{saving}}">
       {{saving ? '保存中...' : (isEdit ? '保存' : '添加')}}
     </button>
   </view>

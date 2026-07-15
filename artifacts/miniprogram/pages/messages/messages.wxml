@@ -1,0 +1,27 @@
+<view class="messages-page">
+  <view wx:if="{{loading}}" class="empty-tip">加载中…</view>
+  <view wx:elif="{{!list.length}}" class="empty-tip">
+    <text class="empty-icon">📭</text>
+    <text>暂无消息</text>
+    <text class="empty-sub">官方消息与问题反馈回复将显示在这里</text>
+  </view>
+  <view wx:else class="msg-list">
+    <view
+      wx:for="{{list}}"
+      wx:key="key"
+      class="msg-item"
+      bindtap="goDetail"
+      data-id="{{item.id}}"
+      data-type="{{item.type}}"
+    >
+      <view class="msg-head">
+        <text class="status-tag status-{{item.statusClass}}">{{item.statusLabel}}</text>
+        <text wx:if="{{item.isUnread}}" class="unread-dot" />
+        <text class="msg-time">{{item.timeText}}</text>
+      </view>
+      <text class="msg-title">{{item.displayTitle}}</text>
+      <text wx:if="{{item.displayPreview}}" class="msg-content">{{item.displayPreview}}</text>
+      <text class="msg-arrow">›</text>
+    </view>
+  </view>
+</view>

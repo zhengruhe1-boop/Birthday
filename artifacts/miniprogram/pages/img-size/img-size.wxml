@@ -1,0 +1,132 @@
+<view class="page">
+  <view class="page-title">图片尺寸自定义</view>
+  <view class="page-sub">本地处理，图片不上传服务器</view>
+
+  <!-- 离屏 Canvas -->
+  <canvas id="resize-canvas" type="2d" class="offscreen-canvas"></canvas>
+
+  <!-- 选图 -->
+  <block wx:if="{{!originalPath}}">
+    <view class="select-zone" bindtap="selectImage">
+      <text class="select-icon">📐</text>
+      <text class="select-text">点击选择图片</text>
+      <text class="select-hint">支持从相册选择或拍照</text>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 原图信息 -->
+    <view class="section-card">
+      <view class="card-header">
+        <text class="card-title">原图信息</text>
+        <view class="size-badge">{{originalDimText}}</view>
+      </view>
+      <image class="preview-img" src="{{originalPath}}" mode="widthFix" />
+      <view class="info-row">
+        <text class="info-label">文件大小</text>
+        <text class="info-val">{{originalSizeText}}</text>
+      </view>
+      <view class="reselect-row">
+        <view class="reselect-btn" bindtap="selectImage">重新选择</view>
+      </view>
+    </view>
+
+    <!-- 尺寸设置 -->
+    <view class="section-card">
+      <view class="card-title" style="margin-bottom:20rpx">目标尺寸</view>
+
+      <view class="dim-row">
+        <view class="dim-field">
+          <text class="dim-label">宽度 (px)</text>
+          <input class="dim-input" type="number" value="{{targetWidth}}" bindinput="onWidthInput" placeholder="宽度" />
+        </view>
+
+        <view class="lock-btn {{lockRatio ? 'lock-btn--active' : ''}}" bindtap="toggleLockRatio">
+          <text>{{lockRatio ? '🔗' : '🔓'}}</text>
+        </view>
+
+        <view class="dim-field">
+          <text class="dim-label">高度 (px)</text>
+          <input class="dim-input" type="number" value="{{targetHeight}}" bindinput="onHeightInput" placeholder="高度" />
+        </view>
+      </view>
+
+      <view class="lock-hint">{{lockRatio ? '已锁定比例，修改一边自动计算另一边' : '自由模式，宽高独立设置'}}</view>
+
+      <!-- 常用预设 -->
+      <view class="preset-title">常用尺寸</view>
+      <view class="preset-grid">
+        <view class="preset-btn" bindtap="setPreset" data-w="800" data-h="800">800×800</view>
+        <view class="preset-btn" bindtap="setPreset" data-w="1080" data-h="1080">1080×1080</view>
+        <view class="preset-btn" bindtap="setPreset" data-w="750" data-h="1334">750×1334</view>
+        <view class="preset-btn" bindtap="setPreset" data-w="1920" data-h="1080">1920×1080</view>
+        <view class="preset-btn" bindtap="setPreset" data-w="1280" data-h="720">1280×720</view>
+        <view class="preset-btn" bindtap="setPreset" data-w="300" data-h="300">300×300</view>
+      </view>
+    </view>
+
+    <!-- 格式选择 -->
+    <view class="section-card">
+      <view class="card-title" style="margin-bottom:16rpx">输出格式</view>
+      <radio-group bindchange="onFormatChange" class="format-group">
+        <label class="format-item {{outputFormat === 'png' ? 'format-item--active' : ''}}">
+          <radio value="png" checked="{{outputFormat === 'png'}}" color="#f43f5e" />
+          <text>PNG</text>
+        </label>
+        <label class="format-item {{outputFormat === 'jpg' ? 'format-item--active' : ''}}">
+          <radio value="jpg" checked="{{outputFormat === 'jpg'}}" color="#f43f5e" />
+          <text>JPG</text>
+        </label>
+        <label class="format-item {{outputFormat === 'jpeg' ? 'format-item--active' : ''}}">
+          <radio value="jpeg" checked="{{outputFormat === 'jpeg'}}" color="#f43f5e" />
+          <text>JPEG</text>
+        </label>
+        <label class="format-item {{outputFormat === 'webp' ? 'format-item--active' : ''}}">
+          <radio value="webp" checked="{{outputFormat === 'webp'}}" color="#f43f5e" />
+          <text>WebP</text>
+        </label>
+      </radio-group>
+    </view>
+
+    <!-- 开始按钮 -->
+    <button class="process-btn {{processing ? 'process-btn--loading' : ''}}" bindtap="processImage" disabled="{{processing}}">
+      {{processing ? '处理中…' : '开始转换'}}
+    </button>
+
+    <!-- 结果 -->
+    <block wx:if="{{hasResult}}">
+      <view class="section-card result-card">
+        <view class="card-header">
+          <text class="card-title">转换结果</text>
+          <view class="size-badge size-badge--green">{{resultDimText}}</view>
+        </view>
+        <image class="preview-img" src="{{resultPath}}" mode="widthFix" />
+
+        <view class="compare-row">
+          <view class="compare-item">
+            <text class="compare-label">原图</text>
+            <text class="compare-val">{{originalDimText}}</text>
+            <text class="compare-sub">{{originalSizeText}}</text>
+          </view>
+          <text class="compare-arrow">→</text>
+          <view class="compare-item">
+            <text class="compare-label">转换后</text>
+            <text class="compare-val compare-val--green">{{resultDimText}}</text>
+            <text class="compare-sub">{{resultSizeText}}</text>
+          </view>
+        </view>
+
+        <button class="save-btn {{saving ? 'save-btn--loading' : ''}}" bindtap="saveImage" disabled="{{saving}}">
+          {{saving ? '保存中…' : '💾 保存到相册'}}
+        </button>
+      </view>
+    </block>
+
+    <!-- 重置 -->
+    <view class="reset-row" bindtap="reset">
+      <text class="reset-text">清除重来</text>
+    </view>
+  </block>
+
+  <view style="height: calc(60rpx + env(safe-area-inset-bottom))" />
+</view>

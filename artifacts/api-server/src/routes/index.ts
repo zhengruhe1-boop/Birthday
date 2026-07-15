@@ -5,6 +5,7 @@ import contactsRouter from "./contacts.js";
 import uploadRouter from "./upload.js";
 import remindersRouter from "./reminders.js";
 import adminRouter from "./admin.js";
+import adminAppsRouter from "./admin-apps.js";
 import eventsRouter from "./events.js";
 import shareRouter from "./share.js";
 import wechatOaRouter from "./wechat-oa.js";
@@ -13,6 +14,11 @@ import mpToolsRouter from "./mp-tools.js";
 import quotaRouter from "./quota.js";
 import capsulesRouter from "./time-capsules.js";
 import trackRouter from "./track.js";
+import appsRouter from "./apps.js";
+import feedbackRouter from "./feedback.js";
+import adminFeedbackRouter from "./admin-feedback.js";
+import adminAnnouncementsRouter from "./admin-announcements.js";
+import messagesRouter from "./messages.js";
 
 const router: IRouter = Router();
 
@@ -21,6 +27,7 @@ router.use("/auth", authRouter);
 router.use("/contacts", contactsRouter);
 router.use("/upload", uploadRouter);
 router.use("/reminders", remindersRouter);
+router.use("/admin/apps", adminAppsRouter);
 router.use("/admin", adminRouter);
 router.use("/events", eventsRouter);
 router.use("/share", shareRouter);
@@ -30,5 +37,10 @@ router.use("/mp-tools", mpToolsRouter);
 router.use("/quota", quotaRouter);
 router.use("/capsules", capsulesRouter);
 router.use("/track", trackRouter);
+router.use("/apps", appsRouter);
+router.use("/feedback", feedbackRouter);
+router.use("/admin/feedback", adminFeedbackRouter);
+router.use("/admin/announcements", adminAnnouncementsRouter);
+router.use("/messages", messagesRouter);
 
 export default router;

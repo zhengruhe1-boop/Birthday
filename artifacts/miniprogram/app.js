@@ -1,21 +1,47 @@
-const { API_BASE } = require('./config');
+const { API_BASE, APP_KEY } = require('./config');
 const { track } = require('./utils/track');
+const { getAuthGeneration } = require('./utils/auth');
 
 App({
   globalData: {
     apiBase: API_BASE,
+    appKey: APP_KEY,
     userInfo: null,
     token: null,
     sessionReady: null,
+    publicConfig: null,
+    authGeneration: 0,
   },
 
   onLaunch() {
     const stored = wx.getStorageSync('birthday_token');
     if (stored) this.globalData.token = stored;
     this.globalData.sessionReady = this._silentLogin();
+    this.loadPublicConfig();
     this._checkUpdate();
     // fire-and-forget: 不阻塞启动
     track('app_launch');
+  },
+
+  loadPublicConfig() {
+    const base = (this.globalData.apiBase || '').replace(/\/$/, '');
+    return new Promise((resolve) => {
+      wx.request({
+        url: `${base}/api/apps/${this.globalData.appKey}/public-config`,
+        method: 'GET',
+        header: { 'x-app-key': this.globalData.appKey },
+        timeout: 10000,
+        success: (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            this.globalData.publicConfig = res.data || null;
+            resolve(res.data || null);
+            return;
+          }
+          resolve(null);
+        },
+        fail: () => resolve(null),
+      });
+    });
   },
 
   onShow() {
@@ -75,27 +101,33 @@ App({
     const base = (self.globalData.apiBase || '').replace(/\/$/, '');
 
     return new Promise(function (resolve) {
+      function finish(ok) {
+        const loggedIn = !!ok && !!wx.getStorageSync('birthday_token');
+        self.globalData.sessionReady = Promise.resolve(loggedIn);
+        resolve(loggedIn);
+      }
+
       // 第一步：验证现有 token 是否仍然有效
       wx.request({
         url: base + '/api/auth/me',
         method: 'GET',
-        header: { Authorization: 'Bearer ' + existingToken },
+        header: { Authorization: 'Bearer ' + existingToken, 'x-app-key': self.globalData.appKey },
         timeout: 8000,
         success: function (r) {
           if (r.statusCode === 200 && r.data && r.data.id) {
             // token 仍然有效，直接复用，缓存最新用户信息
             self.globalData.token = existingToken;
             if (r.data) wx.setStorageSync('birthday_userinfo', r.data);
-            resolve(true);
+            finish(true);
             return;
           }
 
           // token 失效（401 等），尝试用 wx.login 静默换新 token
-          self._refreshByWxLogin(existingToken, resolve);
+          self._refreshByWxLogin(existingToken, finish);
         },
         fail: function () {
           // 网络异常：保留旧 token，让后续页面请求自行处理
-          resolve(true);
+          finish(!!existingToken);
         },
       });
     });
@@ -105,38 +137,54 @@ App({
   _refreshByWxLogin(existingToken, resolve) {
     const self = this;
     const base  = (self.globalData.apiBase || '').replace(/\/$/, '');
+    const refreshGen = getAuthGeneration();
 
     wx.login({
       timeout: 12000,
       success: function (loginRes) {
+        if (getAuthGeneration() !== refreshGen) {
+          resolve(!!wx.getStorageSync('birthday_token'));
+          return;
+        }
         wx.request({
           url: base + '/api/auth/wechat/login',
           method: 'POST',
-          data: { code: loginRes.code },
-          header: { 'Content-Type': 'application/json' },
+          data: { code: loginRes.code, appKey: self.globalData.appKey },
+          header: { 'Content-Type': 'application/json', 'x-app-key': self.globalData.appKey },
           timeout: 15000,
           success: function (r) {
+            if (getAuthGeneration() !== refreshGen) {
+              resolve(!!wx.getStorageSync('birthday_token'));
+              return;
+            }
+
             if (r.statusCode >= 200 && r.statusCode < 300 && r.data && r.data.token) {
               wx.setStorageSync('birthday_token', r.data.token);
               self.globalData.token = r.data.token;
               if (r.data.user) wx.setStorageSync('birthday_userinfo', r.data.user);
+              self.globalData.sessionReady = Promise.resolve(true);
               resolve(true);
-            } else {
-              // 换 token 失败：清除失效 token，强制用户手动登录
+              return;
+            }
+
+            const current = wx.getStorageSync('birthday_token');
+            if (current && current === existingToken) {
               wx.removeStorageSync('birthday_token');
               wx.removeStorageSync('birthday_userinfo');
               self.globalData.token = null;
+              self.globalData.sessionReady = Promise.resolve(false);
               resolve(false);
+              return;
             }
+            resolve(!!current);
           },
           fail: function () {
-            // 网络异常：保留旧 token
-            resolve(!!existingToken);
+            resolve(!!wx.getStorageSync('birthday_token'));
           },
         });
       },
       fail: function () {
-        resolve(!!existingToken);
+        resolve(!!wx.getStorageSync('birthday_token'));
       },
     });
   },

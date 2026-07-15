@@ -1,5 +1,10 @@
 import { useState, useEffect, Fragment } from "react";
 import {
+  FeedbackImageList,
+  FeedbackReplyHtml,
+  FeedbackRichEditor,
+} from "../components/FeedbackRichEditor";
+import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -33,6 +38,10 @@ import {
   Upload,
   Smile,
   Lock,
+  BarChart3,
+  FolderOpen,
+  MessageSquare,
+  Megaphone,
 } from "lucide-react";
 
 const ADMIN_KEY = "birthday-admin-2024";
@@ -56,12 +65,34 @@ interface UserRecord {
   unionId: string | null;
   nickname: string;
   avatarUrl: string | null;
+  registeredAppKey: string;
+  registeredClientType: string;
   createdAt: string;
   lastAccessAt: string | null;
   contactCount: number;
   eventCount: number;
   capsuleCount: number;
   contacts: ContactRecord[];
+}
+
+const USER_APP_SOURCE_OPTIONS = [
+  { key: "", label: "全部来源" },
+  { key: "birthday_mp", label: "生日通小程序" },
+  { key: "xishi_toolbox_mp", label: "惜时工具箱小程序" },
+  { key: "xishi_toolbox_pc", label: "惜时工具箱PC端" },
+];
+
+function appSourceLabel(appKey: string): { label: string; color: string } {
+  switch (appKey) {
+    case "birthday_mp":
+      return { label: "生日通小程序", color: "bg-blue-50 text-blue-600" };
+    case "xishi_toolbox_mp":
+      return { label: "惜时工具箱小程序", color: "bg-orange-50 text-orange-600" };
+    case "xishi_toolbox_pc":
+      return { label: "惜时工具箱PC端", color: "bg-green-50 text-green-600" };
+    default:
+      return { label: appKey || "未知", color: "bg-gray-100 text-gray-500" };
+  }
 }
 
 interface StatsData {
@@ -80,11 +111,15 @@ interface AnalyticsOverview {
   totalUsers: number;
   newToday: number;
   newThisWeek: number;
+  rangeNewUsers?: number;
   oaFollowers: number;
   mpSubscribers: number;
   totalContacts: number;
   totalEvents: number;
   totalCapsules: number;
+  toolClicks?: number;
+  launchCount30d?: number;
+  launchCount?: number;
 }
 
 interface DailyPoint {
@@ -96,10 +131,15 @@ interface DailyPoint {
 }
 
 interface AnalyticsData {
+  appKey?: string | null;
+  startDate?: string;
+  endDate?: string;
   overview: AnalyticsOverview;
+  usersByApp?: Array<{ appKey: string; count: number }>;
   dailyUsers: DailyPoint[];
   dailyContent: DailyPoint[];
   dailyLaunches: DailyPoint[];
+  dailyToolClicks?: DailyPoint[];
 }
 
 interface WechatConfig {
@@ -121,6 +161,20 @@ interface WechatConfig {
   // 登录模式
   h5LoginMode: "wechat_oa" | "mock";
   mpLoginMode: "wechat_mp" | "mock";
+}
+
+interface ManagedApp {
+  id: number;
+  appKey: string;
+  name: string;
+  appType: "mini_program" | "pc_web" | string;
+  domain: string | null;
+  description: string | null;
+  enabled: boolean;
+  userCount: number;
+  activeUsers30d: number;
+  launchCount30d: number;
+  settings: Record<string, string>;
 }
 
 function formatBirthday(c: ContactRecord) {
@@ -992,15 +1046,37 @@ function WechatConfigPanel({ adminKey }: { adminKey: string }) {
 }
 
 // ─── Dashboard Panel ──────────────────────────────────────────────────────────
+function defaultDashboardDateRange() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 29);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return { startDate: fmt(start), endDate: fmt(end) };
+}
+
 function DashboardPanel({ adminKey }: { adminKey: string }) {
+  const defaults = defaultDashboardDateRange();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [appKeyFilter, setAppKeyFilter] = useState("");
+  const [startDate, setStartDate] = useState(defaults.startDate);
+  const [endDate, setEndDate] = useState(defaults.endDate);
 
-  const load = async () => {
+  const load = async (
+    appKey = appKeyFilter,
+    from = startDate,
+    to = endDate,
+  ) => {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (appKey) params.set("app_key", appKey);
+      if (from) params.set("startDate", from);
+      if (to) params.set("endDate", to);
+      const qs = params.toString();
       const res = await fetch(
-        `${import.meta.env.BASE_URL}api/admin/analytics`,
+        `${import.meta.env.BASE_URL}api/admin/analytics${qs ? `?${qs}` : ""}`,
         { headers: { "x-admin-key": adminKey } },
       );
       if (res.ok) setData(await res.json());
@@ -1009,47 +1085,111 @@ function DashboardPanel({ adminKey }: { adminKey: string }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(appKeyFilter, startDate, endDate);
+  }, [appKeyFilter, startDate, endDate]);
 
   function fmtDate(d: string) {
     const [, m, day] = d.split("-");
     return `${parseInt(m)}/${parseInt(day)}`;
   }
 
-  // Show only every 5th label on the x-axis to avoid crowding
   function tickFormatter(value: string, index: number) {
-    return index % 5 === 0 ? fmtDate(value) : "";
+    const total = data?.dailyUsers?.length || 30;
+    const step = total > 60 ? 10 : total > 40 ? 7 : 5;
+    return index % step === 0 ? fmtDate(value) : "";
   }
 
-  const ov = data?.overview;
+  const resetDateRange = () => {
+    const next = defaultDashboardDateRange();
+    setStartDate(next.startDate);
+    setEndDate(next.endDate);
+  };
 
+  const ov = data?.overview;
+  const isBirthdayView = !appKeyFilter || appKeyFilter === "birthday_mp";
+  const isXishiView = appKeyFilter === "xishi_toolbox_mp" || appKeyFilter === "xishi_toolbox_pc";
+  const appLabel = USER_APP_SOURCE_OPTIONS.find((o) => o.key === appKeyFilter)?.label || "全部应用";
+  const rangeLabel = `${startDate || "—"} ~ ${endDate || "—"}`;
+  const rangeDays = data?.dailyUsers?.length || 0;
+
+  const usersByAppCards = (data?.usersByApp || []).map((row) => {
+    const meta = appSourceLabel(row.appKey);
+    return {
+      key: row.appKey,
+      label: meta.label,
+      value: row.count,
+      color: meta.color,
+    };
+  });
+
+  const launchCount = ov?.launchCount ?? ov?.launchCount30d ?? 0;
   const statCards = ov ? [
-    { label: "注册用户", value: ov.totalUsers, sub: `今日 +${ov.newToday}`, color: "bg-rose-50", iconBg: "bg-rose-100", textColor: "text-rose-600", icon: "👥" },
-    { label: "本周新增", value: ov.newThisWeek, sub: "近 7 天", color: "bg-sky-50", iconBg: "bg-sky-100", textColor: "text-sky-600", icon: "📈" },
-    { label: "关注公众号", value: ov.oaFollowers, sub: `${ov.totalUsers > 0 ? Math.round(ov.oaFollowers / ov.totalUsers * 100) : 0}% 占比`, color: "bg-green-50", iconBg: "bg-green-100", textColor: "text-green-600", icon: "📣" },
-    { label: "订阅通知", value: ov.mpSubscribers, sub: "小程序订阅", color: "bg-purple-50", iconBg: "bg-purple-100", textColor: "text-purple-600", icon: "🔔" },
-    { label: "生日联系人", value: ov.totalContacts, sub: "全部用户合计", color: "bg-amber-50", iconBg: "bg-amber-100", textColor: "text-amber-600", icon: "🎂" },
-    { label: "纪念日/倒计时", value: ov.totalEvents, sub: "事件合计", color: "bg-orange-50", iconBg: "bg-orange-100", textColor: "text-orange-600", icon: "📅" },
-    { label: "时间胶囊", value: ov.totalCapsules, sub: "全部胶囊", color: "bg-teal-50", iconBg: "bg-teal-100", textColor: "text-teal-600", icon: "💌" },
-    { label: "总录入条数", value: ov.totalContacts + ov.totalEvents + ov.totalCapsules, sub: "生日+事件+胶囊", color: "bg-indigo-50", iconBg: "bg-indigo-100", textColor: "text-indigo-600", icon: "📊" },
-  ] : [];
+    { label: "注册用户", value: ov.totalUsers, sub: `今日 +${ov.newToday}`, color: "bg-rose-50", iconBg: "bg-rose-100", textColor: "text-rose-600", icon: "👥", show: true },
+    { label: "区间新增", value: ov.rangeNewUsers ?? 0, sub: `近周 ${ov.newThisWeek}`, color: "bg-sky-50", iconBg: "bg-sky-100", textColor: "text-sky-600", icon: "📈", show: true },
+    { label: "区间启动", value: launchCount, sub: `共 ${rangeDays} 天`, color: "bg-indigo-50", iconBg: "bg-indigo-100", textColor: "text-indigo-600", icon: "🚀", show: true },
+    { label: "工具点击", value: ov.toolClicks ?? 0, sub: "所选区间", color: "bg-orange-50", iconBg: "bg-orange-100", textColor: "text-orange-600", icon: "🛠️", show: true },
+    { label: "关注公众号", value: ov.oaFollowers, sub: `${ov.totalUsers > 0 ? Math.round(ov.oaFollowers / ov.totalUsers * 100) : 0}% 占比`, color: "bg-green-50", iconBg: "bg-green-100", textColor: "text-green-600", icon: "📣", show: isBirthdayView },
+    { label: "订阅通知", value: ov.mpSubscribers, sub: "小程序订阅", color: "bg-purple-50", iconBg: "bg-purple-100", textColor: "text-purple-600", icon: "🔔", show: isBirthdayView },
+    { label: "生日联系人", value: ov.totalContacts, sub: "全部用户合计", color: "bg-amber-50", iconBg: "bg-amber-100", textColor: "text-amber-600", icon: "🎂", show: isBirthdayView },
+    { label: "纪念日/倒计时", value: ov.totalEvents, sub: "事件合计", color: "bg-orange-50", iconBg: "bg-orange-100", textColor: "text-orange-600", icon: "📅", show: isBirthdayView },
+    { label: "时间胶囊", value: ov.totalCapsules, sub: "全部胶囊", color: "bg-teal-50", iconBg: "bg-teal-100", textColor: "text-teal-600", icon: "💌", show: isBirthdayView },
+    { label: "总录入条数", value: ov.totalContacts + ov.totalEvents + ov.totalCapsules, sub: "生日+事件+胶囊", color: "bg-indigo-50", iconBg: "bg-indigo-100", textColor: "text-indigo-600", icon: "📊", show: isBirthdayView },
+  ].filter((s) => s.show) : [];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">数据仪表盘</h2>
-          <p className="text-xs text-gray-400 mt-0.5">实时统计 · 图表数据为近 30 天</p>
+          <p className="text-xs text-gray-400 mt-0.5">当前：{appLabel} · 统计区间：{rangeLabel}</p>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          刷新
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={appKeyFilter}
+            onChange={(e) => setAppKeyFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white min-w-[160px]"
+          >
+            {USER_APP_SOURCE_OPTIONS.map((o) => (
+              <option key={o.key || "all"} value={o.key}>{o.key ? o.label : "全部应用"}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 whitespace-nowrap">时间</span>
+            <input
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+            />
+            <span className="text-xs text-gray-400">至</span>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+            />
+            <button
+              type="button"
+              onClick={resetDateRange}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50"
+              title="恢复近 30 天"
+            >
+              近30天
+            </button>
+          </div>
+          <button
+            onClick={() => load(appKeyFilter, startDate, endDate)}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            刷新
+          </button>
+        </div>
       </div>
 
       {loading && !data && (
@@ -1061,6 +1201,28 @@ function DashboardPanel({ adminKey }: { adminKey: string }) {
 
       {data && (
         <>
+          {/* Users by app breakdown */}
+          {!appKeyFilter && usersByAppCards.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {usersByAppCards.map((card) => (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => setAppKeyFilter(card.key)}
+                  className="bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-rose-200 hover:shadow-sm transition-all"
+                >
+                  <p className="text-xs text-gray-400 mb-1">注册来源</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${card.color}`}>
+                      {card.label}
+                    </span>
+                    <span className="text-xl font-bold text-gray-900">{card.value}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Stat cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {statCards.map((s) => (
@@ -1081,7 +1243,7 @@ function DashboardPanel({ adminKey }: { adminKey: string }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Daily new users */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增用户（近 30 天）</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增用户（所选区间）</h3>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={data.dailyUsers} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -1099,7 +1261,7 @@ function DashboardPanel({ adminKey }: { adminKey: string }) {
 
             {/* Daily app launches */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日启动次数（近 30 天）</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日启动次数（所选区间）</h3>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={data.dailyLaunches} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -1113,29 +1275,51 @@ function DashboardPanel({ adminKey }: { adminKey: string }) {
                   <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-              <p className="text-xs text-gray-400 mt-2">* 需小程序端埋点上报后才有数据</p>
+              <p className="text-xs text-gray-400 mt-2">* 需前端埋点上报后才有数据</p>
             </div>
           </div>
 
-          {/* Chart row 2: daily content added (stacked) */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增内容（近 30 天）</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={data.dailyContent} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  labelFormatter={(l: string) => fmtDate(l)}
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
-                />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Bar dataKey="contacts" name="生日联系人" stackId="a" fill="#f43f5e" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="events" name="纪念日/倒计时" stackId="a" fill="#f97316" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="capsules" name="时间胶囊" stackId="a" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Chart row 2: birthday content or tool clicks */}
+          {isBirthdayView ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日新增内容（所选区间）</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={data.dailyContent} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    labelFormatter={(l: string) => fmtDate(l)}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  <Bar dataKey="contacts" name="生日联系人" stackId="a" fill="#f43f5e" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="events" name="纪念日/倒计时" stackId="a" fill="#f97316" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="capsules" name="时间胶囊" stackId="a" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">每日工具点击（所选区间）</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={data.dailyToolClicks || []} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tickFormatter={tickFormatter} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v: number) => [v, "工具点击"]}
+                    labelFormatter={(l: string) => fmtDate(l)}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  />
+                  <Bar dataKey="count" fill="#e67e22" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-gray-400 mt-2">
+                {isXishiView ? "* 惜时工具箱侧更关注工具使用与启动数据" : "* 按所选应用筛选"}
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -1148,13 +1332,29 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [appKeyFilter, setAppKeyFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const load = async (p = page) => {
+  const load = async (
+    p = page,
+    q = search,
+    appKey = appKeyFilter,
+    from = startDate,
+    to = endDate,
+  ) => {
     setLoading(true);
-    setExpanded(new Set()); // collapse rows on page change
+    setExpanded(new Set());
     try {
+      const params = new URLSearchParams({ page: String(p) });
+      if (q) params.set("search", q);
+      if (appKey) params.set("app_key", appKey);
+      if (from) params.set("startDate", from);
+      if (to) params.set("endDate", to);
       const res = await fetch(
-        `${import.meta.env.BASE_URL}api/admin/stats?page=${p}`,
+        `${import.meta.env.BASE_URL}api/admin/stats?${params}`,
         { headers: { "x-admin-key": adminKey } },
       );
       if (res.ok) setData(await res.json());
@@ -1164,8 +1364,29 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
   };
 
   useEffect(() => {
-    load(page);
-  }, [page]);
+    load(page, search, appKeyFilter, startDate, endDate);
+  }, [page, search, appKeyFilter, startDate, endDate]);
+
+  const handleSearch = () => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
+
+  const handleAppKeyChange = (key: string) => {
+    setPage(1);
+    setAppKeyFilter(key);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setSearch("");
+    setAppKeyFilter("");
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+  };
+
+  const hasFilters = !!(search || appKeyFilter || startDate || endDate);
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -1214,6 +1435,70 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
         </div>
       )}
 
+      {/* Search & Filter */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[200px] flex gap-2">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="搜索用户昵称…"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+          />
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 transition-colors"
+          >
+            搜索
+          </button>
+          {hasFilters && (
+            <button
+              onClick={handleClearFilters}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-gray-500 text-sm hover:bg-gray-50 transition-colors"
+            >
+              清除
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 whitespace-nowrap">注册来源</span>
+          <select
+            value={appKeyFilter}
+            onChange={(e) => handleAppKeyChange(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white min-w-[160px]"
+          >
+            {USER_APP_SOURCE_OPTIONS.map((o) => (
+              <option key={o.key || "all"} value={o.key}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 whitespace-nowrap">注册时间</span>
+          <input
+            type="date"
+            value={startDate}
+            max={endDate || undefined}
+            onChange={(e) => {
+              setPage(1);
+              setStartDate(e.target.value);
+            }}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+          />
+          <span className="text-xs text-gray-400">至</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate || undefined}
+            onChange={(e) => {
+              setPage(1);
+              setEndDate(e.target.value);
+            }}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+          />
+        </div>
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -1226,7 +1511,7 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
             )}
           </h2>
           <button
-            onClick={() => load(page)}
+            onClick={() => load(page, search, appKeyFilter, startDate, endDate)}
             disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium transition-colors"
           >
@@ -1254,6 +1539,9 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                     账号类型
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    注册来源
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
                     录入条数
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -1268,8 +1556,15 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data.users.map((user) => {
+                {data.users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-16 text-center text-sm text-gray-400">
+                      {hasFilters ? "没有符合条件的用户" : "暂无用户数据"}
+                    </td>
+                  </tr>
+                ) : data.users.map((user) => {
                   const acct = accountLabel(user);
+                  const source = appSourceLabel(user.registeredAppKey || "birthday_mp");
                   return (
                     <tr
                       key={user.id}
@@ -1291,6 +1586,11 @@ function UsersPanel({ adminKey }: { adminKey: string }) {
                         >
                           <span>{acct.icon}</span>
                           {acct.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${source.color}`}>
+                          {source.label}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -3862,6 +4162,13 @@ function ShareConfigPanel({ adminKey }: { adminKey: string }) {
 
 // ─── MpToolsPanel ─────────────────────────────────────────────────────────────
 
+interface ToolBinding {
+  app_key: string;
+  path: string;
+  category_id?: number | null;
+  enabled: boolean;
+}
+
 interface MpTool {
   id: number;
   name: string;
@@ -3873,6 +4180,17 @@ interface MpTool {
   page_path: string;
   sort_order: number;
   enabled: boolean;
+  app_key?: string;
+  category_id?: number | null;
+  bindings?: ToolBinding[];
+}
+
+interface ToolCategory {
+  id: number;
+  app_key: string;
+  name: string;
+  icon: string;
+  sort_order: number;
 }
 
 const EMPTY_TOOL: Omit<MpTool, "id"> = {
@@ -3885,12 +4203,615 @@ const EMPTY_TOOL: Omit<MpTool, "id"> = {
   page_path: "",
   sort_order: 0,
   enabled: true,
+  category_id: null,
 };
+
+const EMPTY_BINDINGS: ToolBinding[] = [
+  { app_key: "birthday_mp", path: "", enabled: false },
+  { app_key: "xishi_toolbox_mp", path: "", enabled: false },
+  { app_key: "xishi_toolbox_pc", path: "", enabled: false },
+];
+
+const APP_KEY_OPTIONS = [
+  { key: "birthday_mp", label: "生日通小程序" },
+  { key: "xishi_toolbox_mp", label: "惜时工具箱小程序" },
+  { key: "xishi_toolbox_pc", label: "惜时工具箱PC端" },
+];
+
+interface BuiltinToolData {
+  builtin_name: string;
+  name: string;
+  description: string;
+  icon: string;
+  path: string;
+  sort_order: number;
+  enabled: boolean;
+  bindings: ToolBinding[];
+}
 
 const ICON_SUGGESTIONS = ["🔧","🎂","❤️","⭐","🧮","📅","🎁","🔮","🌈","🎵","🏆","📝","💡","🔔","🌟","🎯","💎","🌺","🎪","🎠"];
 
-function MpToolsPanel({ adminKey }: { adminKey: string }) {
+// ─── MpToolStatsPanel ─────────────────────────────────────────────────────────
+
+function MpToolStatsPanel({ adminKey }: { adminKey: string }) {
+  const [currentAppKey, setCurrentAppKey] = useState("");
   const [tools, setTools] = useState<MpTool[]>([]);
+  const [builtinTools, setBuiltinTools] = useState<BuiltinToolData[]>([]);
+  const [categories, setCategories] = useState<ToolCategory[]>([]);
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const API = "/api/mp-tools";
+  const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
+  const isIconUrl = (s: string) => s.startsWith("http") || s.startsWith("/api/");
+
+  const loadStats = async (appKey?: string) => {
+    const qs = appKey ? `?app_key=${encodeURIComponent(appKey)}` : "";
+    const r = await fetch(`${API}/stats${qs}`, { headers });
+    if (r.ok) setStats(await r.json());
+  };
+
+  const loadMeta = async () => {
+    const [toolsRes, builtinRes] = await Promise.all([
+      fetch(`${API}/admin`, { headers }),
+      fetch(`${API}/builtin/admin`, { headers }),
+    ]);
+    const toolsData = await toolsRes.json();
+    const builtinData = await builtinRes.json();
+    setTools(Array.isArray(toolsData) ? toolsData : []);
+    setBuiltinTools(Array.isArray(builtinData) ? builtinData : []);
+
+    const allCats: ToolCategory[] = [];
+    for (const opt of APP_KEY_OPTIONS) {
+      const r = await fetch(`${API}/admin/categories?app_key=${opt.key}`, { headers });
+      const data = await r.json();
+      if (Array.isArray(data)) allCats.push(...data);
+    }
+    setCategories(allCats);
+  };
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      await loadMeta();
+      await loadStats(currentAppKey || undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadStats(currentAppKey || undefined);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAll();
+  }, []);
+
+  useEffect(() => {
+    if (!loading) void loadStats(currentAppKey || undefined);
+  }, [currentAppKey]);
+
+  const categoriesForApp = (appKey: string) =>
+    categories
+      .filter((c) => c.app_key === appKey)
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+
+  const filteredTools = currentAppKey
+    ? tools.filter((t) => t.bindings?.some((b) => b.app_key === currentAppKey && b.enabled))
+    : tools;
+
+  const filteredBuiltin = currentAppKey
+    ? builtinTools.filter((bt) => bt.bindings?.some((b) => b.app_key === currentAppKey && b.enabled))
+    : builtinTools;
+
+  const toolClicks = (id: number) => stats[`tool:${id}`] ?? 0;
+  const builtinClicks = (name: string) => stats[`builtin:${name}`] ?? 0;
+
+  const totalClicks =
+    filteredTools.reduce((sum, t) => sum + toolClicks(t.id), 0) +
+    filteredBuiltin.reduce((sum, bt) => sum + builtinClicks(bt.builtin_name), 0);
+
+  const appLabel = currentAppKey
+    ? APP_KEY_OPTIONS.find((o) => o.key === currentAppKey)?.label ?? currentAppKey
+    : "全部应用";
+
+  const rankedItems = [
+    ...filteredTools.map((t) => ({
+      key: `tool-${t.id}`,
+      name: t.name,
+      icon: t.icon,
+      description: t.description,
+      clicks: toolClicks(t.id),
+      kind: "custom" as const,
+    })),
+    ...filteredBuiltin.map((bt) => ({
+      key: `builtin-${bt.builtin_name}`,
+      name: bt.name,
+      icon: bt.icon,
+      description: bt.description,
+      clicks: builtinClicks(bt.builtin_name),
+      kind: "builtin" as const,
+    })),
+  ].sort((a, b) => b.clicks - a.clicks);
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">工具点击统计</h2>
+          <p className="text-sm text-gray-500 mt-1">统计各前端工具页的用户点击次数，可按应用筛选查看</p>
+        </div>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          刷新
+        </button>
+      </div>
+
+      <div className="flex gap-1 mb-5 bg-gray-100 rounded-xl p-1">
+        <button
+          onClick={() => setCurrentAppKey("")}
+          className={`flex-1 text-xs py-2.5 rounded-lg font-medium transition-colors ${currentAppKey === "" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          全部应用
+        </button>
+        {APP_KEY_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => setCurrentAppKey(opt.key)}
+            className={`flex-1 text-xs py-2.5 rounded-lg font-medium transition-colors ${currentAppKey === opt.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-6 bg-gradient-to-r from-rose-500 to-orange-400 rounded-2xl px-6 py-5 text-white">
+        <p className="text-sm opacity-90">{appLabel}</p>
+        <p className="text-3xl font-bold mt-1">{loading ? "—" : totalClicks.toLocaleString()}</p>
+        <p className="text-xs opacity-80 mt-1">累计点击次数</p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400 text-sm">加载中…</div>
+      ) : rankedItems.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="text-4xl mb-3">📊</div>
+          <p className="text-sm">当前筛选下暂无已关联工具</p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-50">
+              <span className="text-sm font-semibold text-gray-700">点击排行</span>
+            </div>
+            {rankedItems.map((item, idx) => (
+              <div key={item.key} className={`flex items-center gap-4 px-5 py-4 ${idx > 0 ? "border-t border-gray-50" : ""}`}>
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${idx < 3 ? "bg-rose-100 text-rose-600" : "bg-gray-100 text-gray-500"}`}>
+                  {idx + 1}
+                </span>
+                {isIconUrl(item.icon) ? (
+                  <img src={item.icon} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-lg flex-shrink-0">{item.icon}</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-900 text-sm truncate">{item.name}</span>
+                    {item.kind === "builtin" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">内置</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">{item.description || "—"}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-lg font-bold text-rose-600">{item.clicks}</p>
+                  <p className="text-[10px] text-gray-400">次点击</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredBuiltin.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">内置工具</h3>
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                {filteredBuiltin.map((bt, idx) => (
+                  <div key={bt.builtin_name} className={`flex items-center gap-4 px-5 py-4 ${idx > 0 ? "border-t border-gray-50" : ""}`}>
+                    {isIconUrl(bt.icon) ? (
+                      <img src={bt.icon} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">{bt.icon}</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-gray-900 text-sm">{bt.name}</span>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{bt.description || "—"}</p>
+                    </div>
+                    <span className="text-sm font-bold text-blue-600">{builtinClicks(bt.builtin_name)} 次</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredTools.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">自研工具（按分类）</h3>
+              {(() => {
+                const appKeyForCats = currentAppKey || "birthday_mp";
+                const catIds = [...new Set(filteredTools.map((t) => t.category_id ?? null))];
+                const orderedCats = categoriesForApp(appKeyForCats).filter((c) => catIds.includes(c.id));
+                const hasUncategorized = catIds.includes(null);
+                const groups: { label: string; icon: string; items: MpTool[] }[] = orderedCats.map((c) => ({
+                  label: c.name,
+                  icon: c.icon,
+                  items: filteredTools.filter((t) => t.category_id === c.id),
+                }));
+                if (hasUncategorized) {
+                  groups.push({
+                    label: "未分类",
+                    icon: "🔧",
+                    items: filteredTools.filter((t) => !t.category_id),
+                  });
+                }
+                if (groups.length === 0) {
+                  groups.push({ label: "全部工具", icon: "🔧", items: filteredTools });
+                }
+                return groups.map((g) => (
+                  <div key={g.label} className="mb-3">
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-base">{g.icon}</span>
+                      <span className="text-sm font-medium text-gray-600">{g.label}</span>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                      {g.items.map((t, i) => (
+                        <div key={t.id} className={`flex items-center gap-4 px-5 py-3.5 ${i > 0 ? "border-t border-gray-50" : ""}`}>
+                          {isIconUrl(t.icon) ? (
+                            <img src={t.icon} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center text-base flex-shrink-0">{t.icon}</div>
+                          )}
+                          <span className="flex-1 text-sm text-gray-800 truncate">{t.name}</span>
+                          <span className="text-sm font-bold text-rose-600">{toolClicks(t.id)} 次</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600">
+        <p>统计数据来自各前端 <code>tool_click</code> 埋点，内置工具使用 <code>builtin:工具名</code>，自研工具使用 <code>tool:ID</code> 作为统计标识。</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── MpToolCategoriesPanel ──────────────────────────────────────────────────────
+
+const CATEGORY_ICON_SUGGESTIONS = ["📁","📅","🧮","⏳","🎂","🔧","📊","🎨","⚡","💡","🏆","📝","🌈","🎯","❤️","⭐"];
+
+function MpToolCategoriesPanel({ adminKey }: { adminKey: string }) {
+  const [currentAppKey, setCurrentAppKey] = useState("birthday_mp");
+  const [categories, setCategories] = useState<ToolCategory[]>([]);
+  const [tools, setTools] = useState<MpTool[]>([]);
+  const [builtinTools, setBuiltinTools] = useState<BuiltinToolData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [editingCat, setEditingCat] = useState<ToolCategory | null>(null);
+  const [catForm, setCatForm] = useState({ name: "", icon: "", sort_order: 0 });
+  const [savingCat, setSavingCat] = useState(false);
+  const [reorderingCat, setReorderingCat] = useState(false);
+
+  const API = "/api/mp-tools";
+  const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
+
+  const categoriesForApp = (appKey: string) =>
+    categories
+      .filter((c) => c.app_key === appKey)
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+
+  const nextCategorySortOrder = (appKey: string) => {
+    const list = categoriesForApp(appKey);
+    return list.length > 0 ? Math.max(...list.map((c) => c.sort_order)) + 1 : 0;
+  };
+
+  const loadCategories = async () => {
+    const allCats: ToolCategory[] = [];
+    for (const opt of APP_KEY_OPTIONS) {
+      const r = await fetch(`${API}/admin/categories?app_key=${opt.key}`, { headers });
+      const data = await r.json();
+      if (Array.isArray(data)) allCats.push(...data);
+    }
+    setCategories(allCats);
+  };
+
+  const loadTools = async () => {
+    const r = await fetch(`${API}/admin`, { headers });
+    const data = await r.json();
+    setTools(Array.isArray(data) ? data : []);
+  };
+
+  const loadBuiltin = async () => {
+    const r = await fetch(`${API}/builtin/admin`, { headers });
+    const data = await r.json();
+    setBuiltinTools(Array.isArray(data) ? data : []);
+  };
+
+  const countToolsInCategory = (catId: number, appKey: string) => {
+    const customCount = tools.filter((t) => {
+      const binding = t.bindings?.find((b) => b.app_key === appKey && b.enabled);
+      if (binding) return binding.category_id === catId;
+      return t.app_key === appKey && t.category_id === catId;
+    }).length;
+    const builtinCount = builtinTools.filter((bt) => {
+      const binding = bt.bindings?.find((b) => b.app_key === appKey && b.enabled !== false);
+      return binding?.category_id === catId;
+    }).length;
+    return customCount + builtinCount;
+  };
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadCategories(), loadTools(), loadBuiltin()]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAll();
+  }, []);
+
+  const handleSaveCat = async () => {
+    if (!catForm.name.trim()) return;
+    setSavingCat(true);
+    try {
+      if (editingCat) {
+        await fetch(`${API}/admin/categories/${editingCat.id}`, { method: "PUT", headers, body: JSON.stringify(catForm) });
+      } else {
+        await fetch(`${API}/admin/categories`, { method: "POST", headers, body: JSON.stringify({ ...catForm, app_key: currentAppKey }) });
+      }
+      setShowCatModal(false);
+      await loadCategories();
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleDeleteCat = async (id: number) => {
+    if (!confirm("删除分类后，该分类下的工具将变为未分类，确认删除？")) return;
+    await fetch(`${API}/admin/categories/${id}`, { method: "DELETE", headers });
+    await loadCategories();
+    await loadTools();
+    await loadBuiltin();
+  };
+
+  const handleMoveCat = async (index: number, dir: -1 | 1) => {
+    const sorted = categoriesForApp(currentAppKey);
+    const target = index + dir;
+    if (target < 0 || target >= sorted.length) return;
+    const next = [...sorted];
+    [next[index], next[target]] = [next[target], next[index]];
+    setReorderingCat(true);
+    try {
+      await fetch(`${API}/admin/categories/reorder`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ ids: next.map((c) => c.id) }),
+      });
+      await loadCategories();
+    } finally {
+      setReorderingCat(false);
+    }
+  };
+
+  const filteredCats = categoriesForApp(currentAppKey);
+  const appLabel = APP_KEY_OPTIONS.find((o) => o.key === currentAppKey)?.label ?? currentAppKey;
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">工具分类管理</h2>
+          <p className="text-sm text-gray-500 mt-1">管理各前端应用的小工具分类，排序权重越小越靠前</p>
+        </div>
+        <button
+          onClick={() => {
+            setEditingCat(null);
+            setCatForm({ name: "", icon: "", sort_order: nextCategorySortOrder(currentAppKey) });
+            setShowCatModal(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-medium hover:bg-rose-600 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          新增分类
+        </button>
+      </div>
+
+      <div className="flex gap-1 mb-5 bg-gray-100 rounded-xl p-1">
+        {APP_KEY_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => setCurrentAppKey(opt.key)}
+            className={`flex-1 text-xs py-2.5 rounded-lg font-medium transition-colors ${currentAppKey === opt.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400 text-sm">加载中…</div>
+      ) : filteredCats.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="text-4xl mb-3">📂</div>
+          <p className="text-sm">{appLabel} 暂无分类</p>
+          <p className="text-xs text-gray-400 mt-1">工具将以「未分类」展示在前端</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {filteredCats.map((cat, index) => (
+            <div key={cat.id} className={`flex items-center gap-3 px-5 py-4 group ${index > 0 ? "border-t border-gray-50" : ""}`}>
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={() => void handleMoveCat(index, -1)}
+                  disabled={index === 0 || reorderingCat}
+                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
+                  title="上移"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => void handleMoveCat(index, 1)}
+                  disabled={index === filteredCats.length - 1 || reorderingCat}
+                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
+                  title="下移"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <span className="text-[10px] font-mono text-gray-400 w-6 text-center flex-shrink-0">{index + 1}</span>
+              <span className="text-xl w-8 text-center flex-shrink-0">{cat.icon || "—"}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{cat.name}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {countToolsInCategory(cat.id, currentAppKey)} 个工具 · 权重 {cat.sort_order}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingCat(cat);
+                  setCatForm({ name: cat.name, icon: cat.icon || "", sort_order: cat.sort_order });
+                  setShowCatModal(true);
+                }}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="编辑"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => void handleDeleteCat(cat.id)}
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="删除"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 space-y-1">
+        <p>各前端应用的分类相互独立，在「小工具配置」中为工具选择对应分类。</p>
+        <p>删除分类后，原属于该分类的工具将自动变为「未分类」。</p>
+      </div>
+
+      {showCatModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowCatModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900">{editingCat ? "编辑分类" : "新增分类"}</h3>
+              <button onClick={() => setShowCatModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">所属应用</label>
+                <p className="text-sm text-gray-700">{appLabel}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">分类名称 <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={catForm.name}
+                  onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="如：日期时间"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">分类图标（可选）</label>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {CATEGORY_ICON_SUGGESTIONS.map((ic) => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setCatForm((f) => ({ ...f, icon: ic }))}
+                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${catForm.icon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
+                    >{ic}</button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={catForm.icon}
+                    onChange={(e) => setCatForm((f) => ({ ...f, icon: e.target.value }))}
+                    placeholder="或直接输入 emoji，可留空"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    maxLength={4}
+                  />
+                  {catForm.icon && (
+                    <button
+                      type="button"
+                      onClick={() => setCatForm((f) => ({ ...f, icon: "" }))}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      清除图标
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">不设置图标时，小程序分类名称左侧不展示图标</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">排序权重</label>
+                <input
+                  type="number"
+                  value={catForm.sort_order}
+                  onChange={(e) => setCatForm((f) => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))}
+                  min={0}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">数值越小越靠前；也可在列表中用上下箭头调整顺序</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setShowCatModal(false)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors">
+                取消
+              </button>
+              <button onClick={() => void handleSaveCat()} disabled={savingCat || !catForm.name.trim()}
+                className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors">
+                {savingCat ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MpToolsPanel({ adminKey }: { adminKey: string }) {
+  const [currentAppKey, setCurrentAppKey] = useState("birthday_mp");
+  const [tools, setTools] = useState<MpTool[]>([]);
+  const [categories, setCategories] = useState<ToolCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<MpTool | null>(null);
@@ -3898,32 +4819,41 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
-  const [dateCalcEnabled, setDateCalcEnabled] = useState(true);
-  const [dateCalcIcon, setDateCalcIcon] = useState<string>("🗓️");
-  const [dateCalcIconMode, setDateCalcIconMode] = useState<"emoji" | "image">("emoji");
-  const [ageCalcEnabled, setAgeCalcEnabled] = useState(true);
-  const [ageCalcIcon, setAgeCalcIcon] = useState<string>("🎂");
-  const [ageCalcIconMode, setAgeCalcIconMode] = useState<"emoji" | "image">("emoji");
-  const [togglingBuiltin, setTogglingBuiltin] = useState(false);
-  const [togglingAgeBuiltin, setTogglingAgeBuiltin] = useState(false);
+  const [builtinTools, setBuiltinTools] = useState<BuiltinToolData[]>([]);
+  const [showBuiltinEditModal, setShowBuiltinEditModal] = useState(false);
+  const [editingBuiltin, setEditingBuiltin] = useState<BuiltinToolData | null>(null);
+  const [builtinForm, setBuiltinForm] = useState({ name: "", description: "", icon: "", sort_order: 0, enabled: true });
+  const [builtinFormBindings, setBuiltinFormBindings] = useState<ToolBinding[]>(EMPTY_BINDINGS.map((b) => ({ ...b })));
+  const [builtinIconMode, setBuiltinIconMode] = useState<"emoji" | "image">("emoji");
+  const [savingBuiltin, setSavingBuiltin] = useState(false);
   const [uploadingBuiltinIcon, setUploadingBuiltinIcon] = useState(false);
-  const [savingBuiltinIcon, setSavingBuiltinIcon] = useState(false);
-  const [showDateCalcIconEditor, setShowDateCalcIconEditor] = useState(false);
-  const [uploadingAgeCalcIcon, setUploadingAgeCalcIcon] = useState(false);
-  const [savingAgeCalcIcon, setSavingAgeCalcIcon] = useState(false);
-  const [showAgeCalcIconEditor, setShowAgeCalcIconEditor] = useState(false);
-  const [imgCompressEnabled, setImgCompressEnabled] = useState(true);
-  const [imgCompressIcon, setImgCompressIcon] = useState<string>("🗜️");
-  const [imgCompressIconMode, setImgCompressIconMode] = useState<"emoji" | "image">("emoji");
-  const [showImgCompressIconEditor, setShowImgCompressIconEditor] = useState(false);
-  const [uploadingImgCompressIcon, setUploadingImgCompressIcon] = useState(false);
-  const [savingImgCompressIcon, setSavingImgCompressIcon] = useState(false);
-  const [togglingImgCompress, setTogglingImgCompress] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "image">("emoji");
   const [uploadingIcon, setUploadingIcon] = useState(false);
-  const [stats, setStats] = useState<Record<string, number>>({});
+  const [formBindings, setFormBindings] = useState<ToolBinding[]>(EMPTY_BINDINGS.map((b) => ({ ...b })));
+  const [toolModalMode, setToolModalMode] = useState<"add" | "edit">("add");
 
   const isIconUrl = (s: string) => s.startsWith("http") || s.startsWith("/api/");
+  const catName = (id: number | null | undefined) => categories.find((c) => c.id === id)?.name ?? "未分类";
+
+  const toolBoundToApp = (t: MpTool, appKey: string) => {
+    if (t.bindings && t.bindings.length > 0) {
+      return t.bindings.some((b) => b.app_key === appKey && b.enabled);
+    }
+    return t.app_key === appKey;
+  };
+
+  const categoryIdForApp = (t: MpTool, appKey: string) => {
+    const binding = t.bindings?.find((b) => b.app_key === appKey && b.enabled);
+    if (binding) return binding.category_id ?? null;
+    return t.category_id ?? null;
+  };
+
+  const toolsForApp = tools.filter((t) => toolBoundToApp(t, currentAppKey));
+
+  const categoriesForApp = (appKey: string) =>
+    categories
+      .filter((c) => c.app_key === appKey)
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
 
   const API = "/api/mp-tools";
   const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
@@ -3939,51 +4869,65 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
     }
   };
 
-  const loadStats = async () => {
+  const loadCategories = async () => {
     try {
-      const r = await fetch(`${API}/stats`, { headers });
-      if (r.ok) setStats(await r.json());
+      const allCats: ToolCategory[] = [];
+      for (const opt of APP_KEY_OPTIONS) {
+        const r = await fetch(`${API}/admin/categories?app_key=${opt.key}`, { headers });
+        const data = await r.json();
+        if (Array.isArray(data)) allCats.push(...data);
+      }
+      setCategories(allCats);
     } catch { /* ignore */ }
   };
 
+
   const loadBuiltin = async () => {
     try {
-      const r = await fetch(`${API}/builtin`);
+      const r = await fetch(`${API}/builtin/admin`, { headers });
       const data = await r.json();
-      setDateCalcEnabled(data?.date_calc !== false);
-      if (data?.date_calc_icon) {
-        setDateCalcIcon(data.date_calc_icon);
-        setDateCalcIconMode(isIconUrl(data.date_calc_icon) ? "image" : "emoji");
-      }
-      setAgeCalcEnabled(data?.age_calc !== false);
-      if (data?.age_calc_icon) {
-        setAgeCalcIcon(data.age_calc_icon);
-        setAgeCalcIconMode(isIconUrl(data.age_calc_icon) ? "image" : "emoji");
-      }
-      setImgCompressEnabled(data?.img_compress !== false);
-      if (data?.img_compress_icon) {
-        setImgCompressIcon(data.img_compress_icon);
-        setImgCompressIconMode(isIconUrl(data.img_compress_icon) ? "image" : "emoji");
-      }
-    } catch { /* default true */ }
+      if (Array.isArray(data)) setBuiltinTools(data);
+    } catch { /* ignore */ }
+  };
+
+  const builtinDefaultPath = (builtinPath: string, appKey: string): string => {
+    if (appKey === "xishi_toolbox_pc") {
+      const seg = builtinPath.split("/").pop() || "";
+      return `/tools/${seg}`;
+    }
+    return builtinPath;
+  };
+
+  const openBuiltinEdit = (bt: BuiltinToolData) => {
+    setEditingBuiltin(bt);
+    setBuiltinForm({ name: bt.name, description: bt.description, icon: bt.icon, sort_order: bt.sort_order, enabled: bt.enabled });
+    setBuiltinFormBindings(APP_KEY_OPTIONS.map((opt) => {
+      const existing = bt.bindings.find((b: any) => b.app_key === opt.key);
+      const fallbackPath = builtinDefaultPath(bt.path, opt.key);
+      return existing
+        ? { app_key: opt.key, path: existing.path || fallbackPath, category_id: existing.category_id, enabled: existing.enabled !== false }
+        : { app_key: opt.key, path: fallbackPath, enabled: false };
+    }));
+    setBuiltinIconMode(isIconUrl(bt.icon) ? "image" : "emoji");
+    setShowBuiltinEditModal(true);
   };
 
   const handleBuiltinIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !editingBuiltin) return;
     setUploadingBuiltinIcon(true);
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const r = await fetch(`${API}/builtin/date_calc/upload-icon`, {
+      const r = await fetch(`${API}/builtin/${editingBuiltin.builtin_name}/upload-icon`, {
         method: "POST",
         headers: { "x-admin-key": adminKey },
         body: fd,
       });
       const data = await r.json();
       if (data.url) {
-        setDateCalcIcon(data.url);
-        setDateCalcIconMode("image");
+        setBuiltinForm((f) => ({ ...f, icon: data.url }));
+        setBuiltinIconMode("image");
       }
     } catch { /* ignore */ } finally {
       setUploadingBuiltinIcon(false);
@@ -3991,128 +4935,95 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
     }
   };
 
-  const saveBuiltinIcon = async (icon: string) => {
-    setSavingBuiltinIcon(true);
+  const handleSaveBuiltin = async () => {
+    if (!editingBuiltin) return;
+    setSavingBuiltin(true);
     try {
-      await fetch(`${API}/builtin/date_calc`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
-      setDateCalcIcon(icon);
-      setShowDateCalcIconEditor(false);
-    } finally {
-      setSavingBuiltinIcon(false);
-    }
-  };
-
-  const toggleAgeCalc = async () => {
-    const next = !ageCalcEnabled;
-    setAgeCalcEnabled(next);
-    setTogglingAgeBuiltin(true);
-    try {
-      await fetch(`${API}/builtin/age_calc`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
-    } finally {
-      setTogglingAgeBuiltin(false);
-    }
-  };
-
-  const handleAgeCalcIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingAgeCalcIcon(true);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      const r = await fetch(`${API}/builtin/age_calc/upload-icon`, {
-        method: "POST",
-        headers: { "x-admin-key": adminKey },
-        body: fd,
+      const enabledBindings = builtinFormBindings.filter((b) => b.enabled);
+      await fetch(`${API}/builtin/${editingBuiltin.builtin_name}`, {
+        method: "PUT", headers,
+        body: JSON.stringify({
+          display_name: builtinForm.name,
+          description: builtinForm.description,
+          icon: builtinForm.icon,
+          sort_order: builtinForm.sort_order,
+          enabled: builtinForm.enabled,
+          bindings: enabledBindings,
+        }),
       });
-      const data = await r.json();
-      if (data.url) { setAgeCalcIcon(data.url); setAgeCalcIconMode("image"); }
-    } catch { /* ignore */ } finally {
-      setUploadingAgeCalcIcon(false);
-      e.target.value = "";
-    }
-  };
-
-  const saveAgeCalcIcon = async (icon: string) => {
-    setSavingAgeCalcIcon(true);
-    try {
-      await fetch(`${API}/builtin/age_calc`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
-      setAgeCalcIcon(icon);
-      setShowAgeCalcIconEditor(false);
+      setShowBuiltinEditModal(false);
+      await loadBuiltin();
     } finally {
-      setSavingAgeCalcIcon(false);
+      setSavingBuiltin(false);
     }
   };
 
-  const toggleImgCompress = async () => {
-    const next = !imgCompressEnabled;
-    setImgCompressEnabled(next);
-    setTogglingImgCompress(true);
-    try {
-      await fetch(`${API}/builtin/img_compress`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
-    } finally {
-      setTogglingImgCompress(false);
-    }
+  const toggleBuiltinEnabled = async (bt: BuiltinToolData) => {
+    await fetch(`${API}/builtin/${bt.builtin_name}`, {
+      method: "PUT", headers,
+      body: JSON.stringify({ enabled: !bt.enabled }),
+    });
+    await loadBuiltin();
   };
 
-  const handleImgCompressIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImgCompressIcon(true);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      const r = await fetch(`${API}/builtin/img_compress/upload-icon`, {
-        method: "POST",
-        headers: { "x-admin-key": adminKey },
-        body: fd,
-      });
-      const data = await r.json();
-      if (data.url) { setImgCompressIcon(data.url); setImgCompressIconMode("image"); }
-    } catch { /* ignore */ } finally {
-      setUploadingImgCompressIcon(false);
-      e.target.value = "";
-    }
-  };
-
-  const saveImgCompressIcon = async (icon: string) => {
-    setSavingImgCompressIcon(true);
-    try {
-      await fetch(`${API}/builtin/img_compress`, { method: "PUT", headers, body: JSON.stringify({ icon }) });
-      setImgCompressIcon(icon);
-      setShowImgCompressIconEditor(false);
-    } finally {
-      setSavingImgCompressIcon(false);
-    }
+  const renderBuiltinBindingBadges = (bt: BuiltinToolData) => {
+    const enabledBindings = bt.bindings.filter((b: any) => b.enabled !== false);
+    if (enabledBindings.length === 0) return <span className="text-[10px] text-gray-300 mt-0.5 block">未关联前端</span>;
+    return (
+      <div className="flex items-center gap-1 mt-1 flex-wrap">
+        {enabledBindings.map((b: any) => {
+          const label = APP_KEY_OPTIONS.find((o) => o.key === b.app_key)?.label || b.app_key;
+          const colors = b.app_key === "birthday_mp" ? "bg-blue-50 text-blue-600" : b.app_key === "xishi_toolbox_mp" ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600";
+          return <span key={b.app_key} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${colors}`}>{label}</span>;
+        })}
+      </div>
+    );
   };
 
   useEffect(() => {
     void load();
+    void loadCategories();
     void loadBuiltin();
-    void loadStats();
   }, []);
 
-  const toggleDateCalc = async () => {
-    const next = !dateCalcEnabled;
-    setDateCalcEnabled(next);
-    setTogglingBuiltin(true);
-    try {
-      await fetch(`${API}/builtin/date_calc`, { method: "PUT", headers, body: JSON.stringify({ enabled: next }) });
-    } finally {
-      setTogglingBuiltin(false);
-    }
+  const currentAppLabel = APP_KEY_OPTIONS.find((o) => o.key === currentAppKey)?.label ?? currentAppKey;
+
+  const updateFormBinding = (appKey: string, patch: Partial<ToolBinding>) => {
+    setFormBindings((prev) => prev.map((b) => (b.app_key === appKey ? { ...b, ...patch } : b)));
+  };
+
+  const updateBuiltinFormBinding = (appKey: string, patch: Partial<ToolBinding>) => {
+    setBuiltinFormBindings((prev) => prev.map((b) => (b.app_key === appKey ? { ...b, ...patch } : b)));
   };
 
   const openAdd = () => {
+    setToolModalMode("add");
     setEditing(null);
-    setForm(EMPTY_TOOL);
+    setForm({ ...EMPTY_TOOL });
+    setFormBindings(APP_KEY_OPTIONS.map((opt) => ({
+      app_key: opt.key,
+      path: "",
+      category_id: null,
+      enabled: opt.key === currentAppKey,
+    })));
     setIconMode("emoji");
     setShowModal(true);
   };
 
+  const isAddToolModal = toolModalMode === "add";
+  const visibleFormBindings = isAddToolModal
+    ? formBindings
+    : formBindings.filter((b) => b.app_key === currentAppKey);
+
   const openEdit = (t: MpTool) => {
+    setToolModalMode("edit");
     setEditing(t);
-    setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, sort_order: t.sort_order, enabled: t.enabled });
+    setForm({ name: t.name, description: t.description, icon: t.icon, type: t.type, path: t.path, app_id: t.app_id, page_path: t.page_path, sort_order: t.sort_order, enabled: t.enabled, category_id: t.category_id ?? null });
+    const existingBindings = t.bindings || [];
+    setFormBindings(APP_KEY_OPTIONS.map((opt) => {
+      const existing = existingBindings.find((b) => b.app_key === opt.key);
+      return existing ? { ...existing } : { app_key: opt.key, path: "", enabled: false };
+    }));
     setIconMode(isIconUrl(t.icon) ? "image" : "emoji");
     setShowModal(true);
   };
@@ -4143,7 +5054,13 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
     try {
       const url = editing ? `${API}/admin/${editing.id}` : `${API}/admin`;
       const method = editing ? "PUT" : "POST";
-      await fetch(url, { method, headers, body: JSON.stringify(form) });
+      const enabledBindings = formBindings.filter((b) => b.enabled);
+      const body = {
+        ...form,
+        app_key: isAddToolModal ? (enabledBindings[0]?.app_key || currentAppKey) : currentAppKey,
+        bindings: enabledBindings,
+      };
+      await fetch(url, { method, headers, body: JSON.stringify(body) });
       setShowModal(false);
       await load();
     } finally {
@@ -4187,11 +5104,11 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
       : <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 font-medium">外部小程序</span>;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-gray-900">小工具配置</h2>
-          <p className="text-sm text-gray-500 mt-1">管理微信小程序「小工具」页面展示的工具列表</p>
+          <p className="text-sm text-gray-500 mt-1">管理三端前端「小工具」页面展示，分类请在「工具分类」中维护</p>
         </div>
         <button
           onClick={openAdd}
@@ -4202,449 +5119,163 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
         </button>
       </div>
 
-      {/* ── 点击统计汇总卡片 ── */}
-      <div className="mb-6 bg-white rounded-2xl border border-gray-100 px-5 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-gray-700">📊 点击统计（小程序工具页入口）</span>
-          <button
-            onClick={() => void loadStats()}
-            className="text-xs text-rose-500 hover:text-rose-600 font-medium"
-          >
-            刷新
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {tools.map((t) => (
-            <div key={t.id} className="flex items-center gap-1.5 bg-rose-50 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-gray-600 max-w-[80px] truncate">{t.name}</span>
-              <span className="text-xs font-bold text-rose-600">{stats[`tool:${t.id}`] ?? 0}</span>
-              <span className="text-[10px] text-gray-400">次</span>
-            </div>
-          ))}
-          <div className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-600">日期计算器</span>
-            <span className="text-xs font-bold text-blue-600">{stats["builtin:date_calc"] ?? 0}</span>
-            <span className="text-[10px] text-gray-400">次</span>
+      <div className="flex gap-5 items-start">
+        {/* ── 左侧应用切换 ── */}
+        <aside className="w-44 flex-shrink-0">
+          <div className="bg-white rounded-2xl border border-gray-100 p-2 space-y-1 sticky top-4">
+            <p className="text-[10px] font-medium text-gray-400 px-2 py-1">前端应用</p>
+            {APP_KEY_OPTIONS.map((opt) => {
+              const active = currentAppKey === opt.key;
+              const activeClass =
+                opt.key === "birthday_mp"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : opt.key === "xishi_toolbox_mp"
+                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                    : "bg-green-50 text-green-700 border-green-200";
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setCurrentAppKey(opt.key)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors border ${
+                    active ? activeClass : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
-          <div className="flex items-center gap-1.5 bg-purple-50 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-600">年龄计算器</span>
-            <span className="text-xs font-bold text-purple-600">{stats["builtin:age_calc"] ?? 0}</span>
-            <span className="text-[10px] text-gray-400">次</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-green-50 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-600">图片压缩</span>
-            <span className="text-xs font-bold text-green-600">{stats["builtin:img_compress"] ?? 0}</span>
-            <span className="text-[10px] text-gray-400">次</span>
-          </div>
-        </div>
-        {Object.keys(stats).length === 0 && (
-          <p className="text-xs text-gray-400 mt-2">暂无点击数据，用户在小程序工具页点击后将在此显示统计</p>
-        )}
-      </div>
+        </aside>
 
+        {/* ── 右侧内容区 ── */}
+        <div className="flex-1 min-w-0">
       {loading ? (
         <div className="flex items-center justify-center py-20 text-gray-400 text-sm">加载中…</div>
-      ) : tools.length === 0 ? (
+      ) : toolsForApp.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20 text-gray-400">
           <div className="text-4xl mb-3">🔧</div>
-          <p className="text-sm">暂无工具，点击「添加工具」创建第一个</p>
+          <p className="text-sm">当前应用暂无工具，点击「添加工具」创建</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          {tools.map((t, i) => (
-            <div key={t.id} className={`flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-b-0 ${!t.enabled ? "opacity-50" : ""}`}>
-              {/* 排序 */}
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={() => handleMove(i, -1)}
-                  disabled={i === 0 || reordering}
-                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
-                  title="上移"
-                >
-                  <ChevronUp className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleMove(i, 1)}
-                  disabled={i === tools.length - 1 || reordering}
-                  className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors"
-                  title="下移"
-                >
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-              </div>
+        <>
+          {/* Group tools by category */}
+          {(() => {
+            const catIds = [...new Set(toolsForApp.map((t) => categoryIdForApp(t, currentAppKey)))];
+            const orderedCats = categoriesForApp(currentAppKey).filter((c) => catIds.includes(c.id));
+            const hasUncategorized = catIds.includes(null);
+            const groups: { label: string; icon: string; catId: number | null; items: MpTool[] }[] = orderedCats.map((c) => ({
+              label: c.name, icon: c.icon, catId: c.id, items: toolsForApp.filter((t) => categoryIdForApp(t, currentAppKey) === c.id),
+            }));
+            if (hasUncategorized) {
+              groups.push({ label: "未分类", icon: "🔧", catId: null, items: toolsForApp.filter((t) => !categoryIdForApp(t, currentAppKey)) });
+            }
+            return groups.map((g) => (
+              <div key={g.catId ?? "none"} className="mb-4">
+                {(groups.length > 1 || g.catId !== null) && (
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="text-base">{g.icon}</span>
+                    <span className="text-sm font-semibold text-gray-700">{g.label}</span>
+                    <span className="text-[10px] text-gray-400">({g.items.length})</span>
+                  </div>
+                )}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {g.items.map((t, i) => (
+                    <div key={t.id} className={`flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-b-0 ${!t.enabled ? "opacity-50" : ""}`}>
+                      <div className="flex flex-col gap-0.5">
+                        <button onClick={() => handleMove(tools.indexOf(t), -1)} disabled={tools.indexOf(t) === 0 || reordering}
+                          className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors" title="上移">
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleMove(tools.indexOf(t), 1)} disabled={tools.indexOf(t) === tools.length - 1 || reordering}
+                          className="p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-20 transition-colors" title="下移">
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
 
-              {/* 图标 */}
-              {isIconUrl(t.icon) ? (
-                <img src={t.icon} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">{t.icon}</div>
-              )}
+                      {isIconUrl(t.icon) ? (
+                        <img src={t.icon} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">{t.icon}</div>
+                      )}
 
-              {/* 信息 */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
-                  {typeBadge(t.type)}
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-rose-50 text-rose-500">
-                    {stats[`tool:${t.id}`] ?? 0} 次点击
-                  </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-900 text-sm">{t.name}</span>
+                          {typeBadge(t.type)}
+                          {g.catId === null && categories.length > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">未分类</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
+                        {/* Binding badges */}
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {(t.bindings && t.bindings.length > 0) ? t.bindings.map((b) => {
+                            const label = APP_KEY_OPTIONS.find((o) => o.key === b.app_key)?.label || b.app_key;
+                            const colors = b.app_key === "birthday_mp" ? "bg-blue-50 text-blue-600" : b.app_key === "xishi_toolbox_mp" ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600";
+                            return (
+                              <span key={b.app_key} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${colors} ${!b.enabled ? "opacity-40 line-through" : ""}`}>
+                                {label}{b.path ? ` · ${b.path}` : ""}
+                              </span>
+                            );
+                          }) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">未关联前端</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <button onClick={() => handleToggle(t)}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${t.enabled ? "bg-rose-500" : "bg-gray-200"}`}>
+                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${t.enabled ? "translate-x-4" : "translate-x-0"}`} />
+                      </button>
+
+                      <button onClick={() => openEdit(t)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="编辑">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(t.id)} disabled={deleting === t.id}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{t.description || "—"}</p>
-                <p className="text-[10px] text-gray-300 mt-0.5 truncate font-mono">
-                  {t.type === "internal" ? (t.path || "—") : `AppID: ${t.app_id || "—"}`}
-                </p>
               </div>
-
-              {/* 开关 */}
-              <button
-                onClick={() => handleToggle(t)}
-                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${t.enabled ? "bg-rose-500" : "bg-gray-200"}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${t.enabled ? "translate-x-4" : "translate-x-0"}`} />
-              </button>
-
-              {/* 操作 */}
-              <button
-                onClick={() => openEdit(t)}
-                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                title="编辑"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(t.id)}
-                disabled={deleting === t.id}
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="删除"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+            ));
+          })()}
+        </>
       )}
 
-      {/* 内置工具开关 */}
+      {/* 内置工具管控 */}
       <div className="mt-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">内置工具管控</h3>
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center gap-4 px-5 py-4">
-            {/* 图标（可点击编辑） */}
-            <button
-              onClick={() => setShowDateCalcIconEditor((v) => !v)}
-              className="relative w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-rose-300 transition-all group"
-              title="点击更换图标"
-            >
-              {isIconUrl(dateCalcIcon) ? (
-                <img src={dateCalcIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
+          {builtinTools.map((bt, idx) => (
+            <div key={bt.builtin_name} className={`flex items-center gap-4 px-5 py-4 ${idx > 0 ? "border-t border-gray-50" : ""} ${!bt.enabled ? "opacity-50" : ""}`}>
+              {isIconUrl(bt.icon) ? (
+                <img src={bt.icon} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
               ) : (
-                <span>{dateCalcIcon}</span>
+                <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0">{bt.icon}</div>
               )}
-              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
-              </span>
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-gray-900 text-sm">日期计算器</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-500">
-                  {stats["builtin:date_calc"] ?? 0} 次点击
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">计算日期间隔与前后日期</p>
-            </div>
-            <button
-              onClick={toggleDateCalc}
-              disabled={togglingBuiltin}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${dateCalcEnabled ? "bg-rose-500" : "bg-gray-200"}`}
-            >
-              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${dateCalcEnabled ? "translate-x-4" : "translate-x-0"}`} />
-            </button>
-          </div>
-
-          {/* 图标编辑展开区 */}
-          {showDateCalcIconEditor && (
-            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setDateCalcIconMode("emoji")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${dateCalcIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Smile className="w-3 h-3" /> Emoji
-                </button>
-                <button
-                  onClick={() => setDateCalcIconMode("image")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${dateCalcIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Upload className="w-3 h-3" /> 上传图片
-                </button>
-              </div>
-
-              {dateCalcIconMode === "emoji" ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {["🗓️","📅","📆","🗒️","⏰","🕐","📊","🔢","✏️","🧮"].map((ic) => (
-                      <button
-                        key={ic}
-                        onClick={() => setDateCalcIcon(ic)}
-                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${dateCalcIcon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
-                      >{ic}</button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    value={isIconUrl(dateCalcIcon) ? "" : dateCalcIcon}
-                    onChange={(e) => setDateCalcIcon(e.target.value)}
-                    placeholder="或直接输入 emoji"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
-                    maxLength={4}
-                  />
-                  <button
-                    onClick={() => saveBuiltinIcon(isIconUrl(dateCalcIcon) ? "🗓️" : dateCalcIcon)}
-                    disabled={savingBuiltinIcon}
-                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60"
-                  >
-                    {savingBuiltinIcon ? "保存中…" : "保存图标"}
-                  </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-gray-900 text-sm">{bt.name}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">内置</span>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingBuiltinIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
-                    {uploadingBuiltinIcon ? (
-                      <span className="text-sm text-gray-400">上传中…</span>
-                    ) : isIconUrl(dateCalcIcon) ? (
-                      <img src={dateCalcIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
-                    ) : (
-                      <>
-                        <Upload className="w-7 h-7 text-rose-300 mb-1" />
-                        <span className="text-sm text-gray-400">点击选择图片</span>
-                        <span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span>
-                      </>
-                    )}
-                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleBuiltinIconUpload} disabled={uploadingBuiltinIcon} />
-                  </label>
-                  {isIconUrl(dateCalcIcon) && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => saveBuiltinIcon(dateCalcIcon)}
-                        disabled={savingBuiltinIcon}
-                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60"
-                      >
-                        {savingBuiltinIcon ? "保存中…" : "保存图标"}
-                      </button>
-                      <button
-                        onClick={() => { setDateCalcIcon("🗓️"); setDateCalcIconMode("emoji"); }}
-                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors"
-                      >
-                        移除
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{bt.description || "—"}</p>
+                {renderBuiltinBindingBadges(bt)}
+              </div>
+              <button onClick={() => toggleBuiltinEnabled(bt)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${bt.enabled ? "bg-rose-500" : "bg-gray-200"}`}>
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${bt.enabled ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+              <button onClick={() => openBuiltinEdit(bt)}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="编辑">
+                <Pencil className="w-4 h-4" />
+              </button>
             </div>
-          )}
+          ))}
         </div>
       </div>
-
-        {/* 年龄计算器卡片 */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-3">
-          <div className="flex items-center gap-4 px-5 py-4">
-            <button
-              onClick={() => setShowAgeCalcIconEditor((v) => !v)}
-              className="relative w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-rose-300 transition-all group"
-              title="点击更换图标"
-            >
-              {isIconUrl(ageCalcIcon) ? (
-                <img src={ageCalcIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
-              ) : (
-                <span>{ageCalcIcon}</span>
-              )}
-              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
-              </span>
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-gray-900 text-sm">年龄计算器</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-50 text-purple-500">
-                  {stats["builtin:age_calc"] ?? 0} 次点击
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">生肖星座五行人生阶段一览</p>
-            </div>
-            <button
-              onClick={toggleAgeCalc}
-              disabled={togglingAgeBuiltin}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${ageCalcEnabled ? "bg-rose-500" : "bg-gray-200"}`}
-            >
-              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${ageCalcEnabled ? "translate-x-4" : "translate-x-0"}`} />
-            </button>
-          </div>
-
-          {showAgeCalcIconEditor && (
-            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setAgeCalcIconMode("emoji")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${ageCalcIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Smile className="w-3 h-3" /> Emoji
-                </button>
-                <button
-                  onClick={() => setAgeCalcIconMode("image")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${ageCalcIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Upload className="w-3 h-3" /> 上传图片
-                </button>
-              </div>
-
-              {ageCalcIconMode === "emoji" ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {["🎂","🎈","🎉","👶","🧒","🧑","👨","👴","🧮","📊","🔢","⏳"].map((ic) => (
-                      <button key={ic} onClick={() => setAgeCalcIcon(ic)}
-                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${ageCalcIcon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
-                      >{ic}</button>
-                    ))}
-                  </div>
-                  <input type="text" value={isIconUrl(ageCalcIcon) ? "" : ageCalcIcon}
-                    onChange={(e) => setAgeCalcIcon(e.target.value)}
-                    placeholder="或直接输入 emoji"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
-                    maxLength={4} />
-                  <button onClick={() => saveAgeCalcIcon(isIconUrl(ageCalcIcon) ? "🎂" : ageCalcIcon)}
-                    disabled={savingAgeCalcIcon}
-                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
-                    {savingAgeCalcIcon ? "保存中…" : "保存图标"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingAgeCalcIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
-                    {uploadingAgeCalcIcon ? <span className="text-sm text-gray-400">上传中…</span>
-                      : isIconUrl(ageCalcIcon) ? <img src={ageCalcIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
-                      : (<><Upload className="w-7 h-7 text-rose-300 mb-1" /><span className="text-sm text-gray-400">点击选择图片</span><span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span></>)}
-                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleAgeCalcIconUpload} disabled={uploadingAgeCalcIcon} />
-                  </label>
-                  {isIconUrl(ageCalcIcon) && (
-                    <div className="flex gap-2">
-                      <button onClick={() => saveAgeCalcIcon(ageCalcIcon)} disabled={savingAgeCalcIcon}
-                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
-                        {savingAgeCalcIcon ? "保存中…" : "保存图标"}
-                      </button>
-                      <button onClick={() => { setAgeCalcIcon("🎂"); setAgeCalcIconMode("emoji"); }}
-                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors">
-                        移除
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 图片压缩卡片 */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-3">
-          <div className="flex items-center gap-4 px-5 py-4">
-            <button
-              onClick={() => setShowImgCompressIconEditor((v) => !v)}
-              className="relative w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-xl flex-shrink-0 hover:ring-2 hover:ring-green-300 transition-all group"
-              title="点击更换图标"
-            >
-              {isIconUrl(imgCompressIcon) ? (
-                <img src={imgCompressIcon} alt="" className="w-11 h-11 rounded-xl object-cover" />
-              ) : (
-                <span>{imgCompressIcon}</span>
-              )}
-              <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <Pencil className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
-              </span>
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-gray-900 text-sm">图片压缩</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-50 text-green-600">
-                  {stats["builtin:img_compress"] ?? 0} 次点击
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">本地压缩，不上传服务器</p>
-            </div>
-            <button
-              onClick={toggleImgCompress}
-              disabled={togglingImgCompress}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${imgCompressEnabled ? "bg-rose-500" : "bg-gray-200"}`}
-            >
-              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${imgCompressEnabled ? "translate-x-4" : "translate-x-0"}`} />
-            </button>
-          </div>
-
-          {showImgCompressIconEditor && (
-            <div className="border-t border-gray-100 px-5 py-4 space-y-3">
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setImgCompressIconMode("emoji")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${imgCompressIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Smile className="w-3 h-3" /> Emoji
-                </button>
-                <button
-                  onClick={() => setImgCompressIconMode("image")}
-                  className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${imgCompressIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  <Upload className="w-3 h-3" /> 上传图片
-                </button>
-              </div>
-
-              {imgCompressIconMode === "emoji" ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {["🗜️","🖼️","📷","📸","🔧","⚡","🎨","✂️","🔄","💾","📦","🗂️"].map((ic) => (
-                      <button key={ic} onClick={() => setImgCompressIcon(ic)}
-                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${imgCompressIcon === ic ? "border-green-400 bg-green-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}
-                      >{ic}</button>
-                    ))}
-                  </div>
-                  <input type="text" value={isIconUrl(imgCompressIcon) ? "" : imgCompressIcon}
-                    onChange={(e) => setImgCompressIcon(e.target.value)}
-                    placeholder="或直接输入 emoji"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
-                    maxLength={4} />
-                  <button onClick={() => saveImgCompressIcon(isIconUrl(imgCompressIcon) ? "🗜️" : imgCompressIcon)}
-                    disabled={savingImgCompressIcon}
-                    className="w-full py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
-                    {savingImgCompressIcon ? "保存中…" : "保存图标"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImgCompressIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-green-200 hover:border-green-400 hover:bg-green-50"}`}>
-                    {uploadingImgCompressIcon ? <span className="text-sm text-gray-400">上传中…</span>
-                      : isIconUrl(imgCompressIcon) ? <img src={imgCompressIcon} alt="" className="h-16 w-16 object-cover rounded-xl" />
-                      : (<><Upload className="w-7 h-7 text-green-300 mb-1" /><span className="text-sm text-gray-400">点击选择图片</span><span className="text-xs text-gray-300 mt-0.5">JPG / PNG / WebP，最大 5MB</span></>)}
-                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleImgCompressIconUpload} disabled={uploadingImgCompressIcon} />
-                  </label>
-                  {isIconUrl(imgCompressIcon) && (
-                    <div className="flex gap-2">
-                      <button onClick={() => saveImgCompressIcon(imgCompressIcon)} disabled={savingImgCompressIcon}
-                        className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-medium disabled:opacity-60">
-                        {savingImgCompressIcon ? "保存中…" : "保存图标"}
-                      </button>
-                      <button onClick={() => { setImgCompressIcon("🗜️"); setImgCompressIconMode("emoji"); }}
-                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:text-red-500 transition-colors">
-                        移除
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
       {/* 说明 */}
       <div className="mt-4 bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600 space-y-1">
@@ -4652,13 +5283,149 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
         <p><strong>外部小程序：</strong>跳转到其他微信小程序，需填写目标小程序 AppID 及页面路径</p>
         <p>上下拖动可调整展示顺序，关闭开关后小程序端不显示该工具</p>
       </div>
+        </div>
+      </div>
+
+      {/* Builtin Edit Modal */}
+      {showBuiltinEditModal && editingBuiltin && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div>
+                <h3 className="font-semibold text-gray-900">编辑内置工具 · {editingBuiltin.builtin_name}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{currentAppLabel}</p>
+              </div>
+              <button onClick={() => setShowBuiltinEditModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">工具名称</label>
+                <input type="text" value={builtinForm.name} onChange={(e) => setBuiltinForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" />
+              </div>
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">描述</label>
+                <input type="text" value={builtinForm.description} onChange={(e) => setBuiltinForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" />
+              </div>
+              {/* Icon */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">图标</label>
+                <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5 mb-2">
+                  <button onClick={() => setBuiltinIconMode("emoji")}
+                    className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${builtinIconMode === "emoji" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                    <Smile className="w-3 h-3" /> Emoji
+                  </button>
+                  <button onClick={() => setBuiltinIconMode("image")}
+                    className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 ${builtinIconMode === "image" ? "bg-white text-gray-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                    <Upload className="w-3 h-3" /> 上传图片
+                  </button>
+                </div>
+                {builtinIconMode === "emoji" ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {["🗓️","📅","🎂","🎈","🗜️","🖼️","📷","🔧","⚡","🧮","📊","✏️"].map((ic) => (
+                        <button key={ic} onClick={() => setBuiltinForm((f) => ({ ...f, icon: ic }))}
+                          className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border-2 transition-colors ${builtinForm.icon === ic ? "border-rose-400 bg-rose-50" : "border-gray-100 hover:border-gray-300 bg-gray-50"}`}>{ic}</button>
+                      ))}
+                    </div>
+                    <input type="text" value={isIconUrl(builtinForm.icon) ? "" : builtinForm.icon}
+                      onChange={(e) => setBuiltinForm((f) => ({ ...f, icon: e.target.value }))}
+                      placeholder="或直接输入 emoji" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" maxLength={4} />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingBuiltinIcon ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-rose-200 hover:border-rose-400 hover:bg-rose-50"}`}>
+                      {uploadingBuiltinIcon ? <span className="text-sm text-gray-400">上传中…</span>
+                        : isIconUrl(builtinForm.icon) ? <img src={builtinForm.icon} alt="" className="h-14 w-14 object-cover rounded-xl" />
+                        : (<><Upload className="w-6 h-6 text-rose-300 mb-1" /><span className="text-xs text-gray-400">点击选择图片</span></>)}
+                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleBuiltinIconUpload} disabled={uploadingBuiltinIcon} />
+                    </label>
+                    {isIconUrl(builtinForm.icon) && (
+                      <button onClick={() => { setBuiltinForm((f) => ({ ...f, icon: "🗓️" })); setBuiltinIconMode("emoji"); }}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors">移除图片</button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Sort order */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">排序权重</label>
+                <input type="number" value={builtinForm.sort_order} onChange={(e) => setBuiltinForm((f) => ({ ...f, sort_order: Number(e.target.value) }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" />
+              </div>
+              {/* Status */}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-500">启用状态</label>
+                <button onClick={() => setBuiltinForm((f) => ({ ...f, enabled: !f.enabled }))}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${builtinForm.enabled ? "bg-rose-500" : "bg-gray-200"}`}>
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${builtinForm.enabled ? "translate-x-4" : "translate-x-0"}`} />
+                </button>
+              </div>
+              {/* Frontend bindings */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-2">前端应用关联 · {currentAppLabel}</label>
+                <div className="space-y-3 bg-gray-50 rounded-xl p-3">
+                  {builtinFormBindings.filter((b) => b.app_key === currentAppKey).map((b) => {
+                    const opt = APP_KEY_OPTIONS.find((o) => o.key === b.app_key);
+                    const isPC = b.app_key === "xishi_toolbox_pc";
+                    const pathPlaceholder = isPC ? "/tools/tool-name" : "/pages/tools/tool-name";
+                    const pathHint = isPC ? "PC端页面路由" : "小程序页面路径";
+                    return (
+                      <div key={b.app_key} className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={b.enabled}
+                            onChange={(e) => updateBuiltinFormBinding(b.app_key, { enabled: e.target.checked })}
+                            className="rounded border-gray-300 text-rose-500 focus:ring-rose-400 w-4 h-4" />
+                          <span className="text-sm font-medium text-gray-700">{opt?.label}</span>
+                        </label>
+                        {b.enabled && (
+                          <div className="ml-6 space-y-2">
+                            <div>
+                              <input type="text" value={b.path || ""} placeholder={pathPlaceholder}
+                                onChange={(e) => updateBuiltinFormBinding(b.app_key, { path: e.target.value })}
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-300" />
+                              <p className="text-[10px] text-gray-300 mt-0.5">{pathHint}</p>
+                            </div>
+                            <select value={b.category_id ?? ""} onChange={(e) => {
+                                updateBuiltinFormBinding(b.app_key, {
+                                  category_id: e.target.value ? Number(e.target.value) : null,
+                                });
+                              }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-rose-300">
+                              <option value="">不分类</option>
+                              {categoriesForApp(b.app_key).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={() => setShowBuiltinEditModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50">取消</button>
+              <button onClick={handleSaveBuiltin} disabled={savingBuiltin}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-medium disabled:opacity-60 shadow-sm">
+                {savingBuiltin ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">{editing ? "编辑工具" : "添加工具"}</h3>
+              <div>
+                <h3 className="font-semibold text-gray-900">{isAddToolModal ? "添加工具" : "编辑工具"}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{isAddToolModal ? "可同时配置多个前端应用" : currentAppLabel}</p>
+              </div>
               <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -4771,7 +5538,16 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                   {(["internal", "external"] as const).map((t) => (
                     <button
                       key={t}
-                      onClick={() => setForm((f) => ({ ...f, type: t }))}
+                      onClick={() => {
+                        setForm((f) =>
+                          t === "external"
+                            ? { ...f, type: t }
+                            : { ...f, type: t, app_id: "", page_path: "" },
+                        );
+                        if (t === "external") {
+                          setFormBindings((prev) => prev.map((b) => ({ ...b, path: "" })));
+                        }
+                      }}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${form.type === t ? "border-rose-400 bg-rose-50 text-rose-600" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}
                     >
                       {t === "internal" ? "内部跳转" : "外部小程序"}
@@ -4779,21 +5555,6 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                   ))}
                 </div>
               </div>
-
-              {/* 内部跳转：路径 */}
-              {form.type === "internal" && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">页面路径 <span className="text-red-400">*</span></label>
-                  <input
-                    type="text"
-                    value={form.path}
-                    onChange={(e) => setForm((f) => ({ ...f, path: e.target.value }))}
-                    placeholder="/pages/fortune/fortune"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">小程序内部页面路径，以 / 开头</p>
-                </div>
-              )}
 
               {/* 外部小程序 */}
               {form.type === "external" && (
@@ -4809,7 +5570,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">目标页面路径</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">目标小程序页面路径</label>
                     <input
                       type="text"
                       value={form.page_path}
@@ -4817,7 +5578,7 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                       placeholder="pages/index/index"
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
                     />
-                    <p className="text-[10px] text-gray-400 mt-1">目标小程序的页面路径，留空则跳转首页</p>
+                    <p className="text-[10px] text-gray-400 mt-1">填写目标小程序内页面路径（无需前导 /），留空则打开对方首页</p>
                   </div>
                 </>
               )}
@@ -4834,6 +5595,72 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
                 >
                   <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${form.enabled ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
+              </div>
+
+              {/* ── 前端关联 ── */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">
+                  {isAddToolModal ? "前端关联（勾选要展示的前端应用）" : `前端关联 · ${currentAppLabel}`}
+                </label>
+                <div className="space-y-3">
+                  {visibleFormBindings.map((b) => {
+                    const opt = APP_KEY_OPTIONS.find((o) => o.key === b.app_key);
+                    const color = b.app_key === "birthday_mp" ? "border-blue-300 bg-blue-50" : b.app_key === "xishi_toolbox_mp" ? "border-orange-300 bg-orange-50" : "border-green-300 bg-green-50";
+                    const appCategories = categoriesForApp(b.app_key);
+                    const isPC = b.app_key === "xishi_toolbox_pc";
+                    const pathPlaceholder = isPC ? "/tools/tool-name" : "/pages/tools/tool-name";
+                    const pathHint = isPC ? "PC端页面路由，如 /tools/date-calc" : "小程序页面路径，如 /pages/date-calc/date-calc";
+                    return (
+                      <div key={b.app_key} className={`rounded-xl border-2 p-3 transition-colors ${b.enabled ? color : "border-gray-100 bg-gray-50 opacity-60"}`}>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={b.enabled}
+                            onChange={(e) => updateFormBinding(b.app_key, { enabled: e.target.checked })}
+                            className="rounded border-gray-300 text-rose-500 focus:ring-rose-400 w-4 h-4"
+                          />
+                          <span className="text-sm font-medium text-gray-700">{opt?.label || b.app_key}</span>
+                        </label>
+                        {b.enabled && (
+                          <div className="mt-2 space-y-2 pl-6">
+                            {form.type === "internal" && (
+                              <div>
+                                <label className="block text-[10px] text-gray-500 mb-0.5">页面路径</label>
+                                <input type="text" value={b.path}
+                                  onChange={(e) => updateFormBinding(b.app_key, { path: e.target.value })}
+                                  placeholder={pathPlaceholder}
+                                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-300"
+                                />
+                                <p className="text-[10px] text-gray-300 mt-0.5">{pathHint}</p>
+                              </div>
+                            )}
+                            {appCategories.length > 0 && (
+                              <div>
+                                <label className="block text-[10px] text-gray-500 mb-0.5">所属分类</label>
+                                <select value={b.category_id ?? ""}
+                                  onChange={(e) => updateFormBinding(b.app_key, {
+                                    category_id: e.target.value ? parseInt(e.target.value, 10) : null,
+                                  })}
+                                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+                                >
+                                  <option value="">未分类</option>
+                                  {appCategories.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {form.type === "external" ? (
+                  <p className="text-[10px] text-gray-400 mt-1.5">外部小程序使用上方「目标小程序页面路径」；此处仅需勾选在哪些前端展示及所属分类</p>
+                ) : isAddToolModal ? (
+                  <p className="text-[10px] text-gray-400 mt-1.5">勾选后，该工具将在对应前端应用中展示；左侧切换应用可分别查看</p>
+                ) : (
+                  <p className="text-[10px] text-gray-400 mt-1.5">仅配置当前选中前端的展示；其他前端的关联请在对应应用 Tab 下编辑</p>
+                )}
               </div>
 
               {/* 排序 */}
@@ -4873,7 +5700,1158 @@ function MpToolsPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
-type Tab = "dashboard" | "users" | "wechat" | "ai" | "notify" | "email" | "content" | "share" | "mptools" | "quota";
+function MultiAppsPanel({ adminKey }: { adminKey: string }) {
+  const [apps, setApps] = useState<ManagedApp[]>([]);
+  const [selectedKey, setSelectedKey] = useState("birthday_mp");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingShareImage, setUploadingShareImage] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [draft, setDraft] = useState<{
+    name: string;
+    domain: string;
+    description: string;
+    enabled: boolean;
+    settings: Record<string, string>;
+  }>({
+    name: "",
+    domain: "",
+    description: "",
+    enabled: true,
+    settings: {},
+  });
+
+  const selected = apps.find((app) => app.appKey === selectedKey);
+
+  const load = () => {
+    setLoading(true);
+    fetch(`${import.meta.env.BASE_URL}api/admin/apps`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then((r) => r.json())
+      .then((data: { apps?: ManagedApp[] }) => {
+        const list = data.apps ?? [];
+        setApps(list);
+        const nextSelected = list.find((app) => app.appKey === selectedKey)
+          ?? list[0]
+          ?? null;
+        if (nextSelected) {
+          setSelectedKey(nextSelected.appKey);
+          setDraft({
+            name: nextSelected.name,
+            domain: nextSelected.domain ?? "",
+            description: nextSelected.description ?? "",
+            enabled: nextSelected.enabled,
+            settings: nextSelected.settings ?? {},
+          });
+        }
+      })
+      .catch(() => setMessage({ ok: false, text: "加载应用列表失败" }))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [adminKey]);
+
+  useEffect(() => {
+    if (!selected) return;
+    setDraft({
+      name: selected.name,
+      domain: selected.domain ?? "",
+      description: selected.description ?? "",
+      enabled: selected.enabled,
+      settings: selected.settings ?? {},
+    });
+  }, [selectedKey]);
+
+  const setSetting = (key: string, value: string) => {
+    setDraft((current) => ({
+      ...current,
+      settings: { ...current.settings, [key]: value },
+    }));
+  };
+
+  const handleShareImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selected) return;
+    setUploadingShareImage(true);
+    setMessage(null);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/apps/${selected.appKey}/upload-share-image`,
+        {
+          method: "POST",
+          headers: { "x-admin-key": adminKey },
+          body: form,
+        },
+      );
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || "上传失败");
+      setSetting("share.imageUrl", data.url);
+      setMessage({ ok: true, text: "分享封面已上传" });
+    } catch (err) {
+      setMessage({
+        ok: false,
+        text: err instanceof Error ? err.message : "上传失败",
+      });
+    } finally {
+      setUploadingShareImage(false);
+      e.target.value = "";
+    }
+  };
+
+  const shareImagePreview = (() => {
+    const raw = draft.settings["share.imageUrl"] || "";
+    if (!raw) return "";
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    if (raw.startsWith("/")) return `${window.location.origin}${raw}`;
+    return raw;
+  })();
+
+  const save = async () => {
+    if (!selected) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/apps/${selected.appKey}/config`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey,
+          },
+          body: JSON.stringify(draft),
+        },
+      );
+      if (!res.ok) throw new Error("保存失败");
+      setMessage({ ok: true, text: "应用配置已保存" });
+      load();
+    } catch {
+      setMessage({ ok: false, text: "保存失败，请稍后重试" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-gray-400">加载中...</div>;
+  }
+
+  return (
+    <div className="space-y-6 max-w-6xl">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">多应用管理</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              分别控制生日通小程序、惜时工具箱小程序和惜时工具箱 PC 端。新增配置不覆盖生日通旧配置。
+            </p>
+          </div>
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <RefreshCw className="w-4 h-4" />
+            刷新
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4 mt-6">
+          {apps.map((app) => (
+            <button
+              key={app.appKey}
+              onClick={() => setSelectedKey(app.appKey)}
+              className={`text-left rounded-2xl border p-4 transition-all ${
+                selectedKey === app.appKey
+                  ? "border-rose-400 bg-rose-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-gray-900">{app.name}</p>
+                  <p className="text-xs text-gray-400 mt-1 font-mono">{app.appKey}</p>
+                </div>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    app.enabled
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {app.enabled ? "已启用" : "已停用"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div className="rounded-lg bg-white/70 py-2">
+                  <p className="text-base font-bold text-gray-900">{app.userCount}</p>
+                  <p className="text-[10px] text-gray-400">用户</p>
+                </div>
+                <div className="rounded-lg bg-white/70 py-2">
+                  <p className="text-base font-bold text-gray-900">{app.activeUsers30d}</p>
+                  <p className="text-[10px] text-gray-400">30天活跃</p>
+                </div>
+                <div className="rounded-lg bg-white/70 py-2">
+                  <p className="text-base font-bold text-gray-900">{app.launchCount30d}</p>
+                  <p className="text-[10px] text-gray-400">启动</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {selected && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">{selected.name} 配置</h3>
+              <p className="text-xs text-gray-400 mt-1">
+                类型：{selected.appType === "pc_web" ? "PC Web" : "微信小程序"}
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={draft.enabled}
+                onChange={(e) => setDraft((current) => ({ ...current, enabled: e.target.checked }))}
+                className="w-4 h-4 accent-rose-500"
+              />
+              启用此应用
+            </label>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">应用名称</span>
+              <input
+                value={draft.name}
+                onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">访问域名</span>
+              <input
+                value={draft.domain}
+                onChange={(e) => setDraft((current) => ({ ...current, domain: e.target.value }))}
+                placeholder="https://tool.xishi24.com"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+              />
+            </label>
+          </div>
+
+          <label className="space-y-1.5 block">
+            <span className="text-sm font-medium text-gray-700">应用说明</span>
+            <textarea
+              value={draft.description}
+              onChange={(e) => setDraft((current) => ({ ...current, description: e.target.value }))}
+              rows={2}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+            />
+          </label>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">H5/PC 登录方式</span>
+              <select
+                value={draft.settings["login.h5Mode"] || "mock"}
+                onChange={(e) => setSetting("login.h5Mode", e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              >
+                <option value="mock">测试登录</option>
+                <option value="wechat_oa">微信公众号 OAuth</option>
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">小程序登录方式</span>
+              <select
+                value={draft.settings["login.mpMode"] || "mock"}
+                onChange={(e) => setSetting("login.mpMode", e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              >
+                <option value="mock">测试登录</option>
+                <option value="wechat_mp">微信小程序登录</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="border border-gray-100 rounded-xl p-4 space-y-4">
+            <p className="text-sm font-semibold text-gray-600">微信小程序配置</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">小程序 AppID</span>
+                <input
+                  value={draft.settings["wechat.mpAppId"] || ""}
+                  onChange={(e) => setSetting("wechat.mpAppId", e.target.value)}
+                  placeholder="wx..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">小程序 AppSecret</span>
+                <input
+                  type="password"
+                  value={draft.settings["wechat.mpAppSecret"] || ""}
+                  onChange={(e) => setSetting("wechat.mpAppSecret", e.target.value)}
+                  placeholder={draft.settings["wechat.mpAppSecretSet"] === "true" ? "已配置（留空不更改）" : "在微信公众平台获取"}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="border border-gray-100 rounded-xl p-4 space-y-4">
+            <p className="text-sm font-semibold text-gray-600">微信公众号 / PC OAuth 配置</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">公众号 AppID</span>
+                <input
+                  value={draft.settings["wechat.oaAppId"] || ""}
+                  onChange={(e) => setSetting("wechat.oaAppId", e.target.value)}
+                  placeholder="wx..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">公众号 AppSecret</span>
+                <input
+                  type="password"
+                  value={draft.settings["wechat.oaAppSecret"] || ""}
+                  onChange={(e) => setSetting("wechat.oaAppSecret", e.target.value)}
+                  placeholder={draft.settings["wechat.oaAppSecretSet"] === "true" ? "已配置（留空不更改）" : "在微信公众平台获取"}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">OAuth 回调域名</span>
+                <input
+                  value={draft.settings["wechat.oaDomain"] || ""}
+                  onChange={(e) => setSetting("wechat.oaDomain", e.target.value)}
+                  placeholder={draft.domain || "https://example.com"}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">公众号名称</span>
+                <input
+                  value={draft.settings["wechat.oaAccountName"] || ""}
+                  onChange={(e) => setSetting("wechat.oaAccountName", e.target.value)}
+                  placeholder="用于前端显示"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="border border-gray-100 rounded-xl p-4 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-600">小程序分享配置</p>
+              <p className="text-xs text-gray-400 mt-1">
+                用户点击右上角「转发」时展示的标题、路径和封面图（仅对微信小程序生效）
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">分享标题</span>
+                <input
+                  value={draft.settings["share.title"] || ""}
+                  onChange={(e) => setSetting("share.title", e.target.value)}
+                  placeholder="生日通.让您不再错过每个重要日子"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">分享路径</span>
+                <input
+                  value={draft.settings["share.path"] || ""}
+                  onChange={(e) => setSetting("share.path", e.target.value)}
+                  placeholder="/pages/home/home"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300 font-mono"
+                />
+              </label>
+            </div>
+
+            <label className="space-y-1.5 block">
+              <span className="text-sm font-medium text-gray-700">分享描述</span>
+              <textarea
+                value={draft.settings["share.description"] || ""}
+                onChange={(e) => setSetting("share.description", e.target.value)}
+                rows={2}
+                placeholder="备用说明文字（小程序转发卡片不展示描述）"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              />
+            </label>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-gray-700">分享封面图</span>
+              <div className="flex items-start gap-4">
+                <div className="w-24 h-24 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {shareImagePreview ? (
+                    <img
+                      src={shareImagePreview}
+                      alt="分享封面预览"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400 text-center px-2">暂无封面</span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${
+                      uploadingShareImage
+                        ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                        : "border-rose-200 text-rose-600 hover:bg-rose-50"
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploadingShareImage ? "上传中..." : "上传封面图"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingShareImage}
+                      onChange={handleShareImageUpload}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    建议 500×400 px 以上，支持 JPG / PNG / WEBP，上传后自动保存。
+                    留空则使用小程序内置默认图。
+                  </p>
+                  {draft.settings["share.imageUrl"] && (
+                    <button
+                      type="button"
+                      onClick={() => setSetting("share.imageUrl", "")}
+                      className="text-xs text-gray-500 hover:text-red-500"
+                    >
+                      清除封面图
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">用户协议</span>
+              <textarea
+                value={draft.settings["content.termsOfService"] || ""}
+                onChange={(e) => setSetting("content.termsOfService", e.target.value)}
+                rows={5}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">隐私政策</span>
+              <textarea
+                value={draft.settings["content.privacyPolicy"] || ""}
+                onChange={(e) => setSetting("content.privacyPolicy", e.target.value)}
+                rows={5}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-rose-300"
+              />
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            {message && (
+              <span className={`text-sm ${message.ok ? "text-green-600" : "text-red-500"}`}>
+                {message.text}
+              </span>
+            )}
+            <button
+              onClick={save}
+              disabled={saving}
+              className="ml-auto px-5 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium disabled:opacity-60"
+            >
+              {saving ? "保存中..." : "保存应用配置"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface FeedbackRecord {
+  id: number;
+  userId: number;
+  appKey: string;
+  appLabel: string;
+  content: string;
+  contact: string | null;
+  images: string[];
+  status: string;
+  adminReply: string | null;
+  userReadAt: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+}
+
+const FEEDBACK_STATUS_OPTIONS = [
+  { value: "", label: "全部状态" },
+  { value: "pending", label: "待处理" },
+  { value: "processing", label: "处理中" },
+  { value: "resolved", label: "已解决" },
+];
+
+function feedbackStatusBadge(status: string) {
+  switch (status) {
+    case "pending":
+      return { label: "待处理", cls: "bg-amber-50 text-amber-700" };
+    case "processing":
+      return { label: "处理中", cls: "bg-blue-50 text-blue-700" };
+    case "resolved":
+      return { label: "已解决", cls: "bg-green-50 text-green-700" };
+    default:
+      return { label: status, cls: "bg-gray-50 text-gray-600" };
+  }
+}
+
+// ─── Internal Announcements Panel ─────────────────────────────────────────────
+interface AnnouncementRecord {
+  id: number;
+  title: string;
+  content: string;
+  appKeys: string[];
+  appLabels: string[];
+  status: string;
+  preview: string;
+  readCount?: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const PUBLISH_APP_OPTIONS = USER_APP_SOURCE_OPTIONS.filter((o) => o.key);
+
+function AnnouncementsPanel({ adminKey }: { adminKey: string }) {
+  const [items, setItems] = useState<AnnouncementRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [appKeyFilter, setAppKeyFilter] = useState("");
+  const [editing, setEditing] = useState<AnnouncementRecord | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [selectedApps, setSelectedApps] = useState<string[]>([]);
+  const [status, setStatus] = useState<"published" | "draft">("published");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const isFormOpen = creating || !!editing;
+
+  const load = async (appKey = appKeyFilter) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (appKey) params.set("appKey", appKey);
+      const qs = params.toString();
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/announcements${qs ? `?${qs}` : ""}`,
+        { headers: { "x-admin-key": adminKey } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.announcements ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, [appKeyFilter]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setCreating(true);
+    setTitle("");
+    setContent("");
+    setSelectedApps(PUBLISH_APP_OPTIONS.map((o) => o.key));
+    setStatus("published");
+    setError("");
+  };
+
+  const openEdit = (row: AnnouncementRecord) => {
+    setCreating(false);
+    setEditing(row);
+    setTitle(row.title);
+    setContent(row.content);
+    setSelectedApps(row.appKeys.length ? [...row.appKeys] : []);
+    setStatus(row.status === "draft" ? "draft" : "published");
+    setError("");
+  };
+
+  const closeForm = () => {
+    setCreating(false);
+    setEditing(null);
+    setError("");
+  };
+
+  const toggleApp = (key: string) => {
+    setSelectedApps((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
+
+  const handleSave = async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("请填写标题");
+      return;
+    }
+    if (!content.trim()) {
+      setError("请填写正文");
+      return;
+    }
+    if (selectedApps.length === 0) {
+      setError("请至少选择一个发布应用");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        title: trimmedTitle,
+        content,
+        appKeys: selectedApps,
+        status,
+      };
+      const url = editing
+        ? `${import.meta.env.BASE_URL}api/admin/announcements/${editing.id}`
+        : `${import.meta.env.BASE_URL}api/admin/announcements`;
+      const res = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "保存失败");
+        return;
+      }
+      closeForm();
+      load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (row: AnnouncementRecord) => {
+    if (!window.confirm(`确定删除消息「${row.title}」？`)) return;
+    const res = await fetch(
+      `${import.meta.env.BASE_URL}api/admin/announcements/${row.id}`,
+      { method: "DELETE", headers: { "x-admin-key": adminKey } },
+    );
+    if (res.ok) load();
+  };
+
+  const formatTime = (iso: string | null) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("zh-CN", { hour12: false });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800">内部消息</h2>
+          <p className="text-xs text-gray-400 mt-0.5">向指定应用发布站内消息，用户可在消息中心查看</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={appKeyFilter}
+            onChange={(e) => setAppKeyFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+          >
+            <option value="">全部应用</option>
+            {PUBLISH_APP_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            刷新
+          </button>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500 text-white text-xs hover:bg-rose-600"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            发布消息
+          </button>
+        </div>
+      </div>
+
+      {loading && !items.length ? (
+        <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+          加载中...
+        </div>
+      ) : !items.length ? (
+        <div className="text-center py-16 text-gray-400 text-sm">暂无内部消息，点击「发布消息」创建</div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((row) => (
+            <div
+              key={row.id}
+              className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <h3 className="text-sm font-semibold text-gray-800 truncate">{row.title}</h3>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        row.status === "published"
+                          ? "bg-green-50 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {row.status === "published" ? "已发布" : "草稿"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-2 mb-2">{row.preview || "（无预览）"}</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(row.appLabels || []).map((label) => (
+                      <span
+                        key={label}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-sky-50 text-sky-700"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                    <span className="text-[10px] text-gray-500 ml-1">
+                      查阅 {row.readCount ?? 0}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      · {formatTime(row.publishedAt || row.createdAt)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(row)}
+                    className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    title="编辑"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(row)}
+                    className="p-1.5 rounded-lg border border-gray-200 text-rose-500 hover:bg-rose-50"
+                    title="删除"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-800">
+                {editing ? "编辑内部消息" : "发布内部消息"}
+              </h3>
+              <button type="button" onClick={closeForm} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">标题</label>
+                <input
+                  type="text"
+                  value={title}
+                  maxLength={100}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="消息标题"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">发布应用（可多选）</label>
+                <div className="flex flex-wrap gap-2">
+                  {PUBLISH_APP_OPTIONS.map((o) => {
+                    const checked = selectedApps.includes(o.key);
+                    return (
+                      <label
+                        key={o.key}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none ${
+                          checked
+                            ? "border-rose-300 bg-rose-50 text-rose-700"
+                            : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleApp(o.key)}
+                          className="accent-rose-500"
+                        />
+                        {o.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">状态</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as "published" | "draft")}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+                >
+                  <option value="published">立即发布</option>
+                  <option value="draft">存为草稿</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">正文</label>
+                <FeedbackRichEditor
+                  value={content}
+                  onChange={setContent}
+                  adminKey={adminKey}
+                  placeholder="填写消息内容，支持加粗、图片…"
+                  uploadPath="api/admin/announcements/upload-image"
+                />
+              </div>
+              {error && <p className="text-xs text-rose-500">{error}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={closeForm}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-rose-500 text-white text-sm hover:bg-rose-600 disabled:opacity-50"
+              >
+                {saving ? "保存中…" : editing ? "保存" : "发布"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeedbackPanel({
+  adminKey,
+  onUpdated,
+}: {
+  adminKey: string;
+  onUpdated?: () => void;
+}) {
+  const [items, setItems] = useState<FeedbackRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [appKeyFilter, setAppKeyFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [editing, setEditing] = useState<FeedbackRecord | null>(null);
+  const [editStatus, setEditStatus] = useState("pending");
+  const [editReply, setEditReply] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async (
+    appKey = appKeyFilter,
+    status = statusFilter,
+    from = startDate,
+    to = endDate,
+  ) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (appKey) params.set("appKey", appKey);
+      if (status) params.set("status", status);
+      if (from) params.set("startDate", from);
+      if (to) params.set("endDate", to);
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/feedback?${params}`,
+        { headers: { "x-admin-key": adminKey } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.feedback ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, [appKeyFilter, statusFilter, startDate, endDate]);
+
+  const openEdit = (row: FeedbackRecord) => {
+    setEditing(row);
+    setEditStatus(row.status);
+    setEditReply(row.adminReply || "");
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/feedback/${editing.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey,
+          },
+          body: JSON.stringify({ status: editStatus, adminReply: editReply }),
+        },
+      );
+      if (res.ok) {
+        setEditing(null);
+        load();
+        onUpdated?.();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatTime = (iso: string | null) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("zh-CN", { hour12: false });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 whitespace-nowrap">应用</span>
+          <select
+            value={appKeyFilter}
+            onChange={(e) => setAppKeyFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white min-w-[160px]"
+          >
+            <option value="">全部应用</option>
+            {USER_APP_SOURCE_OPTIONS.filter((o) => o.key).map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 whitespace-nowrap">状态</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white min-w-[120px]"
+          >
+            {FEEDBACK_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 whitespace-nowrap">提交时间</span>
+          <input
+            type="date"
+            value={startDate}
+            max={endDate || undefined}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+          />
+          <span className="text-xs text-gray-400">至</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate || undefined}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white"
+          />
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="px-2.5 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50"
+            >
+              清除
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => load()}
+          disabled={loading}
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          刷新
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {loading && items.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-400">加载中…</div>
+        ) : items.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-400">暂无反馈</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {items.map((row) => {
+              const badge = feedbackStatusBadge(row.status);
+              return (
+                <div key={row.id} className="p-5 hover:bg-gray-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>
+                          {badge.label}
+                        </span>
+                        <span className="text-xs text-gray-400">{row.appLabel}</span>
+                        <span className="text-xs text-gray-300">#{row.id}</span>
+                      </div>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{row.content}</p>
+                      <FeedbackImageList images={row.images || []} className="mt-2" />
+                      {row.contact && (
+                        <p className="text-xs text-gray-400 mt-2">联系方式：{row.contact}</p>
+                      )}
+                      {row.adminReply && (
+                        <div className="mt-3 p-3 bg-rose-50/60 rounded-lg border border-rose-100 overflow-hidden max-w-full">
+                          <p className="text-xs font-medium text-rose-600 mb-1">处理回复</p>
+                          <FeedbackReplyHtml html={row.adminReply} />
+                          {row.repliedAt && (
+                            <p className="text-[10px] text-gray-400 mt-1">回复于 {formatTime(row.repliedAt)}</p>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-400">
+                        <span>用户：{row.nickname || `ID ${row.userId}`}</span>
+                        <span>提交于 {formatTime(row.createdAt)}</span>
+                      </div>
+                    </div>
+                    {row.status !== "resolved" && (
+                      <button
+                        onClick={() => openEdit(row)}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-rose-500 text-white text-xs font-medium hover:bg-rose-600 transition-colors"
+                      >
+                        处理
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {editing && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setEditing(null); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900">处理问题反馈</h3>
+                <p className="text-xs text-gray-400 mt-0.5">#{editing.id} · {editing.appLabel}</p>
+              </div>
+              <button onClick={() => setEditing(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">用户反馈</p>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{editing.content}</p>
+                <FeedbackImageList images={editing.images || []} className="mt-2" />
+                {editing.contact && (
+                  <p className="text-xs text-gray-400 mt-2">联系方式：{editing.contact}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">处理状态</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
+                >
+                  <option value="pending">待处理</option>
+                  <option value="processing">处理中</option>
+                  <option value="resolved">已解决</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">回复用户（将显示在小程序消息中心）</label>
+                <FeedbackRichEditor
+                  value={editReply}
+                  onChange={setEditReply}
+                  adminKey={adminKey}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setEditing(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-medium disabled:opacity-60 shadow-sm"
+              >
+                {saving ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "dashboard" | "apps" | "users" | "messages" | "feedback" | "ai" | "notify" | "email" | "mptools" | "toolcats" | "toolstats" | "quota";
+
+type NavItem = { id: Tab; label: string; icon: React.ReactNode };
+type NavGroup = { id: string; label: string; icon: React.ReactNode; children: NavItem[] };
+type NavEntry = NavItem | NavGroup;
+
+const BIRTHDAY_MGMT_TABS: Tab[] = ["ai", "notify", "email", "quota"];
+
+function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return "children" in entry;
+}
 
 function Dashboard({
   adminKey,
@@ -4882,10 +6860,15 @@ function Dashboard({
   adminKey: string;
   onLogout: () => void;
 }) {
-  const validTabs: Tab[] = ["dashboard", "users", "wechat", "ai", "notify", "email", "content", "share", "mptools", "quota"];
+  const validTabs: Tab[] = ["dashboard", "apps", "users", "messages", "feedback", "ai", "notify", "email", "mptools", "toolcats", "toolstats", "quota"];
   const [tab, setTabState] = useState<Tab>(() => {
     const saved = localStorage.getItem(ADMIN_TAB_KEY);
-    return saved && validTabs.includes(saved as Tab) ? (saved as Tab) : "dashboard";
+    const normalized = saved === "wechat" || saved === "content" || saved === "share" ? "apps" : saved;
+    if (normalized && validTabs.includes(normalized as Tab)) {
+      if (normalized !== saved) localStorage.setItem(ADMIN_TAB_KEY, normalized);
+      return normalized as Tab;
+    }
+    return "dashboard";
   });
 
   const setTab = (next: Tab) => {
@@ -4893,22 +6876,79 @@ function Dashboard({
     setTabState(next);
   };
 
-  const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  const navEntries: NavEntry[] = [
     { id: "dashboard", label: "仪表盘", icon: <Zap className="w-4 h-4" /> },
+    { id: "apps", label: "多应用", icon: <Settings className="w-4 h-4" /> },
     { id: "users", label: "用户管理", icon: <Users className="w-4 h-4" /> },
-    { id: "wechat", label: "微信配置", icon: <Settings className="w-4 h-4" /> },
-    { id: "ai", label: "AI 模型", icon: <Sparkles className="w-4 h-4" /> },
-    { id: "notify", label: "通知配置", icon: <Bell className="w-4 h-4" /> },
-    { id: "email", label: "邮件配置", icon: <Mail className="w-4 h-4" /> },
+    { id: "messages", label: "内部消息", icon: <Megaphone className="w-4 h-4" /> },
+    { id: "feedback", label: "问题反馈", icon: <MessageSquare className="w-4 h-4" /> },
     {
-      id: "content",
-      label: "协议配置",
-      icon: <FileText className="w-4 h-4" />,
+      id: "birthday-mgmt",
+      label: "生日通管理",
+      icon: <CalendarDays className="w-4 h-4" />,
+      children: [
+        { id: "ai", label: "AI 模型", icon: <Sparkles className="w-4 h-4" /> },
+        { id: "notify", label: "通知配置", icon: <Bell className="w-4 h-4" /> },
+        { id: "email", label: "邮件配置", icon: <Mail className="w-4 h-4" /> },
+        { id: "quota", label: "配额限制", icon: <Lock className="w-4 h-4" /> },
+      ],
     },
-    { id: "share", label: "分享配置", icon: <Share2 className="w-4 h-4" /> },
     { id: "mptools", label: "小工具配置", icon: <Wrench className="w-4 h-4" /> },
-    { id: "quota", label: "配额限制", icon: <Lock className="w-4 h-4" /> },
+    { id: "toolcats", label: "工具分类", icon: <FolderOpen className="w-4 h-4" /> },
+    { id: "toolstats", label: "点击统计", icon: <BarChart3 className="w-4 h-4" /> },
   ];
+
+  const [birthdayMgmtOpen, setBirthdayMgmtOpen] = useState(() => {
+    const saved = localStorage.getItem(ADMIN_TAB_KEY);
+    return !!(saved && BIRTHDAY_MGMT_TABS.includes(saved as Tab));
+  });
+  const [pendingFeedbackCount, setPendingFeedbackCount] = useState(0);
+
+  const loadPendingFeedbackCount = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}api/admin/feedback/pending-count`,
+        { headers: { "x-admin-key": adminKey } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setPendingFeedbackCount(data.count ?? 0);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    loadPendingFeedbackCount();
+    const timer = setInterval(loadPendingFeedbackCount, 30000);
+    return () => clearInterval(timer);
+  }, [adminKey]);
+
+  useEffect(() => {
+    if (tab === "feedback") {
+      loadPendingFeedbackCount();
+    }
+  }, [tab, adminKey]);
+
+  useEffect(() => {
+    if (BIRTHDAY_MGMT_TABS.includes(tab)) {
+      setBirthdayMgmtOpen(true);
+    }
+  }, [tab]);
+
+  const getTabLabel = (activeTab: Tab) => {
+    for (const entry of navEntries) {
+      if (!isNavGroup(entry) && entry.id === activeTab) return entry.label;
+      if (isNavGroup(entry)) {
+        const child = entry.children.find((c) => c.id === activeTab);
+        if (child) return child.label;
+      }
+    }
+    return "";
+  };
+
+  const birthdayMgmtActive = BIRTHDAY_MGMT_TABS.includes(tab);
 
   return (
     <div className="h-screen w-full flex bg-slate-100 font-sans overflow-hidden">
@@ -4929,20 +6969,68 @@ function Dashboard({
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setTab(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                tab === item.id
-                  ? "bg-rose-50 text-rose-600"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+          {navEntries.map((entry) => {
+            if (!isNavGroup(entry)) {
+              return (
+                <button
+                  key={entry.id}
+                  onClick={() => setTab(entry.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    tab === entry.id
+                      ? "bg-rose-50 text-rose-600"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  {entry.icon}
+                  <span className="flex-1 text-left">{entry.label}</span>
+                  {entry.id === "feedback" && pendingFeedbackCount > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-semibold leading-5 text-center">
+                      {pendingFeedbackCount > 99 ? "99+" : pendingFeedbackCount}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
+            return (
+              <div key={entry.id}>
+                <button
+                  onClick={() => setBirthdayMgmtOpen((open) => !open)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    birthdayMgmtActive
+                      ? "bg-rose-50 text-rose-600"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  {entry.icon}
+                  <span className="flex-1 text-left">{entry.label}</span>
+                  {birthdayMgmtOpen ? (
+                    <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-60" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 flex-shrink-0 opacity-60" />
+                  )}
+                </button>
+                {birthdayMgmtOpen && (
+                  <div className="mt-1 ml-3 pl-3 border-l border-gray-100 space-y-0.5">
+                    {entry.children.map((child) => (
+                      <button
+                        key={child.id}
+                        onClick={() => setTab(child.id)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          tab === child.id
+                            ? "bg-rose-50 text-rose-600 font-medium"
+                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                        }`}
+                      >
+                        {child.icon}
+                        {child.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </aside>
 
@@ -4950,7 +7038,7 @@ function Dashboard({
       <main className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex-shrink-0 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">
-            {navItems.find((n) => n.id === tab)?.label}
+            {getTabLabel(tab)}
           </h1>
           <button
             onClick={onLogout}
@@ -4963,14 +7051,18 @@ function Dashboard({
 
         <div className="flex-1 p-8 overflow-auto">
           {tab === "dashboard" && <DashboardPanel adminKey={adminKey} />}
+          {tab === "apps" && <MultiAppsPanel adminKey={adminKey} />}
           {tab === "users" && <UsersPanel adminKey={adminKey} />}
-          {tab === "wechat" && <WechatConfigPanel adminKey={adminKey} />}
+          {tab === "messages" && <AnnouncementsPanel adminKey={adminKey} />}
+          {tab === "feedback" && (
+            <FeedbackPanel adminKey={adminKey} onUpdated={loadPendingFeedbackCount} />
+          )}
           {tab === "ai" && <AiConfigPanel adminKey={adminKey} />}
           {tab === "notify" && <NotifyConfigPanel adminKey={adminKey} />}
           {tab === "email" && <EmailConfigPanel adminKey={adminKey} />}
-          {tab === "content" && <ContentConfigPanel adminKey={adminKey} />}
-          {tab === "share" && <ShareConfigPanel adminKey={adminKey} />}
           {tab === "mptools" && <MpToolsPanel adminKey={adminKey} />}
+          {tab === "toolcats" && <MpToolCategoriesPanel adminKey={adminKey} />}
+          {tab === "toolstats" && <MpToolStatsPanel adminKey={adminKey} />}
           {tab === "quota" && <QuotaConfigPanel adminKey={adminKey} />}
         </div>
       </main>

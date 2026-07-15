@@ -1,0 +1,45 @@
+{
+  "description": "惜时工具箱微信小程序",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "coverView": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useDevTools": true,
+    "ignoreUploadUnusedFiles": false,
+    "urlCheck": false,
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.3.4",
+  "appid": "wx308103b915efa1fc",
+  "projectname": "xishi-toolbox-miniprogram",
+  "isGameTourist": false,
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
+}

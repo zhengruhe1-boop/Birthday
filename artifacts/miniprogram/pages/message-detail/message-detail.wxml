@@ -1,0 +1,52 @@
+<!-- 官方内部消息 -->
+<view class="detail-page" wx:if="{{msgType === 'announcement' && item}}">
+  <view class="detail-card">
+    <view class="detail-head">
+      <text class="status-tag status-announcement">{{item.statusLabel}}</text>
+      <text class="detail-time">{{item.timeText}}</text>
+    </view>
+    <text class="detail-title">{{item.title}}</text>
+    <view wx:if="{{item.isHtmlContent}}" class="detail-rich-wrap">
+      <rich-text nodes="{{item.contentHtml}}" />
+    </view>
+    <text wx:else class="detail-content">{{item.plainContent}}</text>
+  </view>
+</view>
+
+<!-- 问题反馈 -->
+<view class="detail-page" wx:elif="{{item}}">
+  <view class="detail-card">
+    <view class="detail-head">
+      <text class="status-tag status-{{item.statusClass}}">{{item.statusLabel}}</text>
+      <text class="detail-time">{{item.timeText}}</text>
+    </view>
+    <text class="section-label">我的反馈</text>
+    <text class="detail-content">{{item.content}}</text>
+    <view wx:if="{{item.imageUrls.length}}" class="detail-images">
+      <image
+        wx:for="{{item.imageUrls}}"
+        wx:key="*this"
+        class="detail-image"
+        src="{{item}}"
+        mode="aspectFill"
+        bindtap="previewImage"
+        data-url="{{item}}"
+      />
+    </view>
+    <text wx:if="{{item.contact}}" class="detail-contact">联系方式：{{item.contact}}</text>
+  </view>
+
+  <view wx:if="{{item.hasReply}}" class="detail-card reply-card">
+    <text class="section-label">官方回复</text>
+    <view wx:if="{{item.isHtmlReply}}" class="detail-rich-wrap">
+      <rich-text nodes="{{item.replyHtml}}" />
+    </view>
+    <text wx:else class="detail-content">{{item.adminReply}}</text>
+    <text wx:if="{{item.replyTimeText}}" class="detail-time reply-time">回复于 {{item.replyTimeText}}</text>
+  </view>
+
+  <view wx:else class="detail-card waiting-card">
+    <text class="waiting-icon">⏳</text>
+    <text class="waiting-text">我们已收到您的反馈，正在处理中</text>
+  </view>
+</view>

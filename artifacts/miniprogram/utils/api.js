@@ -7,6 +7,30 @@ function getBase() {
   return (app.globalData.apiBase || '').replace(/\/$/, '');
 }
 
+function getAppKey() {
+  const app = getApp();
+  return (app.globalData && app.globalData.appKey) || 'birthday_mp';
+}
+
+function isOnLoginPage() {
+  const pages = getCurrentPages();
+  if (!pages.length) return false;
+  return pages[pages.length - 1].route === 'pages/login/login';
+}
+
+let reloginPending = false;
+
+function handleUnauthorized(hadToken) {
+  if (!hadToken) return;
+  const { clearToken } = require('./auth');
+  clearToken();
+  if (!reloginPending && !isOnLoginPage()) {
+    reloginPending = true;
+    wx.reLaunch({ url: '/pages/login/login' });
+    setTimeout(function () { reloginPending = false; }, 1500);
+  }
+}
+
 // 把 wx 回调的 errMsg / message 统一提取成字符串
 function extractMsg(err) {
   if (!err) return '';
@@ -27,21 +51,16 @@ function request(method, path, data) {
       timeout: 15000,
       header: {
         'Content-Type': 'application/json',
+        'x-app-key': getAppKey(),
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
       },
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else if (res.statusCode === 401) {
-          // token 失效：清除本地凭证，跳回登录页
-          wx.removeStorageSync('birthday_token');
-          wx.removeStorageSync('birthday_userinfo');
-          const app = getApp();
-          if (app) { app.globalData.token = null; app.globalData.sessionReady = Promise.resolve(false); }
-          wx.reLaunch({ url: '/pages/login/login' });
+          handleUnauthorized(!!token);
           reject(new Error('登录已过期，请重新登录'));
         } else {
-          // 优先使用 message（人类可读），并在 err.errorCode 上保留机器码
           const errorCode = (res.data && res.data.error) || '';
           const msg = (res.data && res.data.message) || errorCode || ('请求失败 ' + res.statusCode);
           const err = new Error(msg);
@@ -76,11 +95,15 @@ function uploadFile(path, filePath, name) {
       name: name || 'image',
       timeout: 60000,
       header: {
+        'x-app-key': getAppKey(),
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
       },
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try { resolve(JSON.parse(res.data)); } catch { resolve(res.data); }
+        } else if (res.statusCode === 401) {
+          handleUnauthorized(!!token);
+          reject(new Error('登录已过期，请重新登录'));
         } else {
           reject(new Error('上传失败 ' + res.statusCode));
         }

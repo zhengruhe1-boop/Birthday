@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, contactsTable, settingsTable, eventsTable, timeCapsulesTable, analyticsEventsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, and, not, like, gte } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, and, not, like, gte, lte, ilike, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -32,16 +32,39 @@ async function setSetting(key: string, value: string): Promise<void> {
 }
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
-// Query params: page (1-based, default 1), pageSize (default 12)
+// Query params: page, pageSize, search (nickname), app_key (registration source filter),
+//               startDate / endDate (YYYY-MM-DD, registration time range)
 router.get("/stats", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
     const PAGE_SIZE = 10;
     const page     = Math.max(1, parseInt((req.query.page as string) || "1", 10));
     const offset   = (page - 1) * PAGE_SIZE;
+    const search   = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const appKey   = typeof req.query.app_key === "string" ? req.query.app_key.trim() : "";
+    const startDateRaw = typeof req.query.startDate === "string" ? req.query.startDate.trim() : "";
+    const endDateRaw = typeof req.query.endDate === "string" ? req.query.endDate.trim() : "";
 
-    // Total count
-    const allUsers = await db.select().from(usersTable).orderBy(desc(usersTable.createdAt));
+    const conditions = [];
+    if (search) {
+      conditions.push(ilike(usersTable.nickname, `%${search}%`));
+    }
+    if (appKey) {
+      conditions.push(eq(usersTable.registeredAppKey, appKey));
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(startDateRaw)) {
+      const start = new Date(`${startDateRaw}T00:00:00`);
+      if (!Number.isNaN(start.getTime())) conditions.push(gte(usersTable.createdAt, start));
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateRaw)) {
+      const end = new Date(`${endDateRaw}T23:59:59.999`);
+      if (!Number.isNaN(end.getTime())) conditions.push(lte(usersTable.createdAt, end));
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const allUsers = await db.select().from(usersTable)
+      .where(whereClause)
+      .orderBy(desc(usersTable.createdAt));
     const totalUsers = allUsers.length;
 
     // Paginated users
@@ -83,6 +106,8 @@ router.get("/stats", async (req: Request, res: Response) => {
         unionId: u.unionId,
         nickname: u.nickname,
         avatarUrl: u.avatarUrl,
+        registeredAppKey: u.registeredAppKey,
+        registeredClientType: u.registeredClientType,
         createdAt: u.createdAt,
         lastAccessAt: u.lastAccessAt,
         contactCount: userContacts.length,
@@ -858,21 +883,63 @@ router.put("/share-config", async (req: Request, res: Response) => {
 });
 
 // ── GET /api/admin/analytics ──────────────────────────────────────────────────
+// Query params:
+//   app_key (optional) — birthday_mp / xishi_toolbox_mp / xishi_toolbox_pc
+//   startDate / endDate (optional, YYYY-MM-DD) — chart & range metrics; default last 30 days
 router.get("/analytics", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const now = new Date();
-    // UTC midnight today
-    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const thirtyDaysAgo = new Date(todayStart);
-    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 29);
+    const appKey = typeof req.query.app_key === "string" ? req.query.app_key.trim() : "";
+    const startDateRaw = typeof req.query.startDate === "string" ? req.query.startDate.trim() : "";
+    const endDateRaw = typeof req.query.endDate === "string" ? req.query.endDate.trim() : "";
 
-    // Build 30-day label array (UTC dates)
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    let rangeEnd = new Date(todayStart);
+    rangeEnd.setUTCHours(23, 59, 59, 999);
+    let rangeStart = new Date(todayStart);
+    rangeStart.setUTCDate(rangeStart.getUTCDate() - 29);
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateRaw)) {
+      const parsed = new Date(`${endDateRaw}T23:59:59.999Z`);
+      if (!Number.isNaN(parsed.getTime())) rangeEnd = parsed;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(startDateRaw)) {
+      const parsed = new Date(`${startDateRaw}T00:00:00.000Z`);
+      if (!Number.isNaN(parsed.getTime())) rangeStart = parsed;
+    }
+    if (rangeStart > rangeEnd) {
+      const tmp = rangeStart;
+      rangeStart = new Date(rangeEnd);
+      rangeStart.setUTCHours(0, 0, 0, 0);
+      rangeEnd = tmp;
+      rangeEnd.setUTCHours(23, 59, 59, 999);
+    }
+
+    // Cap at 366 days to protect performance
+    const maxSpanMs = 366 * 24 * 60 * 60 * 1000;
+    if (rangeEnd.getTime() - rangeStart.getTime() > maxSpanMs) {
+      rangeStart = new Date(rangeEnd.getTime() - maxSpanMs);
+      rangeStart.setUTCHours(0, 0, 0, 0);
+    }
+
     const days: string[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(todayStart);
-      d.setUTCDate(d.getUTCDate() - i);
-      days.push(d.toISOString().slice(0, 10));
+    {
+      const cursor = new Date(Date.UTC(
+        rangeStart.getUTCFullYear(),
+        rangeStart.getUTCMonth(),
+        rangeStart.getUTCDate(),
+      ));
+      const endDay = new Date(Date.UTC(
+        rangeEnd.getUTCFullYear(),
+        rangeEnd.getUTCMonth(),
+        rangeEnd.getUTCDate(),
+      ));
+      while (cursor <= endDay) {
+        days.push(cursor.toISOString().slice(0, 10));
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
     }
 
     function toUTCDay(d: Date | string | null): string {
@@ -881,53 +948,139 @@ router.get("/analytics", async (req: Request, res: Response) => {
       return dt.toISOString().slice(0, 10);
     }
 
-    // Pull data in parallel
-    const [allUsers, recentContacts, recentEvents, recentCapsules, recentLaunches, totalContacts, totalEvents, totalCapsules] = await Promise.all([
-      db.select({ id: usersTable.id, createdAt: usersTable.createdAt, oaOpenId: usersTable.oaOpenId, mpSubscribed: usersTable.mpSubscribed }).from(usersTable),
-      db.select({ createdAt: contactsTable.createdAt }).from(contactsTable).where(gte(contactsTable.createdAt, thirtyDaysAgo)),
-      db.select({ createdAt: eventsTable.createdAt }).from(eventsTable).where(gte(eventsTable.createdAt, thirtyDaysAgo)),
-      db.select({ createdAt: timeCapsulesTable.createdAt }).from(timeCapsulesTable).where(gte(timeCapsulesTable.createdAt, thirtyDaysAgo)),
+    const userWhere = appKey ? eq(usersTable.registeredAppKey, appKey) : undefined;
+    const launchConds = [
+      eq(analyticsEventsTable.eventType, "app_launch"),
+      gte(analyticsEventsTable.createdAt, rangeStart),
+      lte(analyticsEventsTable.createdAt, rangeEnd),
+    ];
+    const toolClickConds = [
+      eq(analyticsEventsTable.eventType, "tool_click"),
+      gte(analyticsEventsTable.createdAt, rangeStart),
+      lte(analyticsEventsTable.createdAt, rangeEnd),
+    ];
+    if (appKey) {
+      launchConds.splice(1, 0, eq(analyticsEventsTable.appKey, appKey));
+      toolClickConds.splice(1, 0, eq(analyticsEventsTable.appKey, appKey));
+    }
+
+    const [
+      allUsers,
+      recentLaunches,
+      recentToolClicks,
+      allContacts,
+      allEvents,
+      allCapsules,
+      usersByAppRows,
+    ] = await Promise.all([
+      db.select({
+        id: usersTable.id,
+        createdAt: usersTable.createdAt,
+        oaOpenId: usersTable.oaOpenId,
+        mpSubscribed: usersTable.mpSubscribed,
+        registeredAppKey: usersTable.registeredAppKey,
+      }).from(usersTable).where(userWhere),
       db.select({ createdAt: analyticsEventsTable.createdAt })
         .from(analyticsEventsTable)
-        .where(and(eq(analyticsEventsTable.eventType, "app_launch"), gte(analyticsEventsTable.createdAt, thirtyDaysAgo))),
-      db.select({ id: contactsTable.id }).from(contactsTable),
-      db.select({ id: eventsTable.id }).from(eventsTable),
-      db.select({ id: timeCapsulesTable.id }).from(timeCapsulesTable),
+        .where(and(...launchConds)),
+      db.select({ createdAt: analyticsEventsTable.createdAt })
+        .from(analyticsEventsTable)
+        .where(and(...toolClickConds)),
+      db.select({ id: contactsTable.id, userId: contactsTable.userId, createdAt: contactsTable.createdAt }).from(contactsTable),
+      db.select({ id: eventsTable.id, userId: eventsTable.userId, createdAt: eventsTable.createdAt }).from(eventsTable),
+      db.select({ id: timeCapsulesTable.id, userId: timeCapsulesTable.userId, createdAt: timeCapsulesTable.createdAt }).from(timeCapsulesTable),
+      db.select({
+        appKey: usersTable.registeredAppKey,
+        count: sql<number>`count(*)::int`,
+      }).from(usersTable).groupBy(usersTable.registeredAppKey),
     ]);
 
-    const todayStr = days[29];
-    const weekAgoStr = days[22]; // 7 days ago
+    const userIdSet = new Set(allUsers.map((u) => u.id));
+    const scopedContacts = appKey
+      ? allContacts.filter((c) => userIdSet.has(c.userId))
+      : allContacts;
+    const scopedEvents = appKey
+      ? allEvents.filter((e) => userIdSet.has(e.userId))
+      : allEvents;
+    const scopedCapsules = appKey
+      ? allCapsules.filter((c) => userIdSet.has(c.userId))
+      : allCapsules;
+
+    const recentContacts = scopedContacts.filter(
+      (c) => c.createdAt && c.createdAt >= rangeStart && c.createdAt <= rangeEnd,
+    );
+    const recentEvents = scopedEvents.filter(
+      (e) => e.createdAt && e.createdAt >= rangeStart && e.createdAt <= rangeEnd,
+    );
+    const recentCapsules = scopedCapsules.filter(
+      (c) => c.createdAt && c.createdAt >= rangeStart && c.createdAt <= rangeEnd,
+    );
+
+    const todayStr = todayStart.toISOString().slice(0, 10);
+    const weekAgo = new Date(todayStart);
+    weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
+    const weekAgoStr = weekAgo.toISOString().slice(0, 10);
+    const rangeStartStr = days[0] || "";
+    const rangeEndStr = days[days.length - 1] || "";
 
     const overview = {
-      totalUsers:      allUsers.length,
-      newToday:        allUsers.filter(u => toUTCDay(u.createdAt) === todayStr).length,
-      newThisWeek:     allUsers.filter(u => toUTCDay(u.createdAt) >= weekAgoStr).length,
-      oaFollowers:     allUsers.filter(u => !!u.oaOpenId).length,
-      mpSubscribers:   allUsers.filter(u => u.mpSubscribed).length,
-      totalContacts:   totalContacts.length,
-      totalEvents:     totalEvents.length,
-      totalCapsules:   totalCapsules.length,
+      totalUsers: allUsers.length,
+      newToday: allUsers.filter((u) => toUTCDay(u.createdAt) === todayStr).length,
+      newThisWeek: allUsers.filter((u) => toUTCDay(u.createdAt) >= weekAgoStr).length,
+      rangeNewUsers: allUsers.filter((u) => {
+        const day = toUTCDay(u.createdAt);
+        return day >= rangeStartStr && day <= rangeEndStr;
+      }).length,
+      oaFollowers: allUsers.filter((u) => !!u.oaOpenId).length,
+      mpSubscribers: allUsers.filter((u) => u.mpSubscribed).length,
+      totalContacts: scopedContacts.length,
+      totalEvents: scopedEvents.length,
+      totalCapsules: scopedCapsules.length,
+      toolClicks: recentToolClicks.length,
+      launchCount30d: recentLaunches.length,
+      launchCount: recentLaunches.length,
     };
 
-    const dailyUsers = days.map(date => ({
-      date,
-      count: allUsers.filter(u => toUTCDay(u.createdAt) === date).length,
+    const usersByApp = usersByAppRows.map((r) => ({
+      appKey: r.appKey || "birthday_mp",
+      count: Number(r.count) || 0,
     }));
 
-    const dailyContent = days.map(date => ({
+    const dailyUsers = days.map((date) => ({
       date,
-      contacts: recentContacts.filter(c => toUTCDay(c.createdAt) === date).length,
-      events:   recentEvents.filter(e => toUTCDay(e.createdAt) === date).length,
-      capsules: recentCapsules.filter(c => toUTCDay(c.createdAt) === date).length,
+      count: allUsers.filter((u) => toUTCDay(u.createdAt) === date).length,
     }));
 
-    const dailyLaunches = days.map(date => ({
+    const dailyContent = days.map((date) => ({
       date,
-      count: recentLaunches.filter(l => toUTCDay(l.createdAt) === date).length,
+      contacts: recentContacts.filter((c) => toUTCDay(c.createdAt) === date).length,
+      events: recentEvents.filter((e) => toUTCDay(e.createdAt) === date).length,
+      capsules: recentCapsules.filter((c) => toUTCDay(c.createdAt) === date).length,
     }));
 
-    res.json({ overview, dailyUsers, dailyContent, dailyLaunches });
+    const dailyLaunches = days.map((date) => ({
+      date,
+      count: recentLaunches.filter((l) => toUTCDay(l.createdAt) === date).length,
+    }));
+
+    const dailyToolClicks = days.map((date) => ({
+      date,
+      count: recentToolClicks.filter((l) => toUTCDay(l.createdAt) === date).length,
+    }));
+
+    res.json({
+      appKey: appKey || null,
+      startDate: rangeStartStr,
+      endDate: rangeEndStr,
+      overview,
+      usersByApp,
+      dailyUsers,
+      dailyContent,
+      dailyLaunches,
+      dailyToolClicks,
+    });
   } catch (err) {
+    req.log.error({ err }, "Failed to load analytics");
     res.status(500).json({ error: "Internal server error" });
   }
 });

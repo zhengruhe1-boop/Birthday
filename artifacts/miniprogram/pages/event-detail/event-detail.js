@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
-const { isLoggedIn } = require("../../utils/auth");
+const { resolveLoggedIn } = require("../../utils/auth");
+const { getShareAppMessage } = require("../../utils/share");
 
 const TYPE_META = {
   anniversary: {
@@ -37,17 +38,11 @@ Page({
     daysText: "",
     dateLabel: "",
     dateValue: "",
+    deleting: false,
   },
 
   async onLoad(opts) {
-    const app = getApp();
-    let loggedIn = false;
-    if (app && app.globalData.sessionReady) {
-      loggedIn = await app.globalData.sessionReady;
-    } else {
-      loggedIn = isLoggedIn();
-    }
-    if (!loggedIn) {
+    if (!(await resolveLoggedIn())) {
       wx.reLaunch({ url: "/pages/login/login" });
       return;
     }
@@ -126,7 +121,12 @@ Page({
         daysText,
         loading: false,
       });
-    } catch {
+    } catch (err) {
+      if (err && err.statusCode === 404) {
+        this.setData({ loading: false, event: null });
+        wx.navigateBack();
+        return;
+      }
       wx.showToast({ title: "加载失败", icon: "none" });
       this.setData({ loading: false });
     }
@@ -139,15 +139,33 @@ Page({
     });
   },
 
+  handleDelete() {
+    const name = (this.data.event && this.data.event.name) || "该事件";
+    wx.showModal({
+      title: "删除事件",
+      content: '确定要删除"' + name + '"吗？',
+      confirmText: "删除",
+      confirmColor: "#ef4444",
+      success: async (res) => {
+        if (!res.confirm) return;
+        this.setData({ deleting: true });
+        try {
+          await api.del("api/events/" + this.data.eventId);
+          wx.showToast({ title: "已删除", icon: "success" });
+          setTimeout(() => wx.navigateBack(), 800);
+        } catch {
+          wx.showToast({ title: "删除失败", icon: "none" });
+          this.setData({ deleting: false });
+        }
+      },
+    });
+  },
+
   handleBack() {
     wx.navigateBack();
   },
 
   onShareAppMessage() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      path: "/pages/home/home",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareAppMessage();
   },
 });

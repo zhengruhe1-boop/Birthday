@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="card">
+    <view class="title">天数间隔</view>
+    <view class="field">
+      <view class="label">开始日期</view>
+      <picker mode="date" value="{{start}}" bindchange="changeStart">
+        <view class="picker">{{start}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">结束日期</view>
+      <picker mode="date" value="{{end}}" bindchange="changeEnd">
+        <view class="picker">{{end}}</view>
+      </picker>
+    </view>
+    <view class="result">
+      <view class="result-label">相差</view>
+      <view class="result-value">{{diff}} 天</view>
+    </view>
+  </view>
+</view>

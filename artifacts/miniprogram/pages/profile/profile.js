@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const { isLoggedIn, clearToken } = require("../../utils/auth");
+const { getShareAppMessage } = require("../../utils/share");
 
 const PREF_EMAIL_NOTIFY        = "birthday_pref_email_notify";
 const PREF_SHOW_HIDDEN_ENTRY   = "birthday_pref_show_hidden_entry";
@@ -35,6 +36,7 @@ Page({
     wxProfileTemp: { avatarUrl: "", nickname: "" },
     avatarUploading: false,
     oaSubscribed: false,
+    unreadCount: 0,
   },
 
   onLoad() {
@@ -47,7 +49,7 @@ Page({
     const loggedIn = isLoggedIn();
     this.setData({ loggedIn });
     if (!loggedIn) {
-      this.setData({ displayNickname: "未登录", displayAvatarUrl: "", oaSubscribed: false });
+      this.setData({ displayNickname: "未登录", displayAvatarUrl: "", oaSubscribed: false, unreadCount: 0 });
       return;
     }
     // 从缓存读取用户信息
@@ -63,6 +65,17 @@ Page({
     }
     // 加载公众号订阅状态
     this._loadOaStatus();
+    this._loadUnreadCount();
+  },
+
+  _loadUnreadCount() {
+    api.get("api/messages/unread-count")
+      .then((res) => {
+        this.setData({ unreadCount: (res && res.count) || 0 });
+      })
+      .catch(() => {
+        this.setData({ unreadCount: 0 });
+      });
   },
 
   _loadOaStatus() {
@@ -99,6 +112,22 @@ Page({
     wx.navigateTo({ url: "/pages/follow-oa/follow-oa" });
   },
 
+  goFeedback() {
+    if (!this.data.loggedIn) {
+      this.goLogin();
+      return;
+    }
+    wx.navigateTo({ url: "/pages/feedback/feedback" });
+  },
+
+  goMessages() {
+    if (!this.data.loggedIn) {
+      this.goLogin();
+      return;
+    }
+    wx.navigateTo({ url: "/pages/messages/messages" });
+  },
+
   goHiddenEvents() {
     wx.navigateTo({ url: "/pages/hidden-events/hidden-events" });
   },
@@ -129,8 +158,6 @@ Page({
         if (res.confirm) {
           api.post("api/auth/logout", {}).catch(() => {});
           clearToken();
-          const app = getApp();
-          if (app) app.globalData.sessionReady = Promise.resolve(false);
           this.setData({ loggedIn: false, displayNickname: "未登录", displayAvatarUrl: "", userInfo: null });
           wx.reLaunch({ url: "/pages/login/login" });
         }
@@ -230,10 +257,6 @@ Page({
   noop() {},
 
   onShareAppMessage() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      path: "/pages/home/home",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareAppMessage();
   },
 });

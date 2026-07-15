@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
-const { isLoggedIn, clearToken } = require("../../utils/auth");
+const { isLoggedIn, clearToken, resolveLoggedIn } = require("../../utils/auth");
 const { calcAnniversaryYear, getZodiac } = require("../../utils/date");
+const { getShareAppMessage, getShareTimeline } = require("../../utils/share");
 
 // 将相对路径转为绝对 URL（微信小程序 image 不支持相对路径）
 function toAbsUrl(url) {
@@ -141,14 +142,7 @@ Page({
   },
 
   async onLoad() {
-    const app = getApp();
-    let loggedIn = false;
-    if (app && app.globalData.sessionReady) {
-      loggedIn = await app.globalData.sessionReady;
-    } else {
-      loggedIn = isLoggedIn();
-    }
-
+    const loggedIn = await resolveLoggedIn();
     this.setData({ loggedIn });
 
     if (!loggedIn) return; // 游客模式：不加载数据，等用户手动登录
@@ -228,6 +222,7 @@ Page({
   },
 
   _generateFortuneForHome(sign, cacheKey, today) {
+    if (!isLoggedIn()) return;
     const self = this;
     api.post('api/fortune', { sign: sign, date: today })
       .then(function(res) {
@@ -625,8 +620,6 @@ Page({
           // 先调服务端使 token 失效，再清本地
           api.post("api/auth/logout", {}).catch(() => {});
           clearToken();
-          const app = getApp();
-          if (app) app.globalData.sessionReady = Promise.resolve(false);
           this.closeSettings();
           wx.reLaunch({ url: "/pages/login/login" });
         }
@@ -636,18 +629,10 @@ Page({
 
   // ── 分享给好友 ─────────────────────────────────────────────────────────────
   onShareAppMessage() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      path: "/pages/home/home",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareAppMessage();
   },
 
-  // ── 分享到朋友圈 ───────────────────────────────────────────────────────────
   onShareTimeline() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareTimeline();
   },
 });

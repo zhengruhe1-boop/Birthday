@@ -1,0 +1,128 @@
+.detail-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.detail-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.detail-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+  margin-bottom: 24rpx;
+}
+
+.status-tag {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.status-pending { background: #fff7ed; color: #ea580c; }
+.status-processing { background: #eff6ff; color: #2563eb; }
+.status-resolved { background: #f0fdf4; color: #16a34a; }
+.status-announcement { background: #fdf2f8; color: #db2777; }
+
+.section-label {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 12rpx;
+}
+
+.detail-content {
+  display: block;
+  font-size: 28rpx;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-contact {
+  display: block;
+  font-size: 24rpx;
+  color: #94a3b8;
+  margin-top: 16rpx;
+}
+
+.detail-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.detail-image {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+}
+
+.detail-rich-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.detail-rich {
+  display: block;
+  font-size: 28rpx;
+  color: #334155;
+  line-height: 1.7;
+}
+
+.detail-time {
+  font-size: 22rpx;
+  color: #cbd5e1;
+}
+
+.reply-card {
+  border: 1rpx solid #fecdd3;
+  background: #fff1f2;
+  overflow: hidden;
+}
+
+.reply-time {
+  display: block;
+  margin-top: 16rpx;
+}
+
+.waiting-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 28rpx;
+}
+
+.waiting-icon {
+  font-size: 48rpx;
+  margin-bottom: 16rpx;
+}
+
+.waiting-text {
+  font-size: 26rpx;
+  color: #94a3b8;
+}

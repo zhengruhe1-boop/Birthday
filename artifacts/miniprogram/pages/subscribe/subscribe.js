@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const { isLoggedIn } = require("../../utils/auth");
+const { getShareAppMessage, getShareTimeline } = require("../../utils/share");
 
 const MP_TEMPLATE_ID = "vpfpK6EUtYVem_oGGaweNmz7C3uQ_9oaG9dbh2H81oQ";
 
@@ -76,17 +77,10 @@ Page({
   },
 
   onShareAppMessage() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      path: "/pages/home/home",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareAppMessage();
   },
 
   onShareTimeline() {
-    return {
-      title: "生日通.让您不再错过每个重要日子",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareTimeline();
   },
 });

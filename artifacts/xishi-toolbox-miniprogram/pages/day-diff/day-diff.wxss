@@ -1,0 +1,42 @@
+.title {
+  font-size: 40rpx;
+  font-weight: 800;
+  margin-bottom: 30rpx;
+}
+
+.field {
+  margin-bottom: 26rpx;
+}
+
+.label {
+  color: #64748b;
+  font-size: 26rpx;
+  margin-bottom: 12rpx;
+}
+
+.picker {
+  min-height: 84rpx;
+  line-height: 84rpx;
+  background: #f8fafc;
+  border-radius: 18rpx;
+  padding: 0 24rpx;
+}
+
+.result {
+  margin-top: 34rpx;
+  padding: 30rpx;
+  border-radius: 24rpx;
+  background: #ecfeff;
+}
+
+.result-label {
+  color: #0f766e;
+  font-size: 24rpx;
+}
+
+.result-value {
+  margin-top: 8rpx;
+  font-size: 42rpx;
+  font-weight: 800;
+  color: #0f172a;
+}

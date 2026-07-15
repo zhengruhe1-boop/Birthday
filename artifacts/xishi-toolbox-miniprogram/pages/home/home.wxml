@@ -1,0 +1,85 @@
+<view class="page-wrap">
+
+  <!-- 搜索栏 -->
+  <view class="search-wrap">
+    <view class="search-bar {{searchFocused ? 'search-bar-active' : ''}}">
+      <view class="search-icon">
+        <text class="search-icon-text">🔍</text>
+      </view>
+      <input
+        class="search-input"
+        type="text"
+        value="{{searchQuery}}"
+        placeholder="{{searchPlaceholder}}"
+        placeholder-class="search-input-ph"
+        confirm-type="search"
+        bindinput="onSearchInput"
+        bindconfirm="onSearchInput"
+        bindfocus="onSearchFocus"
+        bindblur="onSearchBlur"
+      />
+      <view wx:if="{{searchQuery}}" class="search-clear" catchtap="onSearchClear">×</view>
+    </view>
+  </view>
+
+  <!-- 停用提示 -->
+  <view wx:if="{{!enabled}}" class="disabled-banner">当前应用已在后台停用</view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <view class="loading-text">加载中…</view>
+  </view>
+
+  <!-- 搜索无结果 -->
+  <view wx:elif="{{searchNoResult}}" class="empty-wrap">
+    <view class="empty-icon">🔍</view>
+    <view class="empty-text">未找到「{{searchQuery}}」相关工具</view>
+    <view class="retry-btn" bindtap="onSearchClear">清除搜索</view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:elif="{{toolGroups.length === 0}}" class="empty-wrap">
+    <view class="empty-icon">🔧</view>
+    <view class="empty-text">暂无可用工具</view>
+    <view wx:if="{{loadError}}" class="error-hint">
+      {{loadError}}
+    </view>
+    <view class="retry-btn" bindtap="_loadTools">点击重试</view>
+  </view>
+
+  <!-- 工具分类区块 -->
+  <block wx:else>
+    <block wx:for="{{toolGroups}}" wx:for-item="group" wx:key="id">
+      <view class="category-section">
+        <view class="category-header">
+          <text class="category-name"><text wx:if="{{group.icon}}">{{group.icon}} </text>{{group.name}}</text>
+        </view>
+        <view class="tool-grid">
+          <view
+            wx:for="{{group.tools}}"
+            wx:for-item="tool"
+            wx:key="id"
+            class="tool-item"
+            data-id="{{tool.id}}"
+            data-path="{{tool.path}}"
+            data-type="{{tool.type}}"
+            data-app-id="{{tool.app_id}}"
+            data-page-path="{{tool.page_path}}"
+            bindtap="goTool"
+          >
+            <view class="tool-icon-box">
+              <view class="tool-icon-wrap">
+                <image wx:if="{{tool.iconIsUrl}}" src="{{tool.icon}}" class="tool-icon-img" mode="aspectFit" />
+                <text wx:else class="tool-icon-emoji">{{tool.icon}}</text>
+              </view>
+              <view wx:if="{{tool.type === 'external'}}" class="tool-external-tag">外部</view>
+            </view>
+            <text class="tool-name">{{tool.name}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+  </block>
+
+  <view class="bottom-safe" />
+</view>

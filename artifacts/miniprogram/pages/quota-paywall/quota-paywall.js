@@ -1,5 +1,6 @@
 var api = require("../../utils/api");
 var { isLoggedIn } = require("../../utils/auth");
+var { getShareAppMessage } = require("../../utils/share");
 
 Page({
   data: {
@@ -44,12 +45,7 @@ Page({
   },
 
   onShareAppMessage: function() {
-    var cfg = this.data.config;
-    return {
-      title: "\u751f\u65e5\u901a - \u4e0d\u518d\u9519\u8fc7\u91cd\u8981\u751f\u65e5",
-      path: "/pages/home/home",
-      imageUrl: "/images/logo.jpg",
-    };
+    return getShareAppMessage();
   },
 
   tapShare: function() {

@@ -1,0 +1,119 @@
+.page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 24rpx 24rpx 0;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.05);
+  margin-bottom: 8rpx;
+}
+
+.section-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #e67e22;
+  padding: 28rpx 8rpx 12rpx;
+  letter-spacing: 0.5rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
+  min-height: 88rpx;
+}
+
+.divider {
+  height: 1rpx;
+  background: #f1f5f9;
+  margin: 0 32rpx;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #475569;
+  font-weight: 500;
+  flex-shrink: 0;
+  width: 140rpx;
+}
+
+.picker-val {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.picker-text {
+  font-size: 30rpx;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.picker-icon {
+  font-size: 32rpx;
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.num-input {
+  width: 160rpx;
+  text-align: right;
+  font-size: 30rpx;
+  color: #1e293b;
+  font-weight: 500;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid #e2e8f0;
+}
+
+.input-placeholder {
+  color: #cbd5e1;
+  font-size: 26rpx;
+}
+
+.unit {
+  font-size: 26rpx;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.result {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #e67e22;
+  flex: 1;
+  text-align: right;
+}
+
+.diff-note {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.hint {
+  padding: 32rpx 8rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.hint text {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  line-height: 1.6;
+}

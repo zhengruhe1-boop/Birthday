@@ -1,0 +1,47 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/profile/profile",
+    "pages/login/login",
+    "pages/date-calc/date-calc",
+    "pages/age-calc/age-calc",
+    "pages/day-diff/day-diff",
+    "pages/bmi/bmi",
+    "pages/img-compress/img-compress",
+    "pages/img-size/img-size",
+    "pages/tools/tools",
+    "pages/feedback/feedback",
+    "pages/messages/messages",
+    "pages/message-detail/message-detail",
+    "pages/legal/legal"
+  ],
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#e67e22",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "工具箱",
+        "iconPath": "images/tabbar/tab-toolbox.png",
+        "selectedIconPath": "images/tabbar/tab-toolbox-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tabbar/tab-profile.png",
+        "selectedIconPath": "images/tabbar/tab-profile-active.png"
+      }
+    ]
+  },
+  "window": {
+    "backgroundColor": "#f5f5f5",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "惜时工具箱",
+    "navigationBarTextStyle": "black"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

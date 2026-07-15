@@ -1,0 +1,95 @@
+page {
+  background: #ffffff;
+}
+
+.login-page {
+  min-height: 100vh;
+  background: #ffffff;
+  padding: 120rpx 48rpx 48rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-img {
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.title {
+  margin-top: 40rpx;
+  font-size: 42rpx;
+  font-weight: 800;
+  color: #172033;
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 80rpx;
+  height: 92rpx;
+  padding: 0;
+  border: none;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #f0932b, #e67e22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+}
+
+.login-btn::after {
+  border: none;
+}
+
+.login-btn-text {
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.agree {
+  width: 100%;
+  margin-top: 36rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+}
+
+.checkbox {
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  border: 2rpx solid #cbd5e1;
+  color: #ffffff;
+  text-align: center;
+  line-height: 34rpx;
+  font-size: 22rpx;
+  flex-shrink: 0;
+}
+
+.checked {
+  background: #e67e22;
+  border-color: #e67e22;
+}
+
+.agree-text {
+  flex: 1;
+  color: #64748b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.link {
+  color: #e67e22;
+}
+
+.error {
+  width: 100%;
+  margin-top: 24rpx;
+  color: #dc2626;
+  font-size: 24rpx;
+  line-height: 1.6;
+  text-align: center;
+}

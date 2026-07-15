@@ -1,5 +1,5 @@
 const api = require("../../utils/api");
-const { isLoggedIn } = require("../../utils/auth");
+const { resolveLoggedIn } = require("../../utils/auth");
 const { track } = require("../../utils/track");
 
 const REMINDER_OPTS = [
@@ -102,14 +102,7 @@ Page({
   // ── 生命周期 ────────────────────────────────────────────────────────────────
 
   async onLoad(opts) {
-    const app = getApp();
-    let loggedIn = false;
-    if (app && app.globalData.sessionReady) {
-      loggedIn = await app.globalData.sessionReady;
-    } else {
-      loggedIn = isLoggedIn();
-    }
-    if (!loggedIn) {
+    if (!(await resolveLoggedIn())) {
       wx.reLaunch({ url: "/pages/login/login" });
       return;
     }

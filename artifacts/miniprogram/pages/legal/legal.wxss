@@ -13,14 +13,6 @@
   flex-direction: column;
 }
 
-.legal-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1e293b;
-  display: block;
-  margin-bottom: 32rpx;
-}
-
 .legal-content {
   font-size: 26rpx;
   color: #475569;

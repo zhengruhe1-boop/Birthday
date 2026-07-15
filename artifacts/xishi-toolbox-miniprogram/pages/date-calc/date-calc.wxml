@@ -1,0 +1,76 @@
+<view class="page">
+
+  <view class="card">
+    <view class="row">
+      <text class="label">开始日期</text>
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <view class="picker-val">
+          <text class="picker-text">{{startDate}}</text>
+          <text class="picker-icon">📅</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="section-title">计算前后日期</view>
+  <view class="card">
+    <view class="row">
+      <text class="label">间隔天数</text>
+      <view class="input-wrap">
+        <input
+          class="num-input"
+          type="number"
+          value="{{intervalDays}}"
+          bindinput="onIntervalInput"
+          placeholder="输入天数"
+          placeholder-class="input-placeholder"
+          adjust-position="{{false}}"
+        />
+        <text class="unit">天</text>
+      </view>
+    </view>
+
+    <block wx:if="{{hasResult1}}">
+      <view class="divider" />
+      <view class="row">
+        <text class="label">前</text>
+        <text class="result">{{beforeDate}}</text>
+      </view>
+      <view class="divider" />
+      <view class="row">
+        <text class="label">后</text>
+        <text class="result">{{afterDate}}</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="section-title">计算日期间隔</view>
+  <view class="card">
+    <view class="row">
+      <text class="label">结束日期</text>
+      <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+        <view class="picker-val">
+          <text class="picker-text">{{endDate}}</text>
+          <text class="picker-icon">📅</text>
+        </view>
+      </picker>
+    </view>
+
+    <block wx:if="{{hasDiff}}">
+      <view class="divider" />
+      <view class="row">
+        <text class="label">间隔</text>
+        <text class="result">{{diffDays >= 0 ? diffDays : -diffDays}}天
+          <text class="diff-note" wx:if="{{diffDays < 0}}">（结束日期早于开始日期）</text>
+        </text>
+      </view>
+    </block>
+  </view>
+
+  <view class="hint">
+    <text>输入开始日期和间隔天数，可计算前后对应日期</text>
+    <text>输入开始日期和结束日期，可计算两日期相差天数</text>
+  </view>
+
+  <view style="height: calc(60rpx + env(safe-area-inset-bottom))" />
+</view>

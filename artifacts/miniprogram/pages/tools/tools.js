@@ -1,158 +1,144 @@
-const { isLoggedIn } = require("../../utils/auth");
 const api = require("../../utils/api");
-const { track } = require("../../utils/track");
+const { track, toolClickPageKey } = require("../../utils/track");
 
 Page({
   data: {
-    loggedIn: false,
-    dynamicTools: [],
+    toolGroups: [],
     loadingTools: false,
-    dateCalcEnabled: false,
-    dateCalcIcon: '🗓️',
-    dateCalcIconIsUrl: false,
-    ageCalcEnabled: false,
-    ageCalcIcon: '🎂',
-    ageCalcIconIsUrl: false,
-    imgCompressEnabled: false,
-    imgCompressIcon: '🗜️',
-    imgCompressIconIsUrl: false,
+    totalUseCount: 0,
   },
 
   onShow() {
-    this.setData({ loggedIn: isLoggedIn() });
     this._loadTools();
-    this._loadBuiltin();
+    this._loadStats();
+  },
+
+  _getAppKey() {
+    var appKey = "birthday_mp";
+    try {
+      var app = getApp();
+      appKey = (app && app.globalData && app.globalData.appKey) || appKey;
+    } catch (e) { /* ignore */ }
+    return appKey;
   },
 
   _toAbsIcon(icon) {
     if (!icon) return icon;
-    if (icon.indexOf('http') === 0) return icon;
-    if (icon.indexOf('/api/') === 0) {
-      const base = (getApp().globalData.apiBase || '').replace(/\/$/, '');
+    if (icon.indexOf("http") === 0) return icon;
+    if (icon.indexOf("/api/") === 0) {
+      const base = (getApp().globalData.apiBase || "").replace(/\/$/, "");
       return base + icon;
     }
     return icon;
   },
 
+  _mapTool(t) {
+    var absIcon = this._toAbsIcon(t.icon);
+    return {
+      id: t.id,
+      name: t.name,
+      description: t.description || "",
+      icon: absIcon,
+      iconIsUrl: !!(absIcon && absIcon.indexOf("http") === 0),
+      path: t.path || "",
+      type: t.type || "internal",
+      app_id: t.app_id || "",
+      page_path: t.page_path || "",
+    };
+  },
+
+  _loadStats() {
+    var self = this;
+    var appKey = this._getAppKey();
+    api.get("api/mp-tools/public-stats?app_key=" + appKey)
+      .then(function (data) {
+        if (!data) return;
+        var total = 0;
+        for (var key in data) {
+          total += Number(data[key]) || 0;
+        }
+        self.setData({ totalUseCount: total });
+      })
+      .catch(function () {});
+  },
+
   _loadTools() {
     this.setData({ loadingTools: true });
-    api.get("api/mp-tools")
-      .then((list) => {
-        const self = this;
-        const tools = (Array.isArray(list) ? list : []).map(function(t) {
-          const absIcon = self._toAbsIcon(t.icon);
-          return Object.assign({}, t, {
-            icon: absIcon,
-            iconIsUrl: !!(absIcon && (absIcon.indexOf('http') === 0)),
-          });
-        });
-        this.setData({ dynamicTools: tools });
+    var self = this;
+    var appKey = this._getAppKey();
+
+    api.get("api/mp-tools/categories?app_key=" + appKey)
+      .then(function(data) {
+        var cats = (data && data.categories) || [];
+        var groups = cats.map(function(cat) {
+          return {
+            id: cat.id,
+            name: cat.name,
+            icon: cat.icon || "",
+            tools: (cat.tools || []).map(function(t) { return self._mapTool(t); }),
+          };
+        }).filter(function(g) { return g.tools.length > 0; });
+        self.setData({ toolGroups: groups });
       })
-      .catch(() => {
-        this.setData({ dynamicTools: [] });
+      .catch(function() {
+        api.get("api/mp-tools?app_key=" + appKey)
+          .then(function(list) {
+            var tools = (Array.isArray(list) ? list : []).map(function(t) { return self._mapTool(t); });
+            self.setData({
+              toolGroups: tools.length > 0
+                ? [{ id: null, name: "全部工具", icon: "🔧", tools: tools }]
+                : [],
+            });
+          })
+          .catch(function() { self.setData({ toolGroups: [] }); });
       })
-      .finally(() => {
-        this.setData({ loadingTools: false });
+      .finally(function() {
+        self.setData({ loadingTools: false });
       });
-  },
-
-  _loadBuiltin() {
-    api.get("api/mp-tools/builtin")
-      .then((data) => {
-        var dcIcon = this._toAbsIcon((data && data.date_calc_icon) || '🗓️');
-        var dcIsUrl = !!(dcIcon && dcIcon.indexOf('http') === 0);
-        var acIcon = this._toAbsIcon((data && data.age_calc_icon) || '🎂');
-        var acIsUrl = !!(acIcon && acIcon.indexOf('http') === 0);
-        var icIcon = this._toAbsIcon((data && data.img_compress_icon) || '🗜️');
-        var icIsUrl = !!(icIcon && icIcon.indexOf('http') === 0);
-        this.setData({
-          dateCalcEnabled: data && data.date_calc !== false,
-          dateCalcIcon: dcIcon,
-          dateCalcIconIsUrl: dcIsUrl,
-          ageCalcEnabled: data && data.age_calc !== false,
-          ageCalcIcon: acIcon,
-          ageCalcIconIsUrl: acIsUrl,
-          imgCompressEnabled: data && data.img_compress !== false,
-          imgCompressIcon: icIcon,
-          imgCompressIconIsUrl: icIsUrl,
-        });
-      })
-      .catch(() => {
-        this.setData({
-          dateCalcEnabled: true, dateCalcIcon: '🗓️', dateCalcIconIsUrl: false,
-          ageCalcEnabled: true, ageCalcIcon: '🎂', ageCalcIconIsUrl: false,
-          imgCompressEnabled: true, imgCompressIcon: '🗜️', imgCompressIconIsUrl: false,
-        });
-      });
-  },
-
-  _requireLogin(hint) {
-    wx.showModal({
-      title: "需要登录",
-      content: hint + "需要先登录，是否前往登录？",
-      confirmText: "去登录",
-      cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) wx.navigateTo({ url: "/pages/login/login" });
-      },
-    });
-  },
-
-  goAddContact() {
-    if (!this.data.loggedIn) { this._requireLogin("添加生日"); return; }
-    wx.navigateTo({ url: "/pages/contact-form/contact-form?id=new" });
-  },
-
-  goAddAnniversary() {
-    if (!this.data.loggedIn) { this._requireLogin("添加纪念日"); return; }
-    wx.navigateTo({ url: "/pages/event-form/event-form?type=anniversary" });
-  },
-
-  goAddCountdown() {
-    if (!this.data.loggedIn) { this._requireLogin("添加倒数日"); return; }
-    wx.navigateTo({ url: "/pages/event-form/event-form?type=countdown" });
-  },
-
-  goAddOther() {
-    if (!this.data.loggedIn) { this._requireLogin("其它提醒"); return; }
-    wx.navigateTo({ url: "/pages/event-form/event-form?type=other" });
-  },
-
-  goDateCalc() {
-    track('tool_click', { page: 'builtin:date_calc' });
-    wx.navigateTo({ url: "/pages/date-calc/date-calc" });
-  },
-
-  goAgeCalc() {
-    track('tool_click', { page: 'builtin:age_calc' });
-    wx.navigateTo({ url: "/pages/age-calc/age-calc" });
-  },
-
-  goImgCompress() {
-    track('tool_click', { page: 'builtin:img_compress' });
-    wx.navigateTo({ url: "/pages/img-compress/img-compress" });
   },
 
   tapDynamicTool(e) {
-    const tool = e.currentTarget.dataset.tool;
-    if (!tool) return;
-    track('tool_click', { page: 'tool:' + tool.id });
-    if (tool.type === "internal") {
-      const path = tool.path;
-      if (!path) return;
-      wx.navigateTo({
-        url: path,
-        fail: () => wx.switchTab({ url: path }),
-      });
-    } else if (tool.type === "external") {
-      if (!tool.app_id) return;
+    var ds = e.currentTarget.dataset;
+    var toolId = ds.id;
+    var type = ds.type || "internal";
+    var path = (ds.path || "").trim();
+    var appId = ds.appId || "";
+    var pagePath = ds.pagePath || "";
+    if (!toolId) return;
+
+    var pageKey = toolClickPageKey(toolId);
+    if (pageKey) track("tool_click", { page: pageKey });
+
+    if (type === "external") {
+      if (!appId) {
+        wx.showToast({ title: "未配置目标小程序", icon: "none" });
+        return;
+      }
       wx.navigateToMiniProgram({
-        appId: tool.app_id,
-        path: tool.page_path || undefined,
-        fail() {
+        appId: appId,
+        path: pagePath || undefined,
+        fail: function() {
           wx.showToast({ title: "跳转失败", icon: "none" });
         },
       });
+      return;
     }
+
+    if (!path || path === "#") {
+      wx.showToast({ title: "页面路径未配置", icon: "none" });
+      return;
+    }
+    if (path.charAt(0) !== "/") path = "/" + path;
+    wx.navigateTo({
+      url: path,
+      fail: function() {
+        wx.switchTab({
+          url: path,
+          fail: function() {
+            wx.showToast({ title: "页面打开失败", icon: "none" });
+          },
+        });
+      },
+    });
   },
 });

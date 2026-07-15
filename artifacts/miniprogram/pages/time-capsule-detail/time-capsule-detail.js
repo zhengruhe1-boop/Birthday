@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
-const { isLoggedIn } = require("../../utils/auth");
+const { resolveLoggedIn } = require("../../utils/auth");
+const { getShareAppMessage } = require("../../utils/share");
 
 function toAbsUrl(url) {
   if (!url) return "";
@@ -32,14 +33,7 @@ Page({
   },
 
   async onLoad(opts) {
-    const app = getApp();
-    let loggedIn = false;
-    if (app && app.globalData.sessionReady) {
-      loggedIn = await app.globalData.sessionReady;
-    } else {
-      loggedIn = isLoggedIn();
-    }
-    if (!loggedIn) {
+    if (!(await resolveLoggedIn())) {
       wx.reLaunch({ url: "/pages/login/login" });
       return;
     }
@@ -118,9 +112,6 @@ Page({
   },
 
   onShareAppMessage() {
-    return {
-      title: "生日通 · 时间胶囊",
-      path: "/pages/home/home",
-    };
+    return getShareAppMessage({ title: "生日通 · 时间胶囊" });
   },
 });

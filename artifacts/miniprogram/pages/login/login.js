@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
-const { setToken, isLoggedIn } = require('../../utils/auth');
+const { setToken, resolveLoggedIn } = require('../../utils/auth');
+const { getShareAppMessage, getShareTimeline } = require('../../utils/share');
 
 Page({
   data: {
@@ -16,14 +17,7 @@ Page({
   },
 
   async onLoad() {
-    const app = getApp();
-    let loggedIn = false;
-    if (app && app.globalData.sessionReady) {
-      loggedIn = await app.globalData.sessionReady;
-    } else {
-      loggedIn = isLoggedIn();
-    }
-    if (loggedIn) {
+    if (await resolveLoggedIn()) {
       wx.reLaunch({ url: '/pages/home/home' });
       return;
     }
@@ -49,15 +43,35 @@ Page({
         wx.login({ timeout: 10000, success: resolve, fail: reject });
       });
 
-      const res = await api.post('api/auth/wechat/login', { code: loginRes.code });
+      const app = getApp();
+      const base = ((app && app.globalData.apiBase) || '').replace(/\/$/, '');
+      const res = await new Promise((resolve, reject) => {
+        wx.request({
+          url: base + '/api/auth/wechat/login',
+          method: 'POST',
+          data: { code: loginRes.code, appKey: app.globalData.appKey },
+          header: { 'Content-Type': 'application/json', 'x-app-key': app.globalData.appKey },
+          timeout: 15000,
+          success(r) {
+            if (r.statusCode >= 200 && r.statusCode < 300 && r.data && r.data.token) {
+              resolve(r.data);
+              return;
+            }
+            const msg = (r.data && r.data.error) || ('登录失败 ' + r.statusCode);
+            const err = new Error(msg);
+            err.statusCode = r.statusCode;
+            err.errcode = r.data && r.data.errcode;
+            reject(err);
+          },
+          fail: reject,
+        });
+      });
+
       setToken(res.token);
 
       if (res.user) {
         wx.setStorageSync('birthday_userinfo', res.user);
       }
-
-      const app = getApp();
-      if (app) app.globalData.sessionReady = Promise.resolve(true);
 
       wx.reLaunch({ url: '/pages/home/home' });
     } catch (err) {
@@ -70,7 +84,11 @@ Page({
         });
       } else if (msg.includes('invalid appid') || msg.includes('40013')) {
         this.setData({
-          networkError: '⚠️ 小程序 AppID 配置错误\n请在管理后台「微信配置」中检查\n小程序 AppID 与 AppSecret 是否正确',
+          networkError: '⚠️ 小程序 AppID 配置错误\n请在管理后台「多应用」中检查\n小程序 AppID 与 AppSecret 是否正确',
+        });
+      } else if (msg.includes('not in whitelist') || msg.includes('40164')) {
+        this.setData({
+          networkError: '⚠️ 服务器 IP 未加入微信白名单\n请在微信公众平台「开发管理→开发设置→IP白名单」\n添加后端服务器公网 IP',
         });
       } else if (msg.includes('invalid js code') || msg.includes('40029') || msg.includes('45011')) {
         this.setData({ networkError: '⚠️ 授权码已过期，请重新点击登录' });
@@ -115,17 +133,10 @@ Page({
   closeLegal() { this.setData({ showLegal: false, legalLoading: false }); },
 
   onShareAppMessage() {
-    return {
-      title: '生日通.让您不再错过每个重要日子',
-      path: '/pages/home/home',
-      imageUrl: '/images/logo.jpg',
-    };
+    return getShareAppMessage();
   },
 
   onShareTimeline() {
-    return {
-      title: '生日通.让您不再错过每个重要日子',
-      imageUrl: '/images/logo.jpg',
-    };
+    return getShareTimeline();
   },
 });

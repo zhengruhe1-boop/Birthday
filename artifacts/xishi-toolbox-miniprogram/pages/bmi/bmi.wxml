@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="card">
+    <view class="title">BMI 计算</view>
+    <view class="field">
+      <view class="label">身高（cm）</view>
+      <input type="digit" value="{{height}}" bindinput="changeHeight" placeholder="例如 170" />
+    </view>
+    <view class="field">
+      <view class="label">体重（kg）</view>
+      <input type="digit" value="{{weight}}" bindinput="changeWeight" placeholder="例如 65" />
+    </view>
+    <view class="result">
+      <view class="result-label">BMI</view>
+      <view class="result-value">{{bmi}}</view>
+      <view class="level">{{level}}</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,48 @@
+<view class="page feedback-page">
+  <view class="card form-card">
+    <text class="form-label">反馈内容</text>
+    <textarea
+      class="form-textarea"
+      placeholder="请描述您遇到的问题或建议，我们会尽快处理"
+      maxlength="2000"
+      value="{{content}}"
+      bindinput="onContentInput"
+      show-confirm-bar="{{false}}"
+    />
+    <text class="char-count">{{content.length}}/2000</text>
+  </view>
+
+  <view class="card form-card">
+    <view class="form-label-row">
+      <text class="form-label">问题截图</text>
+      <text class="form-label-sub">最多 3 张</text>
+    </view>
+    <view class="image-grid">
+      <view wx:for="{{images}}" wx:key="path" class="image-item">
+        <image class="image-preview" src="{{item.path}}" mode="aspectFill" bindtap="previewImage" data-index="{{index}}" />
+        <view class="image-remove" bindtap="removeImage" data-index="{{index}}">×</view>
+      </view>
+      <view wx:if="{{images.length < 3}}" class="image-add" bindtap="chooseImages">
+        <text class="image-add-icon">+</text>
+        <text class="image-add-text">添加图片</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card form-card">
+    <text class="form-label">联系方式（选填）</text>
+    <input
+      class="form-input"
+      placeholder="手机号或微信号，方便我们联系您"
+      value="{{contact}}"
+      bindinput="onContactInput"
+      maxlength="100"
+    />
+  </view>
+
+  <button class="primary-btn submit-btn" bindtap="handleSubmit" loading="{{submitting}}" disabled="{{submitting}}">
+    提交反馈
+  </button>
+
+  <text class="form-tip">提交后可在「消息中心」查看处理进度与回复</text>
+</view>

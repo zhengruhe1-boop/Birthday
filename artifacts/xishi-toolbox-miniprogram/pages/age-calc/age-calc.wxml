@@ -1,0 +1,117 @@
+<view class="page">
+
+  <block wx:if="{{!hasResult}}">
+    <picker mode="date" value="{{birthDate}}" end="{{todayStr}}" bindchange="onBirthDateChange">
+      <view class="picker-large">
+        <text class="picker-large-text {{birthDate ? 'picker-large-text--filled' : ''}}">
+          {{birthDate || '选择出生日期'}}
+        </text>
+        <text class="picker-large-icon">📅</text>
+      </view>
+    </picker>
+
+    <button class="query-btn" bindtap="onQuery">查询年龄信息</button>
+  </block>
+
+  <block wx:else>
+    <view class="picker-compact">
+      <text class="picker-compact-label">出生日期</text>
+      <picker mode="date" value="{{birthDate}}" end="{{todayStr}}" bindchange="onBirthDateChange">
+        <view class="picker-compact-right">
+          <text class="picker-compact-date">{{birthDate}}</text>
+          <text class="picker-compact-icon">🎂</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="hero-card">
+      <view class="hero-age-wrap">
+        <text class="hero-age">{{age}}</text>
+        <text class="hero-age-unit">岁</text>
+      </view>
+      <text class="hero-detail">{{ageDetail}}</text>
+      <view class="hero-tags">
+        <view class="hero-tag">{{shengXiao}}</view>
+        <view class="hero-tag">{{xingZuo}}</view>
+        <view class="hero-tag">虚岁{{xuAge}}岁</view>
+        <view class="hero-tag">{{wuXing}}命</view>
+        <view class="hero-tag {{benMingNian ? 'hero-tag-hot' : ''}}">{{benMingNian ? '🎉本命年' : '非本命年'}}</view>
+      </view>
+    </view>
+
+    <view class="timer-card">
+      <view class="timer-days-row">
+        <text class="timer-days-num">{{totalDays}}</text>
+        <text class="timer-days-unit">天</text>
+      </view>
+      <view class="timer-hms-row">
+        <view class="timer-hms-item">
+          <text class="timer-hms-num">{{remHours}}</text>
+          <text class="timer-hms-unit">时</text>
+        </view>
+        <text class="timer-sep"> </text>
+        <view class="timer-hms-item">
+          <text class="timer-hms-num">{{remMinutes}}</text>
+          <text class="timer-hms-unit">分</text>
+        </view>
+        <text class="timer-sep"> </text>
+        <view class="timer-hms-item">
+          <text class="timer-hms-num">{{remSeconds}}</text>
+          <text class="timer-hms-unit">秒</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="grid-row">
+      <view class="grid-cell">
+        <text class="cell-label">出生星期</text>
+        <text class="cell-val">{{birthWeekday}}</text>
+      </view>
+      <view class="grid-cell">
+        <text class="cell-label">人生阶段</text>
+        <text class="cell-val">{{lifeStage}}</text>
+      </view>
+      <view class="grid-cell">
+        <text class="cell-label">下次生日</text>
+        <text class="cell-val primary">{{nextBirthdayDays}}天</text>
+        <text class="cell-sub">{{nextBirthdayWeekday}}</text>
+      </view>
+      <view class="grid-cell">
+        <text class="cell-label">下次本命年</text>
+        <text class="cell-val">{{nextBenMingNian}}年</text>
+      </view>
+    </view>
+
+    <view class="section-label">年龄里程碑</view>
+    <view class="milestone-grid">
+      <view class="ms-item">
+        <text class="ms-age">18岁</text>
+        <text class="ms-val {{age18Days > 0 ? 'primary' : 'past'}}">{{age18Days > 0 ? age18Days + '天' : '已过'}}</text>
+      </view>
+      <view class="ms-item">
+        <text class="ms-age">30岁</text>
+        <text class="ms-val {{age30Days > 0 ? 'primary' : 'past'}}">{{age30Days > 0 ? age30Days + '天' : '已过'}}</text>
+      </view>
+      <view class="ms-item">
+        <text class="ms-age">50岁</text>
+        <text class="ms-val {{age50Days > 0 ? 'primary' : 'past'}}">{{age50Days > 0 ? age50Days + '天' : '已过'}}</text>
+      </view>
+      <view class="ms-item">
+        <text class="ms-age">60岁</text>
+        <text class="ms-val {{age60Days > 0 ? 'primary' : 'past'}}">{{age60Days > 0 ? age60Days + '天' : '已过'}}</text>
+      </view>
+      <view class="ms-item">
+        <text class="ms-age">80岁</text>
+        <text class="ms-val {{age80Days > 0 ? 'primary' : 'past'}}">{{age80Days > 0 ? age80Days + '天' : '已过'}}</text>
+      </view>
+      <view class="ms-item">
+        <text class="ms-age">100岁</text>
+        <text class="ms-val {{age100Days > 0 ? 'primary' : 'past'}}">{{age100Days > 0 ? age100Days + '天' : '已过'}}</text>
+      </view>
+    </view>
+
+    <button class="copy-btn" bindtap="copyResult">📋 复制全部结果</button>
+  </block>
+
+  <view style="height: calc(40rpx + env(safe-area-inset-bottom))" />
+</view>

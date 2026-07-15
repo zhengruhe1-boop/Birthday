@@ -143,3 +143,32 @@
 .dark .glass-panel {
   @apply bg-black/60 backdrop-blur-md border-white/10 shadow-black/50;
 }
+
+/* Admin feedback thumbnails — force small preview size */
+.feedback-reply-html img,
+.feedback-reply-html-block img {
+  max-width: 120px !important;
+  max-height: 120px !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: cover !important;
+  display: inline-block !important;
+  vertical-align: top;
+  margin: 0 8px 8px 0;
+  border-radius: 8px;
+  border: 1px solid #fecdd3;
+  cursor: zoom-in;
+}
+
+.feedback-rich-editor img {
+  max-width: 120px !important;
+  max-height: 120px !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: cover !important;
+  display: inline-block !important;
+  vertical-align: top;
+  margin: 8px 8px 0 0;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}

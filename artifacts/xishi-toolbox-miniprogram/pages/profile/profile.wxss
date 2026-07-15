@@ -1,0 +1,102 @@
+.user-card {
+  text-align: center;
+  padding: 44rpx 28rpx;
+}
+
+.avatar {
+  width: 108rpx;
+  height: 108rpx;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0932b, #e67e22);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.name {
+  margin-top: 24rpx;
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.avatar--logo {
+  background: transparent;
+  border-radius: 0;
+}
+
+.action {
+  margin-top: 34rpx;
+}
+
+.login-hint {
+  font-size: 20rpx;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-right: 4rpx;
+}
+
+.menu-card {
+  margin-top: 24rpx;
+  padding: 0;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx;
+  border-bottom: 1rpx solid #eef2f7;
+}
+
+.menu-item:last-child {
+  border-bottom: 0;
+}
+
+.menu-item:active {
+  background: #fafafa;
+}
+
+.menu-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 18rpx;
+  background: #fff5eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
+  flex-shrink: 0;
+}
+
+.menu-name {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #172033;
+}
+
+.menu-arrow {
+  color: #ccc;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.unread-badge {
+  min-width: 32rpx;
+  height: 32rpx;
+  line-height: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 16rpx;
+  background: #e67e22;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+  margin-right: 4rpx;
+}

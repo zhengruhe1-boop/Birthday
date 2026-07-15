@@ -15,6 +15,8 @@ export const usersTable = pgTable("users", {
   mpSubscribeCount: integer("mp_subscribe_count").default(0).notNull(),
   oaOpenId: text("oa_open_id"),
   extraQuota: integer("extra_quota").default(0).notNull(),
+  registeredAppKey: text("registered_app_key").default("birthday_mp").notNull(),
+  registeredClientType: text("registered_client_type").default("mini_program").notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });

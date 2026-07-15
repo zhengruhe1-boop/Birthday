@@ -1,5 +1,5 @@
 import express, { Router, type IRouter } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, userAppProfilesTable, appSettingsTable } from "@workspace/db";
 import { eq, and, ne, isNotNull, isNull, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { WechatLoginBody, MockLoginBody } from "@workspace/api-zod";
@@ -7,21 +7,80 @@ import { requireAuth, AuthRequest } from "../middlewares/auth.js";
 import { getSetting } from "./admin.js";
 import { getAccessToken } from "../lib/wechat-notify.js";
 
+async function getAppSetting(appKey: string, key: string): Promise<string | null> {
+  const rows = await db
+    .select()
+    .from(appSettingsTable)
+    .where(and(eq(appSettingsTable.appKey, appKey), eq(appSettingsTable.key, key)))
+    .limit(1);
+  return rows[0]?.value ?? null;
+}
+
 const router: IRouter = Router();
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function resolveAppContext(req: express.Request, fallbackAppKey = "birthday_mp") {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const headerAppKey = req.headers["x-app-key"];
+  const rawAppKey =
+    typeof headerAppKey === "string"
+      ? headerAppKey
+      : typeof body.appKey === "string"
+        ? body.appKey
+        : fallbackAppKey;
+  const appKey = rawAppKey.trim() || fallbackAppKey;
+  const clientType =
+    appKey.endsWith("_pc") || appKey.includes("_pc")
+      ? "pc_web"
+      : appKey.endsWith("_mp") || appKey.includes("_mp")
+        ? "mini_program"
+        : "unknown";
+  return { appKey, clientType };
+}
+
+async function recordUserAppAccess(
+  userId: number,
+  appKey: string,
+  clientType: string,
+  loginMethod: string,
+): Promise<void> {
+  const existing = await db
+    .select()
+    .from(userAppProfilesTable)
+    .where(and(eq(userAppProfilesTable.userId, userId), eq(userAppProfilesTable.appKey, appKey)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(userAppProfilesTable)
+      .set({ clientType, loginMethod, lastAccessAt: sql`NOW()` })
+      .where(and(eq(userAppProfilesTable.userId, userId), eq(userAppProfilesTable.appKey, appKey)));
+    return;
+  }
+
+  await db.insert(userAppProfilesTable).values({ userId, appKey, clientType, loginMethod });
+}
+
+async function getAppConfigValue(appKey: string, appSettingKey: string, legacyKey?: string): Promise<string> {
+  const appValue = await getAppSetting(appKey, appSettingKey);
+  if (appValue) return appValue;
+  if (legacyKey) return (await getSetting(legacyKey)) ?? "";
+  return "";
+}
+
 // ── GET /api/auth/legal ───────────────────────────────────────────────────────
 // Public: returns terms of service and privacy policy text
-router.get("/legal", async (_req, res) => {
+router.get("/legal", async (req, res) => {
   try {
-    const terms   = await getSetting("terms_of_service");
-    const privacy = await getSetting("privacy_policy");
+    const { appKey } = resolveAppContext(req, "birthday_mp");
+    const terms = await getAppConfigValue(appKey, "content.termsOfService", "terms_of_service");
+    const privacy = await getAppConfigValue(appKey, "content.privacyPolicy", "privacy_policy");
     res.json({
-      termsOfService: terms   ?? "",
-      privacyPolicy:  privacy ?? "",
+      termsOfService: terms,
+      privacyPolicy: privacy,
     });
   } catch {
     res.json({ termsOfService: "", privacyPolicy: "" });
@@ -257,11 +316,16 @@ router.post("/wechat/login", async (req, res) => {
       res.status(400).json({ error: "Invalid request body" });
       return;
     }
+    const { appKey, clientType } = resolveAppContext(req, "birthday_mp");
 
-    // Use specific MP env vars (WECHAT_MP_APPID / WECHAT_MP_APP_SECRET) to avoid
-    // collision with the generic OA env vars (WECHAT_APPID / WECHAT_APP_SECRET).
-    const appId     = process.env.WECHAT_MP_APPID     || (await getSetting("wechat_mp_appid"))     || "";
-    const appSecret = process.env.WECHAT_MP_APP_SECRET || (await getSetting("wechat_mp_appsecret")) || "";
+    const appId     = process.env.WECHAT_MP_APPID
+                   || (await getAppSetting(appKey, "wechat.mpAppId"))
+                   || (await getSetting("wechat_mp_appid"))
+                   || "";
+    const appSecret = process.env.WECHAT_MP_APP_SECRET
+                   || (await getAppSetting(appKey, "wechat.mpAppSecret"))
+                   || (await getSetting("wechat_mp_appsecret"))
+                   || "";
 
     let openId: string;
     let unionId: string | null = null;
@@ -312,6 +376,8 @@ router.post("/wechat/login", async (req, res) => {
         unionId: unionId || undefined,
         nickname: "微信用户",
         sessionToken: newToken,
+        registeredAppKey: appKey,
+        registeredClientType: clientType,
       }).returning();
       user = inserted[0];
     }
@@ -343,8 +409,9 @@ router.post("/wechat/login", async (req, res) => {
     }
 
     const token = user.sessionToken!;
+    await recordUserAppAccess(user.id, appKey, clientType, isMock ? "mock_wechat_code" : "wechat_mp");
     res.json({
-      user:   { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
+      user:   { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt, registeredAppKey: user.registeredAppKey },
       token,
       isMock,
       needsProfile: !user.avatarUrl || user.nickname === "微信用户" || user.nickname === "匿名用户",
@@ -374,6 +441,7 @@ router.post("/mock-login", async (req, res) => {
       res.status(400).json({ error: "Invalid request body" });
       return;
     }
+    const { appKey, clientType } = resolveAppContext(req, "birthday_mp");
 
     const deviceId = (req.body as Record<string, unknown>).deviceId as string | undefined;
     const nickname = body.data.nickname?.trim() ?? "";
@@ -421,6 +489,8 @@ router.post("/mock-login", async (req, res) => {
           nickname,
           avatarUrl:    body.data.avatarUrl ?? null,
           sessionToken: generateToken(),
+          registeredAppKey: appKey,
+          registeredClientType: clientType,
         }).returning();
         user = inserted[0];
       }
@@ -443,6 +513,8 @@ router.post("/mock-login", async (req, res) => {
           nickname:     "匿名用户",
           avatarUrl:    body.data.avatarUrl ?? null,
           sessionToken: generateToken(),
+          registeredAppKey: appKey,
+          registeredClientType: clientType,
         }).returning();
         user = inserted[0];
       }
@@ -451,8 +523,9 @@ router.post("/mock-login", async (req, res) => {
       return;
     }
 
+    await recordUserAppAccess(user.id, appKey, clientType, "mock");
     res.json({
-      user:  { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
+      user:  { id: user.id, openId: user.openId, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt, registeredAppKey: user.registeredAppKey },
       token: user.sessionToken,
     });
   } catch (err) {

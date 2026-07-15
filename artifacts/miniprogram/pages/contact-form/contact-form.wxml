@@ -299,9 +299,6 @@
             {{saving ? '保存中…' : (mode === 'new' ? '添加生日' : '保存修改')}}
           </button>
           <button class="cf-cancel-btn" bindtap="cancelEdit">取消</button>
-          <button wx:if="{{mode === 'edit'}}" class="cf-delete-btn" bindtap="handleDelete" loading="{{deleting}}">
-            删除生日
-          </button>
         </view>
 
       </view>

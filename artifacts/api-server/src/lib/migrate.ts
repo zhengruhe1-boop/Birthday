@@ -2,6 +2,33 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 
+const DEFAULT_APPLICATIONS = [
+  {
+    appKey: "birthday_mp",
+    name: "生日通小程序",
+    appType: "mini_program",
+    domain: "https://shengritong.kuixi.com",
+    description: "现有生日通微信小程序",
+    sortOrder: 10,
+  },
+  {
+    appKey: "xishi_toolbox_mp",
+    name: "惜时工具箱小程序",
+    appType: "mini_program",
+    domain: "https://tool.xishi24.com",
+    description: "待开发的惜时工具箱微信小程序",
+    sortOrder: 20,
+  },
+  {
+    appKey: "xishi_toolbox_pc",
+    name: "惜时工具箱PC端",
+    appType: "pc_web",
+    domain: "https://tool.xishi24.com",
+    description: "惜时工具箱 PC Web 端",
+    sortOrder: 30,
+  },
+];
+
 /**
  * Run lightweight CREATE TABLE IF NOT EXISTS migrations on startup.
  * Safe to run multiple times — only creates tables that do not yet exist.
@@ -100,6 +127,70 @@ export async function runStartupMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "extra_quota" integer NOT NULL DEFAULT 0
     `);
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "registered_app_key" text NOT NULL DEFAULT 'birthday_mp'
+    `);
+    await db.execute(sql`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "registered_client_type" text NOT NULL DEFAULT 'mini_program'
+    `);
+
+    // Multi-application control plane. This is additive and keeps birthday_mp
+    // as the default so existing Birthday app behavior is unchanged.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "applications" (
+        "id"          serial    PRIMARY KEY,
+        "app_key"     text      NOT NULL UNIQUE,
+        "name"        text      NOT NULL,
+        "app_type"    text      NOT NULL,
+        "domain"      text,
+        "description" text,
+        "enabled"     boolean   NOT NULL DEFAULT true,
+        "sort_order"  integer   NOT NULL DEFAULT 0,
+        "created_at"  timestamp NOT NULL DEFAULT now(),
+        "updated_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "app_settings" (
+        "id"          serial    PRIMARY KEY,
+        "app_key"     text      NOT NULL,
+        "key"         text      NOT NULL,
+        "value"       text      NOT NULL,
+        "updated_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS "app_settings_app_key_key_idx"
+      ON "app_settings" ("app_key", "key")
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "user_app_profiles" (
+        "id"             serial    PRIMARY KEY,
+        "user_id"        integer   NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "app_key"        text      NOT NULL,
+        "client_type"    text      NOT NULL,
+        "login_method"   text,
+        "registered_at"  timestamp NOT NULL DEFAULT now(),
+        "last_access_at" timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS "user_app_profiles_user_app_idx"
+      ON "user_app_profiles" ("user_id", "app_key")
+    `);
+    for (const app of DEFAULT_APPLICATIONS) {
+      await db.execute(sql`
+        INSERT INTO "applications" ("app_key", "name", "app_type", "domain", "description", "sort_order")
+        VALUES (${app.appKey}, ${app.name}, ${app.appType}, ${app.domain}, ${app.description}, ${app.sortOrder})
+        ON CONFLICT ("app_key") DO UPDATE SET
+          "name" = EXCLUDED."name",
+          "app_type" = EXCLUDED."app_type",
+          "domain" = EXCLUDED."domain",
+          "description" = EXCLUDED."description",
+          "sort_order" = EXCLUDED."sort_order",
+          "updated_at" = now()
+      `);
+    }
 
     // 5. mp_tools table
     await db.execute(sql`
@@ -115,6 +206,37 @@ export async function runStartupMigrations(): Promise<void> {
         "sort_order"  integer   NOT NULL DEFAULT 0,
         "enabled"     boolean   NOT NULL DEFAULT true,
         "created_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    // Multi-app tool ownership + category grouping
+    await db.execute(sql`ALTER TABLE "mp_tools" ADD COLUMN IF NOT EXISTS "app_key" text NOT NULL DEFAULT 'birthday_mp'`);
+    await db.execute(sql`ALTER TABLE "mp_tools" ADD COLUMN IF NOT EXISTS "category_id" integer`);
+
+    // 5b. mp_tool_categories table — tool grouping per app
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "mp_tool_categories" (
+        "id"          serial    PRIMARY KEY,
+        "app_key"     text      NOT NULL DEFAULT 'birthday_mp',
+        "name"        text      NOT NULL,
+        "icon"        text      NOT NULL DEFAULT '📁',
+        "sort_order"  integer   NOT NULL DEFAULT 0,
+        "created_at"  timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
+    // 5c. mp_tool_app_bindings — many-to-many: tool ↔ frontend apps
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "mp_tool_app_bindings" (
+        "id"            serial    PRIMARY KEY,
+        "tool_id"       integer,
+        "builtin_name"  text,
+        "app_key"       text      NOT NULL,
+        "path"          text      NOT NULL DEFAULT '',
+        "category_id"   integer,
+        "enabled"       boolean   NOT NULL DEFAULT true,
+        "created_at"    timestamp NOT NULL DEFAULT now(),
+        UNIQUE("tool_id", "app_key"),
+        UNIQUE("builtin_name", "app_key")
       )
     `);
 
@@ -174,10 +296,64 @@ export async function runStartupMigrations(): Promise<void> {
       CREATE TABLE IF NOT EXISTS "analytics_events" (
         "id"          serial    PRIMARY KEY,
         "user_id"     integer,
+        "app_key"     text      NOT NULL DEFAULT 'birthday_mp',
         "event_type"  text      NOT NULL,
         "page"        text,
         "created_at"  timestamp NOT NULL DEFAULT now()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE "analytics_events" ADD COLUMN IF NOT EXISTS "app_key" text NOT NULL DEFAULT 'birthday_mp'
+    `);
+
+    // 9. feedback table — user feedback & admin replies
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "feedback" (
+        "id"            serial    PRIMARY KEY,
+        "user_id"       integer   NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "app_key"       text      NOT NULL DEFAULT 'birthday_mp',
+        "content"       text      NOT NULL,
+        "contact"       text,
+        "status"        text      NOT NULL DEFAULT 'pending',
+        "admin_reply"   text,
+        "user_read_at"  timestamp,
+        "replied_at"    timestamp,
+        "created_at"    timestamp NOT NULL DEFAULT now(),
+        "updated_at"    timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE "feedback" ADD COLUMN IF NOT EXISTS "images" text
+    `);
+
+    // 10. announcements — admin-published internal messages per app(s)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "announcements" (
+        "id"            serial    PRIMARY KEY,
+        "title"         text      NOT NULL,
+        "content"       text      NOT NULL,
+        "app_keys"      text      NOT NULL DEFAULT '[]',
+        "status"        text      NOT NULL DEFAULT 'published',
+        "published_at"  timestamp,
+        "created_at"    timestamp NOT NULL DEFAULT now(),
+        "updated_at"    timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "announcement_reads" (
+        "id"               serial    PRIMARY KEY,
+        "announcement_id"  integer   NOT NULL REFERENCES "announcements"("id") ON DELETE CASCADE,
+        "user_id"          integer   NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "app_key"          text      NOT NULL,
+        "read_at"          timestamp NOT NULL DEFAULT now()
+      )
+    `);
+
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS "announcement_reads_uniq"
+      ON "announcement_reads" ("announcement_id", "user_id", "app_key")
     `);
 
     logger.info("Startup migrations completed");

@@ -118,9 +118,12 @@
 
   </view>
 
-  <!-- Edit Button -->
+  <!-- Edit / Delete -->
   <view class="footer">
-    <button class="edit-btn" style="background:{{meta.color}}" bindtap="goEdit">
+    <button class="btn-del" bindtap="handleDelete" loading="{{deleting}}" disabled="{{deleting}}">
+      删除
+    </button>
+    <button class="edit-btn" style="background:{{meta.color}}" bindtap="goEdit" disabled="{{deleting}}">
       ✏️  编辑事件
     </button>
   </view>

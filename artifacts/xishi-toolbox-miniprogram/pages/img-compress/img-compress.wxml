@@ -1,0 +1,80 @@
+<view class="page">
+  <view class="page-title">图片压缩</view>
+  <view class="page-sub">本地处理，图片不上传服务器</view>
+
+  <block wx:if="{{!originalPath}}">
+    <view class="select-zone" bindtap="selectImage">
+      <text class="select-icon">🖼️</text>
+      <text class="select-text">点击选择图片</text>
+      <text class="select-hint">支持从相册选择或拍照</text>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="section-card">
+      <view class="card-header">
+        <text class="card-title">原图</text>
+        <view class="size-badge">{{originalSizeText}}</view>
+      </view>
+      <image class="preview-img" src="{{originalPath}}" mode="widthFix" />
+      <view class="reselect-row">
+        <view class="reselect-btn" bindtap="selectImage">重新选择</view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="quality-header">
+        <text class="quality-label">压缩质量</text>
+        <text class="quality-val">{{quality}}%</text>
+      </view>
+      <slider
+        class="quality-slider"
+        min="10" max="100" step="5"
+        value="{{quality}}"
+        activeColor="#e67e22"
+        backgroundColor="#e2e8f0"
+        block-size="22"
+        bindchange="onQualityChange"
+      />
+      <view class="quality-tips">
+        <text class="tip-low">低质量 · 体积小</text>
+        <text class="tip-high">高质量 · 接近原图</text>
+      </view>
+    </view>
+
+    <button class="compress-btn {{compressing ? 'compress-btn--loading' : ''}}" bindtap="compress" disabled="{{compressing}}">
+      {{compressing ? '压缩中…' : '开始压缩'}}
+    </button>
+
+    <block wx:if="{{hasResult}}">
+      <view class="section-card result-card">
+        <view class="card-header">
+          <text class="card-title">压缩结果</text>
+          <view class="size-badge size-badge--green">{{compressedSizeText}}</view>
+        </view>
+        <image class="preview-img" src="{{compressedPath}}" mode="widthFix" />
+
+        <view class="compare-row" wx:if="{{originalSize && compressedSize}}">
+          <view class="compare-item">
+            <text class="compare-label">原图大小</text>
+            <text class="compare-val">{{originalSizeText}}</text>
+          </view>
+          <text class="compare-arrow">→</text>
+          <view class="compare-item">
+            <text class="compare-label">压缩后</text>
+            <text class="compare-val compare-val--green">{{compressedSizeText}}</text>
+          </view>
+          <view class="saved-badge" wx:if="{{savedPercentText}}">
+            {{savedPercentText}}
+          </view>
+        </view>
+
+        <button class="save-btn {{saving ? 'save-btn--loading' : ''}}" bindtap="saveImage" disabled="{{saving}}">
+          {{saving ? '保存中…' : '💾 保存到相册'}}
+        </button>
+      </view>
+    </block>
+  </block>
+
+  <view style="height: calc(60rpx + env(safe-area-inset-bottom))" />
+</view>
